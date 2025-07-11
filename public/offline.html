@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Nest - Offline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .offline-container {
+            text-align: center;
+            max-width: 500px;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .offline-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .features {
+            text-align: left;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+
+        .features h3 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .retry-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 1rem 0.5rem;
+        }
+
+        .retry-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+            margin-right: 0.5rem;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .connection-info {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        .last-sync {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📱</div>
+        <h1>Pixel Nest is Offline</h1>
+        <p class="subtitle">
+            <span class="status-indicator"></span>
+            No internet connection detected
+        </p>
+
+        <div class="features">
+            <h3>What you can still do:</h3>
+            <ul class="feature-list">
+                <li>View cached data (transactions, suppliers, etc.)</li>
+                <li>Add new transactions (will sync when online)</li>
+                <li>Update existing records (will sync when online)</li>
+                <li>Search through local data</li>
+                <li>Generate reports from cached data</li>
+            </ul>
+        </div>
+
+        <div class="connection-info">
+            <p><strong>Backend Status:</strong> <span id="backend-status">Checking...</span></p>
+            <p><strong>Last Sync:</strong> <span id="last-sync">Unknown</span></p>
+            <p><strong>Offline Actions:</strong> <span id="offline-actions">0</span> pending</p>
+        </div>
+
+        <button class="retry-button" onclick="checkConnection()">
+            🔄 Check Connection
+        </button>
+        <button class="retry-button" onclick="window.location.reload()">
+            🔄 Reload Page
+        </button>
+
+        <div class="last-sync">
+            <p>Your data is safe and will sync automatically when connection is restored.</p>
+        </div>
+    </div>
+
+    <script>
+        // Check connection status
+        async function checkConnection() {
+            const statusElement = document.getElementById('backend-status');
+            const lastSyncElement = document.getElementById('last-sync');
+            const offlineActionsElement = document.getElementById('offline-actions');
+
+            statusElement.textContent = 'Checking...';
+
+            try {
+                // Try multiple backends
+                const backends = [
+                    'http://localhost:5000',
+                    'https://yourdomain.duckdns.org', // Replace with your domain
+                    'https://positive-kodiak-friendly.ngrok-free.app'
+                ];
+
+                let connected = false;
+                let workingBackend = '';
+
+                for (const backend of backends) {
+                    try {
+                        const response = await fetch(`${backend}/health`, {
+                            method: 'GET',
+                            headers: { 'ngrok-skip-browser-warning': 'true' },
+                            signal: AbortSignal.timeout(5000)
+                        });
+
+                        if (response.ok) {
+                            connected = true;
+                            workingBackend = backend;
+                            break;
+                        }
+                    } catch (error) {
+                        console.warn(`Backend ${backend} failed:`, error);
+                    }
+                }
+
+                if (connected) {
+                    statusElement.textContent = `Connected to ${workingBackend}`;
+                    statusElement.style.color = '#4ade80';
+                    
+                    // If we're connected, redirect to main app
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    statusElement.textContent = 'All backends unavailable';
+                    statusElement.style.color = '#ef4444';
+                }
+            } catch (error) {
+                statusElement.textContent = 'Connection check failed';
+                statusElement.style.color = '#ef4444';
+            }
+
+            // Update last sync time
+            const lastSync = localStorage.getItem('lastSyncTime');
+            if (lastSync) {
+                const date = new Date(parseInt(lastSync));
+                lastSyncElement.textContent = date.toLocaleString();
+            } else {
+                lastSyncElement.textContent = 'Never';
+            }
+
+            // Update offline actions count
+            const offlineQueue = localStorage.getItem('offlineQueue');
+            if (offlineQueue) {
+                try {
+                    const queue = JSON.parse(offlineQueue);
+                    offlineActionsElement.textContent = queue.length;
+                } catch {
+                    offlineActionsElement.textContent = '0';
+                }
+            } else {
+                offlineActionsElement.textContent = '0';
+            }
+        }
+
+        // Check connection on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkConnection();
+            
+            // Check connection every 30 seconds
+            setInterval(checkConnection, 30000);
+        });
+
+        // Listen for online/offline events
+        window.addEventListener('online', () => {
+            console.log('Connection restored');
+            checkConnection();
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Connection lost');
+            document.getElementById('backend-status').textContent = 'Offline';
+            document.getElementById('backend-status').style.color = '#ef4444';
+        });
+    </script>
+</body>
+</html> 
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+            margin-right: 0.5rem;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .connection-info {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        .last-sync {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📱</div>
+        <h1>Pixel Nest is Offline</h1>
+        <p class="subtitle">
+            <span class="status-indicator"></span>
+            No internet connection detected
+        </p>
+
+        <div class="features">
+            <h3>What you can still do:</h3>
+            <ul class="feature-list">
+                <li>View cached data (transactions, suppliers, etc.)</li>
+                <li>Add new transactions (will sync when online)</li>
+                <li>Update existing records (will sync when online)</li>
+                <li>Search through local data</li>
+                <li>Generate reports from cached data</li>
+            </ul>
+        </div>
+
+        <div class="connection-info">
+            <p><strong>Backend Status:</strong> <span id="backend-status">Checking...</span></p>
+            <p><strong>Last Sync:</strong> <span id="last-sync">Unknown</span></p>
+            <p><strong>Offline Actions:</strong> <span id="offline-actions">0</span> pending</p>
+        </div>
+
+        <button class="retry-button" onclick="checkConnection()">
+            🔄 Check Connection
+        </button>
+        <button class="retry-button" onclick="window.location.reload()">
+            🔄 Reload Page
+        </button>
+
+        <div class="last-sync">
+            <p>Your data is safe and will sync automatically when connection is restored.</p>
+        </div>
+    </div>
+
+    <script>
+        // Check connection status
+        async function checkConnection() {
+            const statusElement = document.getElementById('backend-status');
+            const lastSyncElement = document.getElementById('last-sync');
+            const offlineActionsElement = document.getElementById('offline-actions');
+
+            statusElement.textContent = 'Checking...';
+
+            try {
+                // Try multiple backends
+                const backends = [
+                    'http://localhost:5000',
+                    'https://yourdomain.duckdns.org', // Replace with your domain
+                    'https://positive-kodiak-friendly.ngrok-free.app'
+                ];
+
+                let connected = false;
+                let workingBackend = '';
+
+                for (const backend of backends) {
+                    try {
+                        const response = await fetch(`${backend}/health`, {
+                            method: 'GET',
+                            headers: { 'ngrok-skip-browser-warning': 'true' },
+                            signal: AbortSignal.timeout(5000)
+                        });
+
+                        if (response.ok) {
+                            connected = true;
+                            workingBackend = backend;
+                            break;
+                        }
+                    } catch (error) {
+                        console.warn(`Backend ${backend} failed:`, error);
+                    }
+                }
+
+                if (connected) {
+                    statusElement.textContent = `Connected to ${workingBackend}`;
+                    statusElement.style.color = '#4ade80';
+                    
+                    // If we're connected, redirect to main app
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    statusElement.textContent = 'All backends unavailable';
+                    statusElement.style.color = '#ef4444';
+                }
+            } catch (error) {
+                statusElement.textContent = 'Connection check failed';
+                statusElement.style.color = '#ef4444';
+            }
+
+            // Update last sync time
+            const lastSync = localStorage.getItem('lastSyncTime');
+            if (lastSync) {
+                const date = new Date(parseInt(lastSync));
+                lastSyncElement.textContent = date.toLocaleString();
+            } else {
+                lastSyncElement.textContent = 'Never';
+            }
+
+            // Update offline actions count
+            const offlineQueue = localStorage.getItem('offlineQueue');
+            if (offlineQueue) {
+                try {
+                    const queue = JSON.parse(offlineQueue);
+                    offlineActionsElement.textContent = queue.length;
+                } catch {
+                    offlineActionsElement.textContent = '0';
+                }
+            } else {
+                offlineActionsElement.textContent = '0';
+            }
+        }
+
+        // Check connection on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkConnection();
+            
+            // Check connection every 30 seconds
+            setInterval(checkConnection, 30000);
+        });
+
+        // Listen for online/offline events
+        window.addEventListener('online', () => {
+            console.log('Connection restored');
+            checkConnection();
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Connection lost');
+            document.getElementById('backend-status').textContent = 'Offline';
+            document.getElementById('backend-status').style.color = '#ef4444';
+        });
+    </script>
+</body>
+</html> 

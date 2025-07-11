@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="refresh" content="0; url=/expenso/" />
+    <script>
+      // For SPA: redirect all 404s to /expenso/ preserving path, query, and hash
+      var l = window.location;
+      var path = l.pathname.replace(/^\/expenso\//, "");
+      window.location.replace("/expenso/" + path + l.search + l.hash);
+    </script>
+  </head>
+  <body>
+    <h1>Redirecting...</h1>
+  </body>
+</html> 
