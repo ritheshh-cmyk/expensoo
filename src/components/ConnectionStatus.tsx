@@ -1,11 +1,22 @@
+import React from 'react';
 import { useConnection } from '@/contexts/ConnectionContext';
 
-export function ConnectionStatus() {
+export default function ConnectionStatus() {
   const { isOnline } = useConnection();
+
   return (
-    <div className="flex items-center gap-2">
-      <span className={`h-2 w-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></span>
-      <span>{isOnline ? 'Online' : 'Offline'}</span>
+    <div style={{ position: 'fixed', top: 10, right: 10, zIndex: 1000, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
+      <span
+        style={{
+          display: 'inline-block',
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          marginRight: 8,
+          background: isOnline ? '#4caf50' : '#f44336',
+        }}
+      />
+      {isOnline ? 'Online' : 'Offline'}
     </div>
   );
 } 
