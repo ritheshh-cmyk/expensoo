@@ -83,6 +83,7 @@ function AppContent() {
   // Render the app without backend connection error banner
   return (
     <>
+      <ConnectionStatus />
       {showUpdate && (
         <div className="fixed top-0 left-0 w-full bg-yellow-400 text-black p-4 z-50 text-center">
           A new version is available. <button onClick={() => window.location.reload()} className="underline font-bold">Refresh</button>

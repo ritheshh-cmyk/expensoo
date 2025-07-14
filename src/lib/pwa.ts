@@ -31,10 +31,11 @@ export class PWAService {
   private async registerServiceWorker() {
     if ('serviceWorker' in navigator) {
       try {
-        this.swRegistration = await navigator.serviceWorker.register('sw.js', {
-          scope: '/'
+        // Use correct path for GitHub Pages deployment
+        const swPath = window.location.hostname.endsWith('github.io') ? '/expenso/sw.js' : 'sw.js';
+        this.swRegistration = await navigator.serviceWorker.register('/expensoo/sw.js', {
+          scope: '/expensoo/'
         });
-
         console.log('Service Worker registered successfully:', this.swRegistration);
 
         // Listen for service worker updates
@@ -255,4 +256,4 @@ export const usePWAInstall = () => {
   };
 
   return { canInstall, isInstalled, install };
-}; 
+};

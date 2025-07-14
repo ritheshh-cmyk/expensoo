@@ -140,7 +140,7 @@
     "vitest": "^3.1.4"
   },
   "main": "electron-main.cjs",
-  "homepage": "https://ritheshh-cmyk.github.io/expenso",
+  "homepage": "https://ritheshh-cmyk.github.io/expensoo/",
   "build": {
     "appId": "com.callmemobiles.app",
     "productName": "CallMeMobiles",
