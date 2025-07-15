@@ -178,6 +178,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasAccess = (requiredRoles: UserRole[]): boolean => {
     if (!user) return false;
+    // Admin and owner always have full access
+    if (user.role === "admin" || user.role === "owner") return true;
     const userPermissions = rolePermissions[user.role];
     return requiredRoles.some((role) => userPermissions.includes(role));
   };
