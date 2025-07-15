@@ -1,16 +1,16 @@
 // Service Worker for Pixel Nest - Background Sync and Offline Support
 
 const CACHE_NAME = 'pixel-nest-v2'; // Bumped version
-const OFFLINE_URL = '/expenso/offline.html';
+const OFFLINE_URL = '/expensoo-clean/offline.html';
 
 // Files to cache for offline use
 const CACHE_FILES = [
-  '/expenso/',
-  '/expenso/index.html',
-  '/expenso/static/js/bundle.js',
-  '/expenso/static/css/main.css',
-  '/expenso/manifest.json',
-  '/expenso/favicon.ico',
+  '/expensoo-clean/',
+  '/expensoo-clean/index.html',
+  '/expensoo-clean/static/js/bundle.js',
+  '/expensoo-clean/static/css/main.css',
+  '/expensoo-clean/manifest.json',
+  '/expensoo-clean/favicon.ico',
   OFFLINE_URL
 ];
 
@@ -60,7 +60,7 @@ self.addEventListener('fetch', (event) => {
         if (cachedResponse) return cachedResponse;
         // Fallback to a generic response for navigation requests
         if (event.request.mode === 'navigate') {
-          return caches.match('/expenso/index.html');
+          return caches.match('/expensoo-clean/index.html');
         }
         return new Response('Network error', { status: 503, statusText: 'Service Unavailable' });
       })
