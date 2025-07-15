@@ -10,11 +10,11 @@ export default function NewTransaction() {
   const handleSubmit = async (data: any) => {
     try {
       await apiClient.createTransaction(data);
-      toast({
-        title: "Transaction Created",
+    toast({
+      title: "Transaction Created",
         description: `Transaction for ${data.customerName} has been created successfully and synced with backend.`,
-      });
-      navigate("/transactions");
+    });
+    navigate("/transactions");
     } catch (error: any) {
       toast({
         title: "Error",
