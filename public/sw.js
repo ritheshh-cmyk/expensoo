@@ -5,7 +5,6 @@ const OFFLINE_URL = '/expensoo-clean/offline.html';
 
 // Files to cache for offline use
 const CACHE_FILES = [
-  '/expensoo-clean/',
   '/expensoo-clean/index.html',
   '/expensoo-clean/assets/index-BkxW-ran.js',
   '/expensoo-clean/assets/router-YwT0eWhh.js',
@@ -14,8 +13,7 @@ const CACHE_FILES = [
   '/expensoo-clean/assets/index-uGcDmYcs.css',
   '/expensoo-clean/assets/vendor-CWc6w16D.js',
   '/expensoo-clean/manifest.json',
-  '/expensoo-clean/favicon.ico',
-  OFFLINE_URL
+  '/expensoo-clean/favicon.ico'
 ];
 
 // Install event - cache files
