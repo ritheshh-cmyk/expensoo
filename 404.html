@@ -1,15 +1,38 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
   <head>
-    <meta http-equiv="refresh" content="0; url=/expensoo/" />
-    <script>
-      // For SPA: redirect all 404s to /expensoo/ preserving path, query, and hash
-      var l = window.location;
-      var path = l.pathname.replace(/^\/expensoo\//, "");
-      window.location.replace("/expensoo/" + path + l.search + l.hash);
-    </script>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="CallMeMobiles - Complete mobile repair business management system" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="CallMeMobiles" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#000000" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/expensoo/manifest.json" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/expensoo/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/expensoo/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/expensoo/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/expensoo/icons/icon-152x152.png" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileImage" content="/expensoo/icons/icon-144x144.png" />
+    
+    <title>CallMeMobiles - Mobile Repair Tracker</title>
   </head>
+
   <body>
-    <h1>Redirecting...</h1>
+    <div id="root"></div>
+
+    <script type="module" src="/src/main.tsx"></script>
   </body>
-</html> 
+</html>
