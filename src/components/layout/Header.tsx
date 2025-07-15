@@ -160,7 +160,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               className="relative h-10 w-10 rounded-full electron-no-drag touch-target"
             >
               <Avatar className="h-9 w-9">
-                <AvatarImage src="/avatars/admin.png" alt="Admin" />
+                <AvatarImage src="/expensoo-clean/avatars/admin.png" alt="Admin" />
                 <AvatarFallback className="bg-primary text-primary-foreground font-medium text-sm">
                   AD
                 </AvatarFallback>

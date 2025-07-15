@@ -188,7 +188,7 @@ const App = () => (
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <BrowserRouter>
+              <BrowserRouter basename="/expensoo-clean">
                 <AuthProvider>
                   <AppContent />
                 </AuthProvider>

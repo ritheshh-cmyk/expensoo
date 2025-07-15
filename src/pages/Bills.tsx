@@ -722,7 +722,7 @@ export default function Bills() {
                           className={
                             statusConfig[
                               bill.status as keyof typeof statusConfig
-                            ].color
+                            ].color || ""
                           }
                         >
                           {
@@ -745,7 +745,7 @@ export default function Bills() {
                   <div className="flex items-center gap-2 sm:flex-col sm:items-end">
                     <div className="text-right">
                       <p className="text-2xl font-bold">
-                        ₹{bill.amount.toLocaleString()}
+                        ₹{typeof bill.amount === "number" ? bill.amount.toLocaleString() : ""}
                       </p>
                     </div>
 

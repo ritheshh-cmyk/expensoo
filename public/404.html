@@ -4,18 +4,23 @@
     <meta charset="utf-8">
     <title>Redirecting...</title>
     <script>
-      // Only redirect if not requesting a static asset
+      // Robust SPA redirect for GitHub Pages project site
+      var repo = "/expensoo-clean";
+      var path = location.pathname;
       if (
-        location.pathname !== '/expensoo-clean/' &&
-        !location.pathname.startsWith('/expensoo-clean/icons/') &&
-        !location.pathname.endsWith('.js') &&
-        !location.pathname.endsWith('.css') &&
-        !location.pathname.endsWith('.png') &&
-        !location.pathname.endsWith('.svg') &&
-        !location.pathname.endsWith('.ico')
+        path !== repo + "/" &&
+        !path.startsWith(repo + "/icons/") &&
+        !path.startsWith(repo + "/avatars/") &&
+        !path.endsWith(".js") &&
+        !path.endsWith(".css") &&
+        !path.endsWith(".png") &&
+        !path.endsWith(".svg") &&
+        !path.endsWith(".ico")
       ) {
-        // Redirect to index.html with hash route
-        var redirectTo = '/expensoo-clean/#' + location.pathname.replace('/expensoo-clean', '') + location.search + location.hash;
+        // Remove the repo prefix from the path
+        var subPath = path.startsWith(repo) ? path.slice(repo.length) : path;
+        // Redirect to the SPA entry with hash
+        var redirectTo = repo + "/#" + subPath + location.search + location.hash;
         location.replace(redirectTo);
       }
     </script>

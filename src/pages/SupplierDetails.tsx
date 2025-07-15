@@ -126,7 +126,7 @@ export default function SupplierDetails() {
   ) => {
     toast({
       title: "Payment Recorded",
-      description: `Payment of ₹${amount.toLocaleString()} has been recorded successfully.`,
+      description: `Payment of ₹${typeof amount === "number" ? amount.toLocaleString() : amount} has been recorded successfully.`,
     });
     setIsPaymentDialogOpen(false);
   };
@@ -247,7 +247,7 @@ export default function SupplierDetails() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{supplier?.outstandingAmount?.toLocaleString()}
+                ₹{supplier?.outstandingAmount?.toLocaleString?.() || 0}
               </div>
               {supplier?.outstandingAmount > 0 && (
                 <div className="text-xs text-red-600 flex items-center gap-1 mt-1">
@@ -265,7 +265,7 @@ export default function SupplierDetails() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{supplier?.totalPurchases?.toLocaleString()}
+                ₹{supplier?.totalPurchases?.toLocaleString?.() || 0}
               </div>
               <p className="text-xs text-muted-foreground mt-1">All time</p>
             </CardContent>
@@ -278,10 +278,10 @@ export default function SupplierDetails() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{supplier?.creditLimit?.toLocaleString()}
+                ₹{supplier?.creditLimit?.toLocaleString?.() || 0}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Available: ₹{supplier?.availableCredit?.toLocaleString()}
+                Available: ₹{supplier?.availableCredit?.toLocaleString?.() || 0}
               </p>
             </CardContent>
           </Card>
@@ -370,7 +370,7 @@ export default function SupplierDetails() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status</span>
-                <Badge className={getStatusColor(supplier?.status || "inactive")}>
+                <Badge className={getStatusColor(supplier?.status || "inactive") || ""}>
                   {supplier?.status || "Inactive"}
                 </Badge>
               </div>
@@ -458,7 +458,7 @@ export default function SupplierDetails() {
                         </div>
                         <div className="text-right">
                           <div className="font-medium">
-                            ₹{order.amount.toLocaleString()}
+                            ₹{typeof order.amount === "number" ? order.amount.toLocaleString() : ""}
                           </div>
                           <Badge
                             className={getPaymentStatusColor(
@@ -483,7 +483,7 @@ export default function SupplierDetails() {
                       >
                         <div>
                           <div className="font-medium">
-                            ₹{payment.amount.toLocaleString()}
+                            ₹{typeof payment.amount === "number" ? payment.amount.toLocaleString() : ""}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {payment.date}
@@ -549,7 +549,7 @@ export default function SupplierDetails() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            ₹{order.amount.toLocaleString()}
+                            ₹{typeof order.amount === "number" ? order.amount.toLocaleString() : ""}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{order.status}</Badge>
@@ -606,7 +606,7 @@ export default function SupplierDetails() {
                           <TableCell>{payment.id}</TableCell>
                           <TableCell>{payment.date}</TableCell>
                           <TableCell>
-                            ₹{payment.amount.toLocaleString()}
+                            ₹{typeof payment.amount === "number" ? payment.amount.toLocaleString() : ""}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -663,7 +663,7 @@ function PaymentDialog({
         <div>
           <Label>Outstanding Amount</Label>
           <div className="text-lg font-semibold text-red-600">
-            ₹{supplier?.outstandingAmount?.toLocaleString()}
+            ₹{supplier?.outstandingAmount?.toLocaleString?.() || 0}
           </div>
         </div>
         <div>

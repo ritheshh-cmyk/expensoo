@@ -130,7 +130,7 @@ export default function Transactions() {
         ),
         cell: ({ row }) => (
           <div className="text-sm">
-            {row.getValue<Date>("date").toLocaleDateString()}
+            {row.getValue<Date>("date") ? row.getValue<Date>("date").toLocaleDateString() : ""}
           </div>
         ),
       }),
@@ -171,11 +171,11 @@ export default function Transactions() {
         cell: ({ row }) => (
           <div className="text-right">
             <div className="font-semibold">
-              ₹{row.getValue<number>("cost").toLocaleString()}
+              ₹{typeof row.getValue<number>("cost") === "number" ? row.getValue<number>("cost").toLocaleString() : ""}
             </div>
             {showProfits && (
               <div className="text-xs text-success">
-                Profit: ₹{row.original.profit.toLocaleString()}
+                Profit: ₹{typeof row.original.profit === "number" ? row.original.profit.toLocaleString() : ""}
               </div>
             )}
           </div>
@@ -186,7 +186,7 @@ export default function Transactions() {
         cell: ({ row }) => {
           const status = row.getValue<keyof typeof statusConfig>("status");
           return (
-            <Badge className={cn("text-xs", statusConfig[status].color)}>
+            <Badge className={cn("text-xs", statusConfig[status]?.color || "")}>
               {t(statusConfig[status].label)}
             </Badge>
           );
