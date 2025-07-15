@@ -58,7 +58,7 @@ import { cn } from "@/lib/utils";
 import { apiClient } from '@/lib/api';
 import { toast } from '@/components/ui/use-toast';
 
-// Remove mockCustomers and mockBills and all related usage
+// All bills data is loaded from backend and updated via socket.io
 
 const statusConfig = {
   draft: { label: "Draft", color: "bg-muted text-muted-foreground" },

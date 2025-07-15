@@ -54,106 +54,7 @@ import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 
-// Mock data for charts
-const weeklyRevenue = [
-  { day: "Mon", revenue: 15400, repairs: 18, profit: 6200 },
-  { day: "Tue", revenue: 12800, repairs: 15, profit: 5100 },
-  { day: "Wed", revenue: 18200, repairs: 22, profit: 7300 },
-  { day: "Thu", revenue: 16700, repairs: 20, profit: 6700 },
-  { day: "Fri", revenue: 21400, repairs: 26, profit: 8600 },
-  { day: "Sat", revenue: 25200, repairs: 31, profit: 10100 },
-  { day: "Sun", revenue: 19800, repairs: 24, profit: 7900 },
-];
-
-const repairTypeData = [
-  { type: "Screen", count: 124, revenue: 371200, color: "#2563eb" },
-  { type: "Battery", count: 89, revenue: 178000, color: "#dc2626" },
-  { type: "Charging Port", count: 56, revenue: 140000, color: "#16a34a" },
-  { type: "Speaker", count: 34, revenue: 68000, color: "#ca8a04" },
-  { type: "Camera", count: 28, revenue: 84000, color: "#9333ea" },
-  { type: "Water Damage", count: 22, revenue: 132000, color: "#0891b2" },
-];
-
-const recentTransactions = [
-  {
-    id: 1,
-    customer: "Rajesh Kumar",
-    phone: "+91 98765 43210",
-    device: "iPhone 14 Pro",
-    repair: "Screen Replacement",
-    amount: 12500,
-    cost: 8000,
-    profit: 4500,
-    status: "completed",
-    date: "Today",
-    time: "2:30 PM",
-    paymentMethod: "upi",
-  },
-  {
-    id: 2,
-    customer: "Priya Sharma",
-    phone: "+91 98765 43211",
-    device: "Samsung Galaxy S23",
-    repair: "Battery Replacement",
-    amount: 3500,
-    cost: 2000,
-    profit: 1500,
-    status: "in-progress",
-    date: "Today",
-    time: "1:15 PM",
-    paymentMethod: "cash",
-  },
-  {
-    id: 3,
-    customer: "Mohammed Ali",
-    phone: "+91 98765 43212",
-    device: "OnePlus 11",
-    repair: "Charging Port",
-    amount: 4500,
-    cost: 2500,
-    profit: 2000,
-    status: "pending",
-    date: "Today",
-    time: "11:45 AM",
-    paymentMethod: "card",
-  },
-  {
-    id: 4,
-    customer: "Sunita Devi",
-    phone: "+91 98765 43213",
-    device: "iPhone 13",
-    repair: "Screen + Battery",
-    amount: 15000,
-    cost: 9500,
-    profit: 5500,
-    status: "completed",
-    date: "Yesterday",
-    time: "4:20 PM",
-    paymentMethod: "bank-transfer",
-  },
-  {
-    id: 5,
-    customer: "Arjun Reddy",
-    phone: "+91 98765 43214",
-    device: "Google Pixel 7",
-    repair: "Camera Module",
-    amount: 8500,
-    cost: 5000,
-    profit: 3500,
-    status: "delivered",
-    date: "Yesterday",
-    time: "2:10 PM",
-    paymentMethod: "upi",
-  },
-];
-
-const lowStockItems = [
-  { item: "iPhone 14 Pro Screen", stock: 2, minStock: 5, critical: true },
-  { item: "Samsung S23 Battery", stock: 4, minStock: 8, critical: false },
-  { item: "USB-C Port Module", stock: 1, minStock: 6, critical: true },
-  { item: "iPhone 13 Camera", stock: 3, minStock: 5, critical: true },
-  { item: "Screen Protectors", stock: 15, minStock: 50, critical: false },
-];
+// All dashboard data is loaded from backend and updated via socket.io
 
 const statusConfig = {
   pending: {
@@ -203,42 +104,7 @@ export default function Dashboard() {
     localStorage.setItem("showProfits", newValue.toString());
   };
 
-  // Calculate totals
-  const todayRevenue = 51300;
-  const todayProfit = showProfits ? 20520 : null;
-  const pendingRepairs = 7;
-  const weeklyTotal = weeklyRevenue.reduce((sum, day) => sum + day.revenue, 0);
-  const weeklyProfitTotal = showProfits
-    ? weeklyRevenue.reduce((sum, day) => sum + day.profit, 0)
-    : null;
-
-  // Check if user can view profits (admin and owner only)
-  const canViewProfits = hasAccess(["admin", "owner"]);
-
-  useEffect(() => {
-    // Only for owner
-    if (user?.role !== "owner") return;
-    // Only show once per day
-    const today = new Date().toISOString().split("T")[0];
-    if (localStorage.getItem("owner_notified") === today) return;
-    // Only after 9pm or on next login
-    const now = new Date();
-    if (now.getHours() < 21) return;
-    // Calculate today's and yesterday's profit/sales
-    // (Replace with real data if available)
-    const todayRevenue = 51300;
-    const todayProfit = 20520;
-    const yesterdayRevenue = 43400;
-    const yesterdayProfit = 16800;
-    const salesDiff = todayRevenue - yesterdayRevenue;
-    const profitDiff = todayProfit - yesterdayProfit;
-    toast({
-      title: "End of Day Summary",
-      description: `Today's Sales: ₹${todayRevenue.toLocaleString()}\nToday's Profit: ₹${todayProfit.toLocaleString()}\nSales Change: ${salesDiff >= 0 ? "+" : "-"}₹${Math.abs(salesDiff).toLocaleString()}\nProfit Change: ${profitDiff >= 0 ? "+" : "-"}₹${Math.abs(profitDiff).toLocaleString()}`,
-      duration: 10000,
-    });
-    localStorage.setItem("owner_notified", today);
-  }, [user]);
+  // All dashboard data is loaded from backend and updated via socket.io
 
   return (
     <AppLayout showBreadcrumbs={false}>
@@ -263,7 +129,7 @@ export default function Dashboard() {
               <Calendar className="mr-2 h-4 w-4" />
               Today: {new Date().toLocaleDateString()}
             </Button>
-            {canViewProfits && (
+            {hasAccess(["admin", "owner"]) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -292,16 +158,16 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-success">
-                ₹{todayRevenue.toLocaleString()}
+                ₹{0}
               </div>
-              {canViewProfits && showProfits && todayProfit && (
+              {hasAccess(["admin", "owner"]) && showProfits && 0 && (
                 <div className="text-sm text-muted-foreground">
-                  Profit: ₹{todayProfit.toLocaleString()}
+                  Profit: ₹{0}
                 </div>
               )}
               <div className="flex items-center text-xs text-success">
                 <ArrowUpRight className="h-3 w-3 mr-1" />
-                +18.2% from yesterday
+                +0% from yesterday
               </div>
             </CardContent>
           </Card>
@@ -315,10 +181,10 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-warning">
-                {pendingRepairs}
+                0
               </div>
               <div className="flex items-center text-xs text-muted-foreground">
-                5 in progress, 2 new
+                0 in progress, 0 new
               </div>
             </CardContent>
           </Card>
@@ -332,16 +198,16 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{weeklyTotal.toLocaleString()}
+                ₹{0}
               </div>
-              {canViewProfits && showProfits && weeklyProfitTotal && (
+              {hasAccess(["admin", "owner"]) && showProfits && 0 && (
                 <div className="text-sm text-muted-foreground">
-                  Profit: ₹{weeklyProfitTotal.toLocaleString()}
+                  Profit: ₹{0}
                 </div>
               )}
               <div className="flex items-center text-xs text-success">
                 <ArrowUpRight className="h-3 w-3 mr-1" />
-                +12.5% from last week
+                +0% from last week
               </div>
             </CardContent>
           </Card>
@@ -410,7 +276,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="px-2 sm:px-6">
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={weeklyRevenue}>
+                  <BarChart data={[]}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="day" />
                     <YAxis />
@@ -425,7 +291,7 @@ export default function Dashboard() {
                       fill="hsl(var(--primary))"
                       name="revenue"
                     />
-                    {canViewProfits && showProfits && (
+                    {hasAccess(["admin", "owner"]) && showProfits && (
                       <Bar
                         dataKey="profit"
                         fill="hsl(var(--success))"
@@ -455,7 +321,7 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
-                      data={repairTypeData}
+                      data={[]}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
@@ -463,25 +329,13 @@ export default function Dashboard() {
                       paddingAngle={5}
                       dataKey="count"
                     >
-                      {repairTypeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
+                      {[]}
                     </Pie>
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  {repairTypeData.map((type, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: type.color }}
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        {type.type}
-                      </span>
-                    </div>
-                  ))}
+                  {[]}
                 </div>
               </CardContent>
             </Card>
@@ -497,27 +351,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {repairTypeData.map((repair, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-sm">
-                          {repair.type}
-                        </span>
-                        <div className="text-right">
-                          <span className="text-sm font-semibold">
-                            {repair.count} repairs
-                          </span>
-                          <div className="text-xs text-muted-foreground">
-                            ₹{repair.revenue.toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                      <Progress
-                        value={(repair.count / repairTypeData[0].count) * 100}
-                        className="h-2"
-                      />
-                    </div>
-                  ))}
+                  {[]}
                 </div>
               </CardContent>
             </Card>
@@ -606,7 +440,7 @@ export default function Dashboard() {
                               <div className="font-semibold text-sm sm:text-base">
                                 ₹{transaction.amount.toLocaleString()}
                               </div>
-                              {canViewProfits && showProfits && (
+                              {hasAccess(["admin", "owner"]) && showProfits && (
                                 <div className="text-xs text-success">
                                   Profit: ₹{transaction.profit.toLocaleString()}
                                 </div>

@@ -63,7 +63,8 @@ import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import * as offlineData from '@/lib/offlineData';
+import { apiClient } from "@/lib/api";
+import { io } from "socket.io-client";
 
 interface Transaction {
   id: string;
@@ -88,12 +89,12 @@ const statusConfig = {
 
 export default function Transactions() {
   const [data, setData] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
-  const [showProfits, setShowProfits] = useState(
-    localStorage.getItem("showProfits") === "true",
-  );
+  // Remove localStorage usage for showProfits, use only state
+  const [showProfits, setShowProfits] = useState(false);
   const [historyDialog, setHistoryDialog] = useState<{ open: boolean; customer: string | null }>({ open: false, customer: null });
   const { t } = useLanguage();
 
@@ -285,51 +286,40 @@ export default function Transactions() {
     globalFilterFn: "includesString",
   });
 
-  // Connectivity detection and sync
+  // All transaction data is loaded from backend and updated via socket.io
   useEffect(() => {
-    function handleOnline() {
-      // TODO: Replace with real backend API integration
-      offlineData.syncWithBackend({
-        add: async (txn) => Promise.resolve(),
-        update: async (txn) => Promise.resolve(),
-        delete: async (id) => Promise.resolve(),
-      }).then(() => {
-        toast({ title: 'Sync Complete', description: 'Local changes synced to backend.' });
-      });
-    }
-    offlineData.onOnline(handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
+    // Initial fetch
+    apiClient.getTransactions().then(setData).finally(() => setLoading(false));
+
+    // Real-time updates
+    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
+    const update = () => apiClient.getTransactions().then(setData);
+    socket.on("transactionCreated", update);
+    socket.on("transactionUpdated", update);
+    socket.on("transactionDeleted", update);
+    return () => {
+      socket.off("transactionCreated", update);
+      socket.off("transactionUpdated", update);
+      socket.off("transactionDeleted", update);
+      socket.disconnect();
+    };
   }, []);
 
-  // Save to localStorage whenever data changes
-  useEffect(() => {
-    offlineData.setTransactions(data);
-  }, [data]);
-
   // Add, update, delete handlers
-  const handleAdd = (txn) => {
-    setData(prev => {
-      offlineData.saveTransaction(txn);
-      return [...prev, txn];
-    });
+  const handleAdd = async (txn) => {
+    await apiClient.createTransaction(txn);
+    // No need to manually update state, real-time event will trigger refetch
   };
-  const handleUpdate = (updatedTxn) => {
-    setData(prev => {
-      offlineData.updateTransaction(updatedTxn);
-      return prev.map(txn => txn.id === updatedTxn.id ? updatedTxn : txn);
-    });
+  const handleUpdate = async (updatedTxn) => {
+    await apiClient.updateTransaction(updatedTxn.id, updatedTxn);
   };
-  const handleDelete = (id) => {
-    setData(prev => {
-      offlineData.deleteTransaction(id);
-      return prev.filter(txn => txn.id !== id);
-    });
+  const handleDelete = async (id) => {
+    await apiClient.deleteTransaction(id);
   };
 
   const toggleProfits = () => {
     const newValue = !showProfits;
     setShowProfits(newValue);
-    localStorage.setItem("showProfits", newValue.toString());
   };
 
   const exportToExcel = () => {

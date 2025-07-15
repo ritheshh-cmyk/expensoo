@@ -2,17 +2,26 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { MultiStepTransactionForm } from "@/components/forms/MultiStepTransactionForm";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/api";
 
 export default function NewTransaction() {
   const navigate = useNavigate();
 
-  const handleSubmit = (data: any) => {
-    console.log("New transaction data:", data);
-    toast({
-      title: "Transaction Created",
-      description: `Transaction for ${data.customerName} has been created successfully.`,
-    });
-    navigate("/transactions");
+  const handleSubmit = async (data: any) => {
+    try {
+      await apiClient.createTransaction(data);
+      toast({
+        title: "Transaction Created",
+        description: `Transaction for ${data.customerName} has been created successfully and synced with backend.`,
+      });
+      navigate("/transactions");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create transaction. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCancel = () => {

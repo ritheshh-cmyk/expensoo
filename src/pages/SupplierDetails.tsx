@@ -59,23 +59,44 @@ import {
   TrendingUp,
   AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-
-// Remove any mock/demo/sample data and logic
-const purchaseHistory: any[] = [];
-const paymentHistory: any[] = [];
+import { apiClient } from "@/lib/api";
+import { io } from "socket.io-client";
 
 export default function SupplierDetails() {
   const { id } = useParams();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const [supplier, setSupplier] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Get supplier data (in real app, this would come from API)
-  // const supplier = supplierData[id as keyof typeof supplierData];
+  useEffect(() => {
+    // Initial fetch
+    apiClient.getSupplier(id).then(setSupplier).finally(() => setLoading(false));
+
+    // Real-time updates
+    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
+    const update = () => apiClient.getSupplier(id).then(setSupplier);
+    socket.on("supplierUpdated", update);
+    socket.on("supplierDeleted", update);
+    return () => {
+      socket.off("supplierUpdated", update);
+      socket.off("supplierDeleted", update);
+      socket.disconnect();
+    };
+  }, [id]);
+
+  // Edit/delete handlers
+  const handleUpdateSupplier = async (formData: any) => {
+    await apiClient.updateSupplier(id, formData);
+  };
+  const handleDeleteSupplier = async () => {
+    await apiClient.deleteSupplier(id);
+  };
 
   if (!id) {
     return (
@@ -226,9 +247,9 @@ export default function SupplierDetails() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{(0).toLocaleString()} {/* TODO: Replace 0 with real outstanding amount from API */}
+                ₹{supplier?.outstandingAmount?.toLocaleString()}
               </div>
-              {(0 > 0) && (
+              {supplier?.outstandingAmount > 0 && (
                 <div className="text-xs text-red-600 flex items-center gap-1 mt-1">
                   <AlertCircle className="h-3 w-3" />
                   Payment due
@@ -244,7 +265,7 @@ export default function SupplierDetails() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{(0).toLocaleString()} {/* TODO: Replace 0 with real total purchases from API */}
+                ₹{supplier?.totalPurchases?.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground mt-1">All time</p>
             </CardContent>
@@ -257,10 +278,10 @@ export default function SupplierDetails() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{(0).toLocaleString()} {/* TODO: Replace 0 with real credit limit from API */}
+                ₹{supplier?.creditLimit?.toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Available: ₹{(0 - 0).toLocaleString()} {/* TODO: Replace 0 - 0 with real available credit from API */}
+                Available: ₹{supplier?.availableCredit?.toLocaleString()}
               </p>
             </CardContent>
           </Card>
@@ -271,9 +292,11 @@ export default function SupplierDetails() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">N/A</div>
+              <div className="text-2xl font-bold">
+                {supplier?.paymentTerms || "N/A"}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Last order: N/A
+                Last order: {supplier?.lastOrderDate || "N/A"}
               </p>
             </CardContent>
           </Card>
@@ -296,7 +319,7 @@ export default function SupplierDetails() {
                   </Label>
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span>N/A</span>
+                    <span>{supplier?.contactPerson || "N/A"}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -305,7 +328,7 @@ export default function SupplierDetails() {
                   </Label>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>N/A</span>
+                    <span>{supplier?.phoneNumber || "N/A"}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -314,7 +337,7 @@ export default function SupplierDetails() {
                   </Label>
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>N/A</span>
+                    <span>{supplier?.emailAddress || "N/A"}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -323,7 +346,7 @@ export default function SupplierDetails() {
                   </Label>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span>N/A</span>
+                    <span>{supplier?.gstNumber || "N/A"}</span>
                   </div>
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -332,7 +355,7 @@ export default function SupplierDetails() {
                   </Label>
                   <div className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <span>N/A</span>
+                    <span>{supplier?.address || "N/A"}</span>
                   </div>
                 </div>
               </div>
@@ -347,31 +370,30 @@ export default function SupplierDetails() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status</span>
-                <Badge className={getStatusColor("inactive")}>
-                  Inactive
+                <Badge className={getStatusColor(supplier?.status || "inactive")}>
+                  {supplier?.status || "Inactive"}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Category</span>
-                <Badge variant="outline">N/A</Badge>
+                <Badge variant="outline">{supplier?.category || "N/A"}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Joined Date</span>
                 <span className="text-sm text-muted-foreground">
-                  N/A
+                  {supplier?.joinedDate || "N/A"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Total Orders</span>
                 <span className="text-sm font-bold">
-                  {purchaseHistory.length}
+                  {supplier?.totalOrders || 0}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Avg Order Value</span>
                 <span className="text-sm font-bold">
-                  ₹
-                  {0}
+                  ₹{supplier?.averageOrderValue?.toLocaleString() || 0}
                 </span>
               </div>
             </CardContent>
@@ -421,7 +443,7 @@ export default function SupplierDetails() {
                 <div>
                   <h4 className="font-medium mb-3">Recent Purchase Orders</h4>
                   <div className="space-y-3">
-                    {purchaseHistory.slice(0, 3).map((order) => (
+                    {supplier?.recentPurchaseOrders?.map((order: any) => (
                       <div
                         key={order.id}
                         className="flex items-center justify-between p-3 border rounded-lg"
@@ -454,7 +476,7 @@ export default function SupplierDetails() {
                 <div>
                   <h4 className="font-medium mb-3">Recent Payments</h4>
                   <div className="space-y-3">
-                    {paymentHistory.slice(0, 3).map((payment) => (
+                    {supplier?.recentPayments?.map((payment: any) => (
                       <div
                         key={payment.id}
                         className="flex items-center justify-between p-3 border rounded-lg"
@@ -510,7 +532,7 @@ export default function SupplierDetails() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {purchaseHistory.map((order) => (
+                      {supplier?.purchaseHistory?.map((order: any) => (
                         <TableRow key={order.id}>
                           <TableCell>
                             <div>
@@ -579,7 +601,7 @@ export default function SupplierDetails() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paymentHistory.map((payment) => (
+                      {supplier?.paymentHistory?.map((payment: any) => (
                         <TableRow key={payment.id}>
                           <TableCell>{payment.id}</TableCell>
                           <TableCell>{payment.date}</TableCell>

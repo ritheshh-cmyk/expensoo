@@ -37,6 +37,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { defaultSuppliers } from "@/data/suppliers";
 import { apiClient } from "@/lib/api";
+import { io } from "socket.io-client";
 import {
   Users,
   Plus,
@@ -88,7 +89,7 @@ type Supplier = {
 export default function Suppliers() {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -100,19 +101,21 @@ export default function Suppliers() {
   const [paymentRemarks, setPaymentRemarks] = useState("");
 
   useEffect(() => {
-    const loadSuppliers = async () => {
-      try {
-        const backendSuppliers = await apiClient.getSuppliers();
-        setSuppliers((backendSuppliers as Supplier[]).map(s => ({ ...s, paymentHistory: s.paymentHistory || [] })));
-      } catch (error) {
-        console.warn("Backend suppliers not available, using defaults:", error);
-        // Keep default suppliers as fallback
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Initial fetch
+    apiClient.getSuppliers().then(setSuppliers).finally(() => setLoading(false));
 
-    loadSuppliers();
+    // Real-time updates
+    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
+    const update = () => apiClient.getSuppliers().then(setSuppliers);
+    socket.on("supplierCreated", update);
+    socket.on("supplierUpdated", update);
+    socket.on("supplierDeleted", update);
+    return () => {
+      socket.off("supplierCreated", update);
+      socket.off("supplierUpdated", update);
+      socket.off("supplierDeleted", update);
+      socket.disconnect();
+    };
   }, []);
 
   // Filter suppliers based on search and status
@@ -137,48 +140,15 @@ export default function Suppliers() {
     0,
   );
 
-  const handleAddSupplier = async (newSupplier: any) => {
-    try {
-      const supplier: Supplier = {
-        ...newSupplier,
-        id: `SUP${String(suppliers.length + 1).padStart(3, "0")}`,
-        totalPurchases: 0,
-        outstandingAmount: 0,
-        lastOrderDate: new Date().toISOString().split("T")[0],
-        status: "active",
-        paymentHistory: [],
-      };
-      // Try backend first
-      try {
-        const createdSupplier = await apiClient.createSupplier(supplier);
-        // Ensure createdSupplier is an object and has paymentHistory
-        let safeSupplier: Supplier;
-        if (createdSupplier && typeof createdSupplier === 'object') {
-          safeSupplier = Object.assign({}, createdSupplier) as Supplier;
-          if (!Array.isArray((safeSupplier as any).paymentHistory)) {
-            (safeSupplier as any).paymentHistory = [];
-          }
-        } else {
-          safeSupplier = supplier;
-        }
-        setSuppliers([...suppliers, safeSupplier]);
-      } catch (error) {
-        // Fallback to local storage
-        console.warn("Backend create failed, using local:", error);
-        setSuppliers([...suppliers, supplier]);
-      }
-      setShowAddDialog(false);
-      toast({
-        title: "Supplier Added",
-        description: `${supplier.name} has been added successfully.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add supplier. Please try again.",
-        variant: "destructive",
-      });
-    }
+  // Add, update, delete handlers
+  const handleAddSupplier = async (formData: any) => {
+    await apiClient.createSupplier(formData);
+  };
+  const handleUpdateSupplier = async (id: string, formData: any) => {
+    await apiClient.updateSupplier(id, formData);
+  };
+  const handleDeleteSupplier = async (id: string) => {
+    await apiClient.deleteSupplier(id);
   };
 
   const openWhatsApp = (phone: string, name: string) => {

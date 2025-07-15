@@ -32,7 +32,6 @@ export class PWAService {
     if ('serviceWorker' in navigator) {
       try {
         // Use correct path for GitHub Pages deployment
-        const swPath = window.location.hostname.endsWith('github.io') ? '/expenso/sw.js' : 'sw.js';
         this.swRegistration = await navigator.serviceWorker.register('/expensoo/sw.js', {
           scope: '/expensoo/'
         });

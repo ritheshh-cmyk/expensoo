@@ -237,15 +237,6 @@ export default function Settings() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-base font-medium">Offline Mode</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Enable offline data caching
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
                     <Label className="text-base font-medium">Auto Sync</Label>
                     <p className="text-sm text-muted-foreground">
                       Automatically sync when connection is restored

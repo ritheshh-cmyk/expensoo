@@ -60,7 +60,7 @@ import {
   Area,
 } from "recharts";
 
-// Remove any mock/demo/sample data and logic
+// All reports data is loaded from backend and updated via socket.io
 
 export default function Reports() {
   const { t } = useLanguage();

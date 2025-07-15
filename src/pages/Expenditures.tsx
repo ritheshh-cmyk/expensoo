@@ -56,6 +56,8 @@ import {
   Building,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { apiClient } from "@/lib/api";
+import { io } from "socket.io-client";
 import { useToast } from "@/hooks/use-toast";
 import {
   BarChart,
@@ -69,59 +71,43 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { offlineDataManager } from "@/lib/offlineData";
-
-// Remove mockExpenditures and categoryData, and only use them if demo user is logged in
-const DEMO_USER_ID = "demo@expenso.com";
 
 export default function Expenditures() {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [showProfits, setShowProfits] = useState(
-    localStorage.getItem("showProfits") === "true",
-  );
+  // Remove localStorage usage for showProfits, use only state
+  const [showProfits, setShowProfits] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  // All expenditure data is loaded from backend and updated via socket.io
   const [expenditures, setExpenditures] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Example: get userId from localStorage or auth context
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUserId(parsed.email || null);
-      } catch {}
-    }
-    const loadExpenditures = async () => {
-      if (navigator.onLine) {
-        // Fetch from backend (replace with your actual API call)
-        // const data = await fetchExpendituresFromBackend();
-        // setExpenditures(data);
-        // offlineDataManager.cacheData('expenditures', data);
-        // For now, load from cache if backend not implemented
-        setExpenditures(offlineDataManager.getCachedData('expenditures'));
-      } else {
-        setExpenditures(offlineDataManager.getCachedData('expenditures'));
-        toast({
-          title: "Offline Mode",
-          description: "You are offline. Showing cached expenditures.",
-        });
-      }
+    // Initial fetch
+    apiClient.getExpenditures().then(setExpenditures).finally(() => setLoading(false));
+
+    // Real-time updates
+    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
+    const update = () => apiClient.getExpenditures().then(setExpenditures);
+    socket.on("expenditureCreated", update);
+    socket.on("expenditureUpdated", update);
+    socket.on("expenditureDeleted", update);
+    return () => {
+      socket.off("expenditureCreated", update);
+      socket.off("expenditureUpdated", update);
+      socket.off("expenditureDeleted", update);
+      socket.disconnect();
     };
-    loadExpenditures();
-    // Listen for online event to sync
-    window.addEventListener("online", loadExpenditures);
-    return () => window.removeEventListener("online", loadExpenditures);
   }, []);
 
   const toggleProfits = () => {
     const newValue = !showProfits;
     setShowProfits(newValue);
-    localStorage.setItem("showProfits", newValue.toString());
+    // localStorage.setItem("showProfits", newValue.toString()); // Removed
   };
 
   // Filter expenditures
@@ -151,31 +137,16 @@ export default function Expenditures() {
     ...new Set(expenditures.map((exp) => exp.paymentMethod)),
   ];
 
-  const handleAddExpenditure = (formData: any) => {
-    const newExpenditure = {
-      id: `EXP${String(expenditures.length + 1).padStart(3, "0")}`,
-      date: new Date().toISOString().split("T")[0],
-      ...formData,
-      receiptUrl: null,
-    };
-    setExpenditures([...expenditures, newExpenditure]);
-    setIsAddDialogOpen(false);
-    if (navigator.onLine) {
-      // TODO: Send to backend and cache
-      offlineDataManager.cacheData('expenditures', [...expenditures, newExpenditure]);
-      toast({
-        title: "Expenditure Added",
-        description: "New expenditure has been recorded successfully.",
-      });
-    } else {
-      // Queue for sync
-      offlineDataManager.addToSyncQueue('expenditure', 'create', newExpenditure);
-      offlineDataManager.cacheData('expenditures', [...expenditures, newExpenditure]);
-      toast({
-        title: "Saved Locally (Offline)",
-        description: "Expenditure will sync when you are back online.",
-      });
-    }
+  // Add, update, delete handlers
+  const handleAddExpenditure = async (formData: any) => {
+    await apiClient.createExpenditure(formData);
+    // Real-time event will trigger refetch
+  };
+  const handleUpdateExpenditure = async (id: string, formData: any) => {
+    await apiClient.updateExpenditure(id, formData);
+  };
+  const handleDeleteExpenditure = async (id: string) => {
+    await apiClient.deleteExpenditure(id);
   };
 
   const getPaymentMethodIcon = (method: string) => {
