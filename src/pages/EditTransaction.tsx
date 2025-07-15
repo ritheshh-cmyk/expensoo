@@ -2,15 +2,14 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { MultiStepTransactionForm } from "@/components/forms/MultiStepTransactionForm";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { apiClient } from "@/lib/apiClient";
+import { apiClient } from "@/lib/api";
 import { useEffect, useState } from "react";
-import { Transaction } from "@/types/transaction";
-import { Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 
 export default function EditTransaction() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [transaction, setTransaction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,8 +17,13 @@ export default function EditTransaction() {
     const fetchTransaction = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.get(`/transactions/${id}`);
-        setTransaction(response.data);
+        // RobustApiClient does not have getTransaction, so fetch all and filter
+        let txns: any = await apiClient.getTransactions();
+        if (!Array.isArray(txns)) {
+          txns = Object.values(txns);
+        }
+        const txnsArr: any[] = txns;
+        setTransaction(txnsArr.find((t) => t.id === id));
       } catch (err) {
         setError("Failed to fetch transaction.");
         console.error(err);
@@ -30,8 +34,8 @@ export default function EditTransaction() {
 
     fetchTransaction();
 
-    const socket = new Socket("http://localhost:3000"); // Assuming socket.io server is running on port 3000
-    socket.on("transactionUpdated", (updatedTransaction: Transaction) => {
+    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
+    socket.on("transactionUpdated", (updatedTransaction: any) => {
       if (updatedTransaction.id === id) {
         setTransaction(updatedTransaction);
         toast({
