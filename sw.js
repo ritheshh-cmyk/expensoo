@@ -7,8 +7,12 @@ const OFFLINE_URL = '/expensoo-clean/offline.html';
 const CACHE_FILES = [
   '/expensoo-clean/',
   '/expensoo-clean/index.html',
-  '/expensoo-clean/static/js/bundle.js',
-  '/expensoo-clean/static/css/main.css',
+  '/expensoo-clean/assets/index-BkxW-ran.js',
+  '/expensoo-clean/assets/router-YwT0eWhh.js',
+  '/expensoo-clean/assets/ui-COXvrXvd.js',
+  '/expensoo-clean/assets/utils-Bj7X0qp-.js',
+  '/expensoo-clean/assets/index-uGcDmYcs.css',
+  '/expensoo-clean/assets/vendor-CWc6w16D.js',
   '/expensoo-clean/manifest.json',
   '/expensoo-clean/favicon.ico',
   OFFLINE_URL
