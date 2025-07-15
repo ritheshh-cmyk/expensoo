@@ -1,25 +1,25 @@
 {
   "name": "Expenso",
   "short_name": "Expenso",
-  "start_url": "/expenso/",
-  "scope": "/expenso/",
+  "start_url": "/expensoo/",
+  "scope": "/expensoo/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3B82F6",
   "description": "Expense tracking PWA",
   "icons": [
     {
-      "src": "icons/icon-128x128.svg",
+      "src": "/expensoo/icons/icon-128x128.svg",
       "sizes": "128x128",
       "type": "image/svg+xml"
     },
     {
-      "src": "icons/icon-192x192.png",
+      "src": "/expensoo/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icons/icon-512x512.png",
+      "src": "/expensoo/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
