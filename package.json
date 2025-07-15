@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "postbuild": "npx cpy dist/index.html dist/404.html",
+    "postbuild": "copy public\\404.html dist\\404.html",
     "build:pwa": "npm run generate-icons && tsc && vite build && npm run copy-pwa-assets",
     "generate-icons": "node scripts/generate-pwa-icons.cjs",
     "copy-pwa-assets": "npm run copy-manifest && npm run copy-offline && npm run copy-icons && npm run copy-sw",
