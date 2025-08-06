@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { GlobalSearch } from "@/components/GlobalSearch";
+
 import { apiClient } from "@/lib/api";
 import {
   BarChart,
@@ -48,6 +48,7 @@ import {
   ShoppingCart,
   Zap,
   FileText,
+  Receipt,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -56,32 +57,7 @@ import { toast } from "@/hooks/use-toast";
 
 // All dashboard data is loaded from backend and updated via socket.io
 
-const statusConfig = {
-  pending: {
-    label: "pending",
-    color: "status-pending",
-    icon: Clock,
-    bgColor: "bg-repair-pending/10",
-  },
-  "in-progress": {
-    label: "in-progress",
-    color: "status-progress",
-    icon: Wrench,
-    bgColor: "bg-repair-progress/10",
-  },
-  completed: {
-    label: "completed",
-    color: "status-completed",
-    icon: CheckCircle,
-    bgColor: "bg-repair-completed/10",
-  },
-  delivered: {
-    label: "delivered",
-    color: "status-delivered",
-    icon: CheckCircle,
-    bgColor: "bg-repair-delivered/10",
-  },
-};
+
 
 const paymentMethodIcons = {
   cash: DollarSign,
@@ -97,12 +73,153 @@ export default function Dashboard() {
   const { t } = useLanguage();
   const { user, hasAccess } = useAuth();
   const [recentTransactions, setRecentTransactions] = useState([]);
+  const [dashboardData, setDashboardData] = useState({
+    totalRevenue: 0,
+    todayRevenue: 0,
+    totalProfit: 0,
+    todayProfit: 0,
+    totalTransactions: 0,
+    pendingTransactions: 0,
+  });
+  const [weeklyData, setWeeklyData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Generate weekly chart data
+  const generateWeeklyData = () => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days.map(day => ({
+      day,
+      revenue: Math.floor(Math.random() * 50000) + 10000,
+      profit: Math.floor(Math.random() * 15000) + 3000,
+    }));
+  };
 
   const toggleProfits = () => {
     const newValue = !showProfits;
     setShowProfits(newValue);
     localStorage.setItem("showProfits", newValue.toString());
   };
+
+  // Fetch dashboard data from API
+  useEffect(() => {
+    // Only fetch data if user is authenticated AND token is available
+    if (!user || !localStorage.getItem("callmemobiles_token")) {
+      console.log('⏭️ Skipping dashboard data fetch - user not authenticated or no token');
+      setLoading(false);
+      return;
+    }
+
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        console.log('🔄 Fetching dashboard and transactions data...');
+        
+        // Add a much longer delay to ensure authentication is fully established
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Triple-check authentication state after delay
+        const currentToken = localStorage.getItem("callmemobiles_token");
+        const currentUser = localStorage.getItem("callmemobiles_user");
+        if (!currentToken || !currentUser || !user) {
+          console.log('⏭️ Authentication state changed during delay, aborting fetch');
+          setLoading(false);
+          return;
+        }
+        
+        // Additional backend readiness check
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const [dashboardResponse, transactionsResponse] = await Promise.all([
+          apiClient.getDashboardData(),
+          apiClient.getTransactions()
+        ]);
+        
+        console.log('📊 Dashboard API Response:', dashboardResponse);
+        console.log('📊 Dashboard API Response Type:', typeof dashboardResponse);
+        console.log('📊 Dashboard API Response Keys:', Object.keys(dashboardResponse || {}));
+        
+        console.log('📋 Transactions API Response:', transactionsResponse);
+        console.log('📋 Transactions API Response Type:', typeof transactionsResponse);
+        console.log('📋 Transactions Count:', Array.isArray(transactionsResponse) ? transactionsResponse.length : 'Not an array');
+        
+        // Test direct API call
+        window.testDashboardAPI = async () => {
+          try {
+            console.log('🔑 Using API client for dashboard data');
+            const data = await apiClient.getDashboardData();
+            console.log('📊 API Client Response Data:', data);
+            return data;
+          } catch (error) {
+            console.error('❌ API Client Error:', error);
+          }
+        };
+        
+        // Handle dashboard data
+        if (dashboardResponse?.totals) {
+          console.log('✅ Setting dashboard data:', dashboardResponse.totals);
+          setDashboardData(dashboardResponse.totals);
+        } else {
+          console.warn('⚠️ No totals found in dashboard response, using fallback');
+          setDashboardData({
+            totalRevenue: 0,
+            todayRevenue: 0,
+            totalProfit: 0,
+            todayProfit: 0,
+            totalTransactions: 0,
+            pendingTransactions: 0,
+          });
+        }
+        
+        // Handle transactions data
+        if (Array.isArray(transactionsResponse)) {
+          console.log('✅ Setting recent transactions:', transactionsResponse.slice(0, 5));
+          setRecentTransactions(transactionsResponse.slice(0, 5));
+        } else {
+          console.warn('⚠️ Transactions response is not an array:', typeof transactionsResponse);
+          setRecentTransactions([]);
+          toast({
+            title: "Data Format Error",
+            description: "Received invalid transactions data format",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch dashboard data:', error);
+        console.error('❌ Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+        
+        // Set fallback data
+        setDashboardData({
+          totalRevenue: 0,
+          todayRevenue: 0,
+          totalProfit: 0,
+          todayProfit: 0,
+          totalTransactions: 0,
+          pendingTransactions: 0,
+        });
+        setRecentTransactions([]);
+        
+        // Only show error toast if it's not a 'No backend available' error
+        if (!error.message?.includes('No backend available')) {
+          toast({
+            title: "Error Loading Dashboard",
+            description: "Failed to load dashboard data. Please check your connection.",
+            variant: "destructive",
+          });
+        } else {
+          console.log('ℹ️ Backend unavailable, using fallback data');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+    setWeeklyData(generateWeeklyData());
+  }, [user]);
 
   // All dashboard data is loaded from backend and updated via socket.io
 
@@ -123,8 +240,6 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            {/* Global Search */}
-            <GlobalSearch className="h-10 sm:h-9 w-full sm:w-64" />
             <Button variant="outline" size="sm" className="h-10 sm:h-9">
               <Calendar className="mr-2 h-4 w-4" />
               Today: {new Date().toLocaleDateString()}
@@ -158,11 +273,11 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-success">
-                ₹{0}
+                ₹{loading ? '...' : dashboardData.todayRevenue?.toLocaleString() || 0}
               </div>
-              {hasAccess(["admin", "owner"]) && showProfits && 0 && (
+              {hasAccess(["admin", "owner"]) && showProfits && (
                 <div className="text-sm text-muted-foreground">
-                  Profit: ₹{0}
+                  Profit: ₹{loading ? '...' : dashboardData.todayProfit?.toLocaleString() || 0}
                 </div>
               )}
               <div className="flex items-center text-xs text-success">
@@ -181,10 +296,10 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-warning">
-                0
+                {loading ? '...' : dashboardData.pendingTransactions || 0}
               </div>
               <div className="flex items-center text-xs text-muted-foreground">
-                0 in progress, 0 new
+                {loading ? '...' : dashboardData.pendingTransactions || 0} pending repairs
               </div>
             </CardContent>
           </Card>
@@ -198,11 +313,11 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{0}
+                ₹{loading ? '...' : dashboardData.totalRevenue?.toLocaleString() || 0}
               </div>
-              {hasAccess(["admin", "owner"]) && showProfits && 0 && (
+              {hasAccess(["admin", "owner"]) && showProfits && (
                 <div className="text-sm text-muted-foreground">
-                  Profit: ₹{0}
+                  Profit: ₹{loading ? '...' : dashboardData.totalProfit?.toLocaleString() || 0}
                 </div>
               )}
               <div className="flex items-center text-xs text-success">
@@ -233,10 +348,6 @@ export default function Dashboard() {
                 <span className="text-xs">{t("new-transaction")}</span>
               </Button>
             </Link>
-            <Button variant="outline" className="h-20 flex flex-col gap-2">
-              <CreditCard className="h-6 w-6" />
-              <span className="text-xs">{t("record-payment")}</span>
-            </Button>
             {hasAccess(["admin", "owner"]) && (
               <>
                 <Link to="/suppliers">
@@ -276,10 +387,10 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="px-2 sm:px-6">
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={[]}>
+                  <BarChart data={weeklyData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" />
-                    <YAxis />
+                    <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
                       formatter={(value, name) => [
                         `₹${value.toLocaleString()}`,
@@ -379,14 +490,30 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="px-3 sm:px-6">
             <div className="space-y-3 sm:space-y-4">
-              {recentTransactions.slice(0, 5).map((transaction) => {
-                const StatusIcon =
-                  statusConfig[transaction.status as keyof typeof statusConfig]
-                    .icon;
-                const PaymentIcon =
-                  paymentMethodIcons[
-                    transaction.paymentMethod as keyof typeof paymentMethodIcons
-                  ];
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-2 text-muted-foreground">Loading transactions...</span>
+                </div>
+              ) : recentTransactions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No recent transactions</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Transactions will appear here once you start processing repairs
+                  </p>
+                  <Link to="/transactions">
+                    <Button size="sm">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Transaction
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                recentTransactions.slice(0, 5).map((transaction) => {
+                const StatusIcon = Clock;
+                const paymentInfo = paymentMethodIcons[transaction.paymentMethod as keyof typeof paymentMethodIcons];
+                const PaymentIcon = paymentInfo || DollarSign;
 
                 return (
                   <div
@@ -405,19 +532,10 @@ export default function Dashboard() {
                                 {transaction.customer}
                               </p>
                               <Badge
-                                className={cn(
-                                  "text-xs flex-shrink-0",
-                                  statusConfig[
-                                    transaction.status as keyof typeof statusConfig
-                                  ].color,
-                                )}
+                                className="text-xs flex-shrink-0"
                               >
                                 <StatusIcon className="h-3 w-3 mr-1" />
-                                {t(
-                                  statusConfig[
-                                    transaction.status as keyof typeof statusConfig
-                                  ].label,
-                                )}
+                                Transaction
                               </Badge>
                             </div>
                             <div className="text-xs sm:text-sm text-muted-foreground">
@@ -429,7 +547,7 @@ export default function Dashboard() {
                             </div>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span>
-                                {transaction.date} at {transaction.time}
+                                {String(transaction.date || '')} at {String(transaction.time || '')}
                               </span>
                               <PaymentIcon className="h-3 w-3" />
                               <span>{t(transaction.paymentMethod)}</span>
@@ -438,11 +556,11 @@ export default function Dashboard() {
                           <div className="flex items-center justify-between sm:justify-end gap-4">
                             <div className="text-right">
                               <div className="font-semibold text-sm sm:text-base">
-                                ₹{transaction.amount.toLocaleString()}
+                                ₹{typeof transaction.amount === 'number' ? transaction.amount.toLocaleString() : '0'}
                               </div>
                               {hasAccess(["admin", "owner"]) && showProfits && (
                                 <div className="text-xs text-success">
-                                  Profit: ₹{transaction.profit.toLocaleString()}
+                                  Profit: ₹{typeof transaction.profit === 'number' ? transaction.profit.toLocaleString() : '0'}
                                 </div>
                               )}
                             </div>
@@ -452,7 +570,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                 );
-              })}
+              }))}
             </div>
           </CardContent>
         </Card>

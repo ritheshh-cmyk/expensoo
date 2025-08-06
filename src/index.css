@@ -229,22 +229,7 @@
     @apply animate-fade-in;
   }
 
-  /* Repair Status Badges */
-  .status-pending {
-    @apply bg-repair-pending/10 text-repair-pending border-repair-pending/20;
-  }
 
-  .status-progress {
-    @apply bg-repair-progress/10 text-repair-progress border-repair-progress/20;
-  }
-
-  .status-completed {
-    @apply bg-repair-completed/10 text-repair-completed border-repair-completed/20;
-  }
-
-  .status-delivered {
-    @apply bg-repair-delivered/10 text-repair-delivered border-repair-delivered/20;
-  }
 
   /* Stock Level Indicators */
   .stock-critical {

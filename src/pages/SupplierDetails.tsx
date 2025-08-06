@@ -75,12 +75,24 @@ export default function SupplierDetails() {
   const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
+    // Only fetch data if user is authenticated and token is available
+    const token = localStorage.getItem("callmemobiles_token");
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     // Initial fetch
     apiClient.getSupplier(id).then(setSupplier).finally(() => setLoading(false));
 
     // Real-time updates
     const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
-    const update = () => apiClient.getSupplier(id).then(setSupplier);
+    const update = () => {
+      const currentToken = localStorage.getItem("callmemobiles_token");
+      if (currentToken) {
+        apiClient.getSupplier(id).then(setSupplier);
+      }
+    };
     socket.on("supplierUpdated", update);
     socket.on("supplierDeleted", update);
     return () => {
@@ -126,7 +138,7 @@ export default function SupplierDetails() {
   ) => {
     toast({
       title: "Payment Recorded",
-      description: `Payment of ₹${typeof amount === "number" ? amount.toLocaleString() : amount} has been recorded successfully.`,
+      description: `Payment of ₹${typeof amount === "number" ? amount.toLocaleString() : '0'} has been recorded successfully.`,
     });
     setIsPaymentDialogOpen(false);
   };
@@ -247,7 +259,7 @@ export default function SupplierDetails() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{supplier?.outstandingAmount?.toLocaleString?.() || 0}
+                ₹{typeof supplier?.outstandingAmount === 'number' ? supplier.outstandingAmount.toLocaleString() : '0'}
               </div>
               {supplier?.outstandingAmount > 0 && (
                 <div className="text-xs text-red-600 flex items-center gap-1 mt-1">
@@ -265,7 +277,7 @@ export default function SupplierDetails() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{supplier?.totalPurchases?.toLocaleString?.() || 0}
+                ₹{typeof supplier?.totalPurchases === 'number' ? supplier.totalPurchases.toLocaleString() : '0'}
               </div>
               <p className="text-xs text-muted-foreground mt-1">All time</p>
             </CardContent>
@@ -278,10 +290,10 @@ export default function SupplierDetails() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{supplier?.creditLimit?.toLocaleString?.() || 0}
+                ₹{typeof supplier?.creditLimit === 'number' ? supplier.creditLimit.toLocaleString() : '0'}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Available: ₹{supplier?.availableCredit?.toLocaleString?.() || 0}
+                Available: ₹{typeof supplier?.availableCredit === 'number' ? supplier.availableCredit.toLocaleString() : '0'}
               </p>
             </CardContent>
           </Card>
@@ -393,7 +405,7 @@ export default function SupplierDetails() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Avg Order Value</span>
                 <span className="text-sm font-bold">
-                  ₹{supplier?.averageOrderValue?.toLocaleString() || 0}
+                  ₹{typeof supplier?.averageOrderValue === 'number' ? supplier.averageOrderValue.toLocaleString() : '0'}
                 </span>
               </div>
             </CardContent>
@@ -458,7 +470,7 @@ export default function SupplierDetails() {
                         </div>
                         <div className="text-right">
                           <div className="font-medium">
-                            ₹{typeof order.amount === "number" ? order.amount.toLocaleString() : ""}
+                            ₹{typeof order.amount === "number" ? order.amount.toLocaleString() : "0"}
                           </div>
                           <Badge
                             className={getPaymentStatusColor(
@@ -483,7 +495,7 @@ export default function SupplierDetails() {
                       >
                         <div>
                           <div className="font-medium">
-                            ₹{typeof payment.amount === "number" ? payment.amount.toLocaleString() : ""}
+                            ₹{typeof payment.amount === "number" ? payment.amount.toLocaleString() : "0"}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {payment.date}
@@ -549,7 +561,7 @@ export default function SupplierDetails() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            ₹{typeof order.amount === "number" ? order.amount.toLocaleString() : ""}
+                            ₹{typeof order.amount === "number" ? order.amount.toLocaleString() : "0"}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{order.status}</Badge>
@@ -606,7 +618,7 @@ export default function SupplierDetails() {
                           <TableCell>{payment.id}</TableCell>
                           <TableCell>{payment.date}</TableCell>
                           <TableCell>
-                            ₹{typeof payment.amount === "number" ? payment.amount.toLocaleString() : ""}
+                            ₹{typeof payment.amount === "number" ? payment.amount.toLocaleString() : "0"}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -663,7 +675,7 @@ function PaymentDialog({
         <div>
           <Label>Outstanding Amount</Label>
           <div className="text-lg font-semibold text-red-600">
-            ₹{supplier?.outstandingAmount?.toLocaleString?.() || 0}
+            ₹{typeof supplier?.outstandingAmount === 'number' ? supplier.outstandingAmount.toLocaleString() : '0'}
           </div>
         </div>
         <div>

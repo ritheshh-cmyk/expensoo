@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/api";
 import {
   User,
   Smartphone,
@@ -63,14 +64,17 @@ const transactionSchema = z.object({
     )
     .default([]),
   repairSource: z.string().optional(),
+  repairServiceType: z.enum(["internal", "external"]).default("internal"),
   partsRemarks: z.string().optional(),
   internalRepairCost: z.number().optional(),
   internalRepairRemarks: z.string().optional(),
+  externalItemCost: z.number().optional(),
+  internalCost: z.number().optional(),
+  partsCost: z.number().optional(),
 
   // Step 4: Additional Details
   freeGlass: z.boolean().default(false),
   remarks: z.string().optional(),
-  status: z.enum(["pending", "in-progress", "completed"]).default("pending"),
   newSupplierName: z.string().optional(),
 });
 
@@ -140,12 +144,15 @@ export function MultiStepTransactionForm({
     defaultValues: {
       requiresParts: false,
       freeGlass: false,
-      status: "pending",
       customRepairType: "",
       repairSource: "parts",
+      repairServiceType: "internal",
       partsRemarks: "",
       internalRepairCost: undefined,
       internalRepairRemarks: "",
+      externalItemCost: undefined,
+      internalCost: undefined,
+      partsCost: undefined,
       ...initialData,
     },
   });
@@ -175,7 +182,7 @@ export function MultiStepTransactionForm({
     {
       title: t("additional-details"),
       icon: Smartphone,
-      description: "Final details and status",
+      description: "Final details and remarks",
     },
   ];
 
@@ -234,16 +241,49 @@ export function MultiStepTransactionForm({
     setValue("parts", updatedParts);
   };
 
-  const onFormSubmit = (data: TransactionFormData) => {
-    const finalData = {
-      ...data,
-      parts: requiresParts ? parts : [],
-    };
-    onSubmit(finalData);
-    toast({
-      title: "Transaction Created",
-      description: "New repair transaction has been added successfully.",
-    });
+  const onFormSubmit = async (data: TransactionFormData) => {
+    try {
+      // If "Other" supplier is selected and a new supplier name is provided, create the supplier first
+      if (data.supplier === "Other" && data.newSupplierName && data.newSupplierName.trim()) {
+        const newSupplier = {
+          name: data.newSupplierName.trim(),
+          contact_number: "", // Default empty, can be updated later
+          address: "", // Default empty, can be updated later
+        };
+        
+        try {
+          await apiClient.createSupplier(newSupplier);
+          toast({
+             title: "Supplier Added",
+             description: `${data.newSupplierName} has been added to your suppliers list.`,
+           });
+        } catch (error) {
+          console.error("Failed to create supplier:", error);
+          toast({
+            title: "Warning",
+            description: "Transaction created but supplier could not be saved to database.",
+            variant: "destructive",
+          });
+        }
+      }
+      
+      const finalData = {
+        ...data,
+        parts: requiresParts ? parts : [],
+      };
+      onSubmit(finalData);
+      toast({
+        title: "Transaction Created",
+        description: "New repair transaction has been added successfully.",
+      });
+    } catch (error) {
+      console.error("Error in form submission:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create transaction. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -402,6 +442,31 @@ export function MultiStepTransactionForm({
                   </div>
 
                   <div className="space-y-2">
+                    <Label>Repair Service Type *</Label>
+                    <RadioGroup
+                      onValueChange={(value) => setValue("repairServiceType", value as any)}
+                      defaultValue={watchedValues.repairServiceType || "internal"}
+                      className="flex gap-6"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="internal" id="internal-service" />
+                        <Label htmlFor="internal-service">Internal Repair</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="external" id="external-service" />
+                        <Label htmlFor="external-service">External Repair</Label>
+                      </div>
+                    </RadioGroup>
+                    <p className="text-xs text-muted-foreground">
+                      {watchedValues.repairServiceType === "internal" 
+                        ? "Repair performed in-house by your team" 
+                        : "Repair outsourced to external service provider"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
                     <Label htmlFor="repairCost">{t("repair-cost")} *</Label>
                     <Input
                       id="repairCost"
@@ -417,6 +482,60 @@ export function MultiStepTransactionForm({
                         {errors.repairCost.message}
                       </p>
                     )}
+                  </div>
+
+                  {/* Conditional cost field based on repair service type */}
+                  {watchedValues.repairServiceType === "external" && (
+                    <div className="space-y-2">
+                      <Label>External Service Cost</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={watchedValues.externalItemCost || ""}
+                        onChange={e => setValue("externalItemCost", parseFloat(e.target.value) || 0)}
+                        className="h-12"
+                      />
+                      <p className="text-xs text-muted-foreground">Cost paid to external repair service</p>
+                    </div>
+                  )}
+
+                  {watchedValues.repairServiceType === "internal" && (
+                    <div className="space-y-2">
+                      <Label>Internal Service Cost</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={watchedValues.internalCost || ""}
+                        onChange={e => setValue("internalCost", parseFloat(e.target.value) || 0)}
+                        className="h-12"
+                      />
+                      <p className="text-xs text-muted-foreground">Internal operational costs for this repair</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Profit Preview */}
+                <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-green-700 dark:text-green-300">Estimated Profit</Label>
+                      <p className="text-xs text-muted-foreground">Customer Payment - Repair Costs</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        ₹{(() => {
+                          const customerPayment = watchedValues.amountGiven || 0;
+                          const repairCost = watchedValues.repairCost || 0;
+                          const serviceCost = watchedValues.repairServiceType === "external" 
+                            ? (watchedValues.externalItemCost || 0)
+                            : (watchedValues.internalCost || 0);
+                          const profit = customerPayment - repairCost - serviceCost;
+                          return profit.toFixed(2);
+                        })()}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -632,6 +751,46 @@ export function MultiStepTransactionForm({
                     </div>
                   </>
                 )}
+
+                {/* Additional Cost Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/50">
+                  <div className="space-y-2">
+                    <Label>External Purchase Cost</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={watchedValues.externalItemCost || ""}
+                      onChange={e => setValue("externalItemCost", parseFloat(e.target.value) || 0)}
+                      className="h-10"
+                    />
+                    <p className="text-xs text-muted-foreground">Cost of parts from external suppliers</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Internal Cost</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={watchedValues.internalCost || ""}
+                      onChange={e => setValue("internalCost", parseFloat(e.target.value) || 0)}
+                      className="h-10"
+                    />
+                    <p className="text-xs text-muted-foreground">Internal operational costs</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Parts Cost</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={watchedValues.partsCost || ""}
+                      onChange={e => setValue("partsCost", parseFloat(e.target.value) || 0)}
+                      className="h-10"
+                    />
+                    <p className="text-xs text-muted-foreground">Additional parts expenses</p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -654,26 +813,7 @@ export function MultiStepTransactionForm({
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    onValueChange={(value) => setValue("status", value as any)}
-                    defaultValue={watchedValues.status}
-                  >
-                    <SelectTrigger className="h-12">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">{t("pending")}</SelectItem>
-                      <SelectItem value="in-progress">
-                        {t("in-progress")}
-                      </SelectItem>
-                      <SelectItem value="completed">
-                        {t("completed")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+
 
                 <div className="space-y-2">
                   <Label htmlFor="remarks">Special Remarks</Label>
@@ -729,6 +869,8 @@ export function MultiStepTransactionForm({
                         </p>
                       </div>
                     </div>
+                    
+
                   </CardContent>
                 </Card>
               </div>

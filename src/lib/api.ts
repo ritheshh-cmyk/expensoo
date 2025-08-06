@@ -25,11 +25,24 @@ interface CachedResponse {
 
 class RobustApiClient {
   private backend: BackendConfig = {
-    url: "https://positive-kodiak-friendly.ngrok-free.app",
-    name: "Ngrok Backend",
+    url: this.getBackendUrl(),
+    name: import.meta.env.MODE === 'production' ? "Production Backend" : "Local Backend",
     priority: 1,
     timeout: 15000
   };
+
+  private getBackendUrl(): string {
+    if (import.meta.env.MODE === 'production') {
+      return import.meta.env.VITE_PRODUCTION_BACKEND_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
+    }
+    return import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
+  }
+
+  // Method to update backend URL dynamically
+  updateBackendUrl(url: string) {
+    this.backend.url = url;
+    console.log(`🔄 Backend URL updated to: ${url}`);
+  }
 
   private offlineQueue: OfflineAction[] = [];
   private cache: Map<string, CachedResponse> = new Map();
@@ -60,21 +73,43 @@ class RobustApiClient {
     });
   }
 
-  // Main request method with offline support
+  // Main request method with offline support and instant loading
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const isWriteAction = ['POST', 'PUT', 'DELETE'].includes(options.method || 'GET');
     const cacheKey = `${options.method || 'GET'}:${endpoint}`;
 
-    // For read operations, try cache first if offline
-    if (!isWriteAction && !this.isOnline) {
+    // For GET requests, return cached data immediately for instant loading
+    if (!isWriteAction) {
       const cached = this.getCachedResponse<T>(cacheKey);
       if (cached) {
-        console.log('📦 Serving from cache:', endpoint);
+        console.log('⚡ Instant loading from cache:', endpoint);
+        // Update cache in background if online
+        if (this.isOnline) {
+          this.updateCacheInBackground(endpoint, options, cacheKey);
+        }
         return cached;
       }
     }
 
-    // Try online request
+    // For write actions, implement optimistic updates
+    if (isWriteAction && this.isOnline) {
+      // Return optimistic response immediately
+      const optimisticResponse = this.getOptimisticResponse<T>(endpoint, {
+        id: `temp-${Date.now()}`,
+        endpoint,
+        method: options.method || 'POST',
+        data: options.body ? JSON.parse(options.body as string) : undefined,
+        timestamp: Date.now(),
+        retryCount: 0
+      });
+      
+      // Execute actual request in background
+      this.executeWriteInBackground(endpoint, options, cacheKey);
+      
+      return optimisticResponse;
+    }
+
+    // Try online request for first-time loads
     if (this.isOnline) {
       try {
         const result = await this.makeOnlineRequest<T>(endpoint, options);
@@ -106,28 +141,101 @@ class RobustApiClient {
     throw new Error('No backend available and no cached data');
   }
 
+  // Update cache in background for stale-while-revalidate pattern
+  private async updateCacheInBackground(endpoint: string, options: RequestInit, cacheKey: string) {
+    try {
+      const data = await this.makeOnlineRequest(endpoint, options);
+      this.cacheResponse(cacheKey, data);
+      console.log('🔄 Background cache update completed for:', endpoint);
+    } catch (error) {
+      console.log('Background cache update failed:', error);
+    }
+  }
+
+  // Execute write operations in background
+  private async executeWriteInBackground(endpoint: string, options: RequestInit, cacheKey: string) {
+    try {
+      const data = await this.makeOnlineRequest(endpoint, options);
+      // Invalidate related caches
+      this.invalidateRelatedCaches(endpoint);
+      console.log('✅ Background write operation completed for:', endpoint);
+    } catch (error) {
+      console.error('Background write operation failed:', error);
+      // Handle failure - could show notification to user
+    }
+  }
+
+  // Invalidate related caches when data changes
+  private invalidateRelatedCaches(endpoint: string) {
+    const keysToInvalidate: string[] = [];
+    
+    if (endpoint.includes('/transactions')) {
+      keysToInvalidate.push('GET:/api/transactions', 'GET:/api/dashboard', 'GET:/api/reports');
+    }
+    if (endpoint.includes('/suppliers')) {
+      keysToInvalidate.push('GET:/api/suppliers');
+    }
+    if (endpoint.includes('/expenditures')) {
+      keysToInvalidate.push('GET:/api/expenditures', 'GET:/api/dashboard');
+    }
+    if (endpoint.includes('/bills')) {
+      keysToInvalidate.push('GET:/api/bills', 'GET:/api/dashboard');
+    }
+    
+    keysToInvalidate.forEach(key => {
+      this.cache.delete(key);
+      console.log('🗑️ Invalidated cache:', key);
+    });
+  }
+
   private async makeOnlineRequest<T>(endpoint: string, options: RequestInit): Promise<T> {
     const url = `${this.backend.url}${endpoint}`;
-        const token = localStorage.getItem("callmemobiles_token");
+    const token = localStorage.getItem("callmemobiles_token");
 
-        const config: RequestInit = {
-          headers: {
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true",
-            ...(token && { "Authorization": `Bearer ${token}` }),
-            ...options.headers,
-          },
+    const config: RequestInit = {
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+        "Accept": "application/json",
+        "Cache-Control": "no-cache",
+        ...(token && { "Authorization": `Bearer ${token}` }),
+        ...options.headers,
+      },
+      mode: 'cors',
+      credentials: 'omit',
       signal: AbortSignal.timeout(this.backend.timeout),
-          ...options,
-        };
+      ...options,
+    };
 
-        const response = await fetch(url, config);
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    console.log(`🌐 Making request to: ${url}`);
+    console.log(`🔑 Token present: ${token ? 'Yes' : 'No'}`);
+    
+    try {
+      const response = await fetch(url, config);
+      
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.text();
+          console.error(`❌ Error response body:`, errorData);
+          if (errorData) {
+            errorMessage += ` - ${errorData}`;
+          }
+        } catch (e) {
+          console.error(`❌ Could not read error response:`, e);
         }
+        throw new Error(errorMessage);
+      }
 
-        return await response.json();
+      const data = await response.json();
+      console.log(`✅ Response data for ${endpoint}:`, data);
+      return data;
+    } catch (error) {
+      console.error(`❌ Request failed for ${endpoint}:`, error);
+      throw error;
+    }
   }
 
   private async handleOfflineWrite<T>(endpoint: string, options: RequestInit): Promise<T> {
@@ -165,8 +273,18 @@ class RobustApiClient {
   private getCachedResponse<T>(key: string): T | null {
     const cached = this.cache.get(key);
     if (!cached) return null;
-    // Check if cache is still valid (1 hour)
-    if (Date.now() - cached.timestamp > 3600000) {
+    
+    // Different cache durations for different types of data
+    let maxAge = 3600000; // 1 hour default
+    
+    if (key.includes('/dashboard')) maxAge = 300000; // 5 minutes for dashboard
+    else if (key.includes('/transactions')) maxAge = 1800000; // 30 minutes for transactions
+    else if (key.includes('/suppliers')) maxAge = 7200000; // 2 hours for suppliers
+    else if (key.includes('/inventory')) maxAge = 1800000; // 30 minutes for inventory
+    else if (key.includes('/reports')) maxAge = 3600000; // 1 hour for reports
+    
+    // Check if cache is still valid
+    if (Date.now() - cached.timestamp > maxAge) {
       this.cache.delete(key);
       return null;
     }
@@ -228,8 +346,12 @@ class RobustApiClient {
       headers: {
         "Content-Type": "application/json",
         "ngrok-skip-browser-warning": "true",
+        "Accept": "application/json",
+        "Cache-Control": "no-cache",
         ...(token && { "Authorization": `Bearer ${token}` }),
       },
+      mode: 'cors',
+      credentials: 'omit',
       body: action.data ? JSON.stringify(action.data) : undefined,
       signal: AbortSignal.timeout(10000)
     });
@@ -246,7 +368,18 @@ class RobustApiClient {
     if (endpoint.includes('/expenditures')) return [] as T;
     if (endpoint.includes('/bills')) return [] as T;
     if (endpoint.includes('/inventory')) return [] as T;
-    if (endpoint.includes('/dashboard')) return {} as T;
+    if (endpoint.includes('/dashboard')) return {
+      todayRevenue: 0,
+      todayProfit: 0,
+      totalRevenue: 0,
+      totalProfit: 0,
+      pendingRepairs: 0,
+      completedRepairs: 0,
+      totalCustomers: 0,
+      lowStockItems: 0,
+      pendingBills: 0,
+      recentTransactions: []
+    } as T;
     if (endpoint.includes('/reports')) return [] as T;
     if (endpoint.includes('/statistics')) return {} as T;
     return {} as T;
@@ -314,7 +447,21 @@ class RobustApiClient {
 
   // Transaction methods
   async getTransactions() {
-    return this.request('/api/transactions');
+    const response = await this.request('/api/transactions');
+    // Transform backend response to match frontend interface
+    return response.map((transaction: any) => ({
+      id: transaction.id?.toString() || '',
+      date: new Date(transaction.createdAt || transaction.created_at || Date.now()),
+      customer: transaction.customerName || transaction.customer_name || '',
+      phone: transaction.mobileNumber || transaction.mobile_number || '',
+      device: transaction.deviceModel || transaction.device_model || '',
+      repairType: transaction.repairType || transaction.repair_type || '',
+      cost: transaction.repairCost || transaction.repair_cost || 0,
+      profit: transaction.profit || 0,
+      status: transaction.status?.toLowerCase() || 'pending',
+      paymentMethod: transaction.paymentMethod || transaction.payment_method || 'cash',
+      freeGlass: transaction.freeGlass || transaction.free_glass_installation || false
+    }));
   }
 
   async createTransaction(data: any) {
@@ -484,11 +631,6 @@ class RobustApiClient {
     localStorage.removeItem('offlineQueue');
     console.log('🧹 Local data cleared');
   }
-
-  // Add a public getter for the backend URL
-  public getBackendUrl() {
-    return this.backend.url;
-  }
 }
 
 export const apiClient = new RobustApiClient();
@@ -497,13 +639,34 @@ export default apiClient;
 // Add version check function
 export async function checkBackendVersion(currentVersion: string, onUpdate: () => void) {
   try {
-    const response = await fetch('https://positive-kodiak-friendly.ngrok-free.app/api/version');
-    if (!response.ok) return;
-    const { version } = await response.json();
-    if (version && version !== currentVersion) {
+    // Only check version if user is authenticated and token is available
+    const token = localStorage.getItem("callmemobiles_token");
+    if (!token) {
+      console.log('⏭️ Skipping version check - no authentication token');
+      return;
+    }
+    
+    // Add additional delay to ensure authentication is fully established
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Double-check token is still available after delay
+    const currentToken = localStorage.getItem("callmemobiles_token");
+    if (!currentToken) {
+      console.log('⏭️ Skipping version check - token removed during delay');
+      return;
+    }
+    
+    console.log('🔍 Checking backend version...');
+    // Use the API client's backend URL instead of hardcoded localhost
+    const response = await apiClient.request('/api/version');
+    console.log('✅ Version check response:', response);
+    
+    if (response?.version && response.version !== currentVersion) {
+      console.log('🔄 New version available:', response.version);
       onUpdate();
     }
-  } catch (e) {
-    // Ignore errors (offline, etc.)
+  } catch (error) {
+    console.log('⚠️ Version check failed (this is normal if backend is not ready):', error.message);
+    // Don't throw error to prevent console errors
   }
 }

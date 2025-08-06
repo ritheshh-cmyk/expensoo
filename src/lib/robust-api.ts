@@ -26,7 +26,7 @@ interface CachedResponse {
 class RobustApiClient {
   private backends: BackendConfig[] = [
     {
-      url: "https://positive-kodiak-friendly.ngrok-free.app",
+      url: import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://positive-kodiak-friendly.ngrok-free.app",
       name: "Ngrok Backend",
       priority: 1,
       timeout: 15000
@@ -576,4 +576,4 @@ class RobustApiClient {
 
 // Export singleton instance
 export const robustApiClient = new RobustApiClient();
-export default robustApiClient; 
+export default robustApiClient;

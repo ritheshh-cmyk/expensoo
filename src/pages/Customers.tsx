@@ -479,7 +479,7 @@ export default function Customers() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-warning">
-                ${pendingPayments.toLocaleString()}
+                ${typeof pendingPayments === 'number' ? pendingPayments.toLocaleString() : '0'}
               </div>
               <p className="text-xs text-muted-foreground">
                 Outstanding balance

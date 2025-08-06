@@ -47,17 +47,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (savedToken && savedUser) {
         try {
           const parsedUser = JSON.parse(savedUser) as User;
+          // Set token first, then user to ensure proper order
           setToken(savedToken);
+          
+          // Small delay to ensure token is set before making API calls
+          await new Promise(resolve => setTimeout(resolve, 50));
           
           // Verify with backend
           try {
             const currentUser = await apiClient.getCurrentUser() as User;
             setUser(currentUser);
           } catch (error) {
+            console.log('Backend verification failed, using saved user:', error);
             // Fallback to saved user if backend is not available
             setUser(parsedUser);
           }
         } catch (error) {
+          console.error('Auth check failed:', error);
           localStorage.removeItem("callmemobiles_token");
           localStorage.removeItem("callmemobiles_user");
         }
@@ -86,83 +92,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: response.user.email,
         };
 
-        setUser(userData);
+        // Set token and localStorage first, then user to ensure proper order
         setToken(response.token);
         localStorage.setItem("callmemobiles_token", response.token);
         localStorage.setItem("callmemobiles_user", JSON.stringify(userData));
+        
+        // Small delay to ensure token is properly set
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        setUser(userData);
         setLoading(false);
         return true;
       } else {
         throw new Error("Invalid response from backend");
       }
     } catch (error) {
-      // Fallback to local authentication with fixed usernames
-      console.warn("Backend login failed, using local auth:", error);
-
-      // Fixed usernames and credentials matching backend
-      const fixedUsers = {
-        rithesh: {
-          id: "1",
-          username: "rithesh",
-          password: "7989002273",
-          role: "admin" as UserRole,
-          name: "Rithesh",
-          email: "rithesh@callmemobiles.com",
-        },
-        rajashekar: {
-          id: "2",
-          username: "rajashekar",
-          password: "raj99481",
-          role: "owner" as UserRole,
-          name: "Rajashekar",
-          email: "rajashekar@callmemobiles.com",
-        },
-        sravan: {
-          id: "3",
-          username: "sravan",
-          password: "sravan6565",
-          role: "worker" as UserRole,
-          name: "Sravan",
-          email: "sravan@callmemobiles.com",
-        },
-        demo: {
-          id: "4",
-          username: "demo",
-          password: "demo123",
-          role: "demo" as UserRole,
-          name: "Demo User",
-          email: "demo@callmemobiles.com",
-        },
-      };
-
-      // Check if username and password match any fixed user
-      const userEntry = Object.entries(fixedUsers).find(
-        ([key, user]) =>
-          user.username === username.toLowerCase() &&
-          user.password === password,
-      );
-
-      if (userEntry) {
-        const [key, userInfo] = userEntry;
-        const mockUser: User = {
-          id: userInfo.id,
-          username: userInfo.username,
-          role: userInfo.role,
-          name: userInfo.name,
-          email: userInfo.email,
-        };
-
-        // Create a mock token for local auth
-        const mockToken = `mock_token_${userInfo.id}_${Date.now()}`;
-        
-        setUser(mockUser);
-        setToken(mockToken);
-        localStorage.setItem("callmemobiles_token", mockToken);
-        localStorage.setItem("callmemobiles_user", JSON.stringify(mockUser));
-        setLoading(false);
-        return true;
-      }
-
+      console.error("Backend login failed:", error);
       setLoading(false);
       return false;
     }

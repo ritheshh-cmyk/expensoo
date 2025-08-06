@@ -4,10 +4,10 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: mode === 'production' ? '/expensoo/' : '/',
+  base: '/',
   server: {
     host: "::",
-    port: 8080,
+    port: 5173,
     proxy: {
       '/api': {
         target: 'https://positive-kodiak-friendly.ngrok-free.app',

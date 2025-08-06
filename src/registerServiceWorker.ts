@@ -1,3 +1,4 @@
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/expensoo-clean/sw.js', { scope: '/expensoo-clean/' });
-} 
+  const basePath = '/';
+navigator.serviceWorker.register(`${basePath}/sw.js`, { scope: `${basePath}/` });
+}

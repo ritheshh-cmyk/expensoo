@@ -275,7 +275,7 @@ export default function Expenditures() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{typeof totalExpenses === "number" ? totalExpenses.toLocaleString() : ""}
+                ₹{typeof totalExpenses === "number" ? totalExpenses.toLocaleString() : "0"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">All time</p>
             </CardContent>
@@ -288,7 +288,7 @@ export default function Expenditures() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{typeof monthlyExpenses === "number" ? monthlyExpenses.toLocaleString() : ""}
+                ₹{typeof monthlyExpenses === "number" ? monthlyExpenses.toLocaleString() : "0"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">January 2024</p>
             </CardContent>
@@ -316,7 +316,7 @@ export default function Expenditures() {
               <div className="text-2xl font-bold">
                 {showProfits
                   ? "₹31,000"
-                  : `₹${Math.round(totalExpenses / (expenditures.length || 1)).toLocaleString()}`}
+                  : `₹${typeof totalExpenses === 'number' ? Math.round(totalExpenses / (expenditures.length || 1)).toLocaleString() : '0'}`}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {showProfits ? "January 2024" : "Per transaction"}
@@ -345,7 +345,7 @@ export default function Expenditures() {
                     fill="#8884d8"
                     dataKey="amount"
                     label={({ name, value }) =>
-                      `${name}: ₹${typeof value === "number" ? value.toLocaleString() : ""}`
+                      `${name}: ₹${typeof value === "number" ? value.toLocaleString() : "0"}`
                     }
                   >
                     {categoryDataToShow.map((entry, index) => (
@@ -353,7 +353,7 @@ export default function Expenditures() {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value) => `₹${typeof value === "number" ? value.toLocaleString() : ""}`}
+                    formatter={(value) => `₹${typeof value === "number" ? value.toLocaleString() : "0"}`}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -371,10 +371,10 @@ export default function Expenditures() {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={[]}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip
-                    formatter={(value) => `₹${typeof value === "number" ? value.toLocaleString() : ""}`}
+                    formatter={(value) => `₹${typeof value === "number" ? value.toLocaleString() : "0"}`}
                   />
                   <Legend />
                   <Bar dataKey="expenses" fill="#EF4444" name="Expenses" />
@@ -489,7 +489,7 @@ export default function Expenditures() {
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">
-                          ₹{typeof expenditure.amount === "number" ? expenditure.amount.toLocaleString() : ""}
+                          ₹{typeof expenditure.amount === "number" ? expenditure.amount.toLocaleString() : "0"}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">

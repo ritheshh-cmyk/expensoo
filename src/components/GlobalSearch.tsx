@@ -27,6 +27,13 @@ export function GlobalSearch({
   useEffect(() => {
     if (searchQuery.length > 1) {
       const performSearch = async () => {
+        // Only perform search if user is authenticated and token is available
+        const token = localStorage.getItem("callmemobiles_token");
+        if (!token) {
+          setSearchResults([]);
+          return;
+        }
+
         setIsSearching(true);
         try {
           // Try backend search only

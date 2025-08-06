@@ -31,9 +31,9 @@ export class PWAService {
   private async registerServiceWorker() {
     if ('serviceWorker' in navigator) {
       try {
-        // Use correct path for GitHub Pages deployment
-        this.swRegistration = await navigator.serviceWorker.register('/expensoo-clean/sw.js', {
-          scope: '/expensoo-clean/'
+        // Use correct path for deployment - relative path to avoid origin issues
+        this.swRegistration = await navigator.serviceWorker.register('./sw.js', {
+          scope: './'
         });
         console.log('Service Worker registered successfully:', this.swRegistration);
 

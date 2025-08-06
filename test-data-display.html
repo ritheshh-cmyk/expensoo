@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Display Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Frontend Data Display Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Instructions</h3>
+        <p>This test will verify that the frontend can properly fetch and display data from the backend.</p>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:10000/api';
+        let authToken = null;
+
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const testSection = document.createElement('div');
+            testSection.className = `test-section ${type}`;
+            testSection.innerHTML = `<pre>${message}</pre>`;
+            resultsDiv.appendChild(testSection);
+            console.log(message);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testLogin() {
+            try {
+                log('🔐 Testing login...', 'info');
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'lucky@777' })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Login failed: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                authToken = data.token;
+                log(`✅ Login successful! Token: ${authToken.substring(0, 20)}...`, 'success');
+                return true;
+            } catch (error) {
+                log(`❌ Login failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testSuppliers() {
+            try {
+                log('👥 Testing suppliers API...', 'info');
+                const response = await fetch(`${API_BASE}/suppliers`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Suppliers API failed: ${response.status}`);
+                }
+                
+                const suppliers = await response.json();
+                log(`✅ Suppliers API successful!\nCount: ${suppliers.length}\nData: ${JSON.stringify(suppliers, null, 2)}`, 'success');
+                return suppliers;
+            } catch (error) {
+                log(`❌ Suppliers API failed: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function testTransactions() {
+            try {
+                log('📋 Testing transactions API...', 'info');
+                const response = await fetch(`${API_BASE}/transactions`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Transactions API failed: ${response.status}`);
+                }
+                
+                const transactions = await response.json();
+                log(`✅ Transactions API successful!\nCount: ${transactions.length}\nFirst transaction: ${JSON.stringify(transactions[0], null, 2)}`, 'success');
+                return transactions;
+            } catch (error) {
+                log(`❌ Transactions API failed: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function testDashboard() {
+            try {
+                log('📊 Testing dashboard API...', 'info');
+                const response = await fetch(`${API_BASE}/dashboard`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Dashboard API failed: ${response.status}`);
+                }
+                
+                const dashboard = await response.json();
+                log(`✅ Dashboard API successful!\nData: ${JSON.stringify(dashboard, null, 2)}`, 'success');
+                return dashboard;
+            } catch (error) {
+                log(`❌ Dashboard API failed: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function runAllTests() {
+            clearResults();
+            log('🚀 Starting comprehensive data display tests...', 'info');
+            
+            // Test login
+            const loginSuccess = await testLogin();
+            if (!loginSuccess) {
+                log('❌ Cannot proceed without successful login', 'error');
+                return;
+            }
+            
+            // Test all APIs
+            const [suppliers, transactions, dashboard] = await Promise.all([
+                testSuppliers(),
+                testTransactions(),
+                testDashboard()
+            ]);
+            
+            // Summary
+            log('\n📋 TEST SUMMARY:', 'info');
+            log(`Login: ${loginSuccess ? '✅ PASS' : '❌ FAIL'}`);
+            log(`Suppliers: ${suppliers ? '✅ PASS' : '❌ FAIL'} (${suppliers ? suppliers.length : 0} items)`);
+            log(`Transactions: ${transactions ? '✅ PASS' : '❌ FAIL'} (${transactions ? transactions.length : 0} items)`);
+            log(`Dashboard: ${dashboard ? '✅ PASS' : '❌ FAIL'}`);
+            
+            if (suppliers && transactions && dashboard) {
+                log('\n🎉 All tests passed! The backend is working correctly.', 'success');
+                log('If data is not showing in the frontend, the issue is likely in the React components or API client.', 'info');
+            } else {
+                log('\n⚠️ Some tests failed. Check the backend server and database connection.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

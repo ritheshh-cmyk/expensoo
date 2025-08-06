@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Menu,
-  Bell,
   Search,
   Sun,
   Moon,
@@ -38,53 +37,46 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 sm:h-16 shrink-0 items-center gap-x-3 sm:gap-x-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-3 sm:px-4 shadow-sm lg:gap-x-6 lg:px-8 safe-area-top electron-drag">
-      {/* Mobile menu button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onMenuClick}
-        className="lg:hidden h-10 w-10 electron-no-drag touch-target"
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-x-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6 shadow-sm safe-area-top electron-drag">
+      {/* Left section */}
+      <div className="flex items-center gap-x-4">
+        {/* Mobile menu button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onMenuClick}
+          className="lg:hidden h-10 w-10 electron-no-drag touch-target"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
 
-      {/* Search */}
-      <div className="flex flex-1 gap-x-3 sm:gap-x-4 self-stretch lg:gap-x-6">
-        <form className="relative flex flex-1 max-w-lg" action="#" method="GET">
-          <label htmlFor="search-field" className="sr-only">
-            {t("search")}
-          </label>
-          <Search className="pointer-events-none absolute inset-y-0 left-3 h-full w-4 text-muted-foreground" />
-          <Input
-            id="search-field"
-            className="border-0 bg-transparent pl-10 pr-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm placeholder:text-muted-foreground"
-            placeholder={`${t("search")}...`}
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </form>
+        {/* Search */}
+        <div className="hidden sm:flex flex-1 max-w-md">
+          <form className="relative flex flex-1" action="#" method="GET">
+            <label htmlFor="search-field" className="sr-only">
+              {t("search")}
+            </label>
+            <Search className="pointer-events-none absolute inset-y-0 left-3 h-full w-4 text-muted-foreground" />
+            <Input
+              id="search-field"
+              className="h-10 border bg-muted/50 pl-10 pr-4 focus-visible:ring-1 focus-visible:ring-ring text-sm placeholder:text-muted-foreground"
+              placeholder={`${t("search")}...`}
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </form>
+        </div>
       </div>
 
       {/* Right side items */}
-      <div className="flex items-center gap-x-2 sm:gap-x-3 lg:gap-x-4">
+      <div className="flex items-center gap-x-2 lg:gap-x-3">
         {/* Connection status */}
         <div className="hidden sm:flex">
           <ConnectionIndicator />
         </div>
 
-        {/* Notifications */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative h-10 w-10 electron-no-drag touch-target"
-        >
-          <Bell className="h-5 w-5" />
-          <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs bg-destructive text-destructive-foreground">
-            3
-          </Badge>
-        </Button>
+        {/* Notifications handled by RealtimeNotifications component */}
 
         {/* Language switcher */}
         <DropdownMenu>
@@ -160,7 +152,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               className="relative h-10 w-10 rounded-full electron-no-drag touch-target"
             >
               <Avatar className="h-9 w-9">
-                <AvatarImage src="/expensoo-clean/avatars/admin.png" alt="Admin" />
+                <AvatarImage src={`/avatars/admin.png`} alt="Admin" />
                 <AvatarFallback className="bg-primary text-primary-foreground font-medium text-sm">
                   AD
                 </AvatarFallback>

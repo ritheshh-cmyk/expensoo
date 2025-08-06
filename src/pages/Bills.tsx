@@ -639,9 +639,7 @@ export default function Bills() {
             <CardContent>
               <div className="text-2xl font-bold">
                 ₹
-                {bills
-                  .reduce((sum, bill) => sum + bill.amount, 0)
-                  .toLocaleString()}
+                {typeof bills.reduce((sum, bill) => sum + (typeof bill.amount === 'number' ? bill.amount : 0), 0) === 'number' ? bills.reduce((sum, bill) => sum + (typeof bill.amount === 'number' ? bill.amount : 0), 0).toLocaleString() : '0'}
               </div>
               <p className="text-xs text-muted-foreground">Total invoiced</p>
             </CardContent>
@@ -745,7 +743,7 @@ export default function Bills() {
                   <div className="flex items-center gap-2 sm:flex-col sm:items-end">
                     <div className="text-right">
                       <p className="text-2xl font-bold">
-                        ₹{typeof bill.amount === "number" ? bill.amount.toLocaleString() : ""}
+                        ₹{typeof bill.amount === "number" ? bill.amount.toLocaleString() : "0"}
                       </p>
                     </div>
 

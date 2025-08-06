@@ -47,11 +47,7 @@ const translations = {
     "amount-given": "Amount Given",
     "change-returned": "Change Returned",
 
-    // Status
-    pending: "Pending",
-    "in-progress": "In Progress",
-    completed: "Completed",
-    delivered: "Delivered",
+
 
     // Common
     save: "Save",
@@ -133,11 +129,7 @@ const translations = {
     "amount-given": "ఇచ్చిన మొత్తం",
     "change-returned": "తిరిగి ఇచ్చిన డబ్బు",
 
-    // Status
-    pending: "పెండింగ్",
-    "in-progress": "ప్రోగ్రెస్‌లో",
-    completed: "పూర్తయింది",
-    delivered: "డెలివరీ అయింది",
+
 
     // Common
     save: "సేవ్",

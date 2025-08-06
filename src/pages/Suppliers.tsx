@@ -101,12 +101,52 @@ export default function Suppliers() {
   const [paymentRemarks, setPaymentRemarks] = useState("");
 
   useEffect(() => {
-    // Initial fetch
-    apiClient.getSuppliers().then(setSuppliers).finally(() => setLoading(false));
+    // Initial fetch with proper error handling
+    const fetchSuppliers = async () => {
+      try {
+        console.log('🔄 Fetching suppliers data...');
+        const suppliersData = await apiClient.getSuppliers();
+        console.log('✅ Suppliers data received:', suppliersData);
+        console.log('📊 Suppliers count:', Array.isArray(suppliersData) ? suppliersData.length : 'Not an array');
+        
+        if (Array.isArray(suppliersData)) {
+          setSuppliers(suppliersData);
+        } else {
+          console.warn('⚠️ Suppliers data is not an array:', typeof suppliersData);
+          setSuppliers([]);
+          toast({
+            title: "Data Format Error",
+            description: "Received invalid suppliers data format",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch suppliers:', error);
+        setSuppliers([]);
+        toast({
+          title: "Error Loading Suppliers",
+          description: "Failed to load suppliers data. Please check your connection.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSuppliers();
 
     // Real-time updates
     const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
-    const update = () => apiClient.getSuppliers().then(setSuppliers);
+    const update = async () => {
+      try {
+        const suppliersData = await apiClient.getSuppliers();
+        if (Array.isArray(suppliersData)) {
+          setSuppliers(suppliersData);
+        }
+      } catch (error) {
+        console.error('❌ Failed to update suppliers:', error);
+      }
+    };
     socket.on("supplierCreated", update);
     socket.on("supplierUpdated", update);
     socket.on("supplierDeleted", update);
@@ -116,7 +156,7 @@ export default function Suppliers() {
       socket.off("supplierDeleted", update);
       socket.disconnect();
     };
-  }, []);
+  }, [toast]);
 
   // Filter suppliers based on search and status
   const filteredSuppliers = suppliers.filter((supplier) => {
@@ -128,17 +168,17 @@ export default function Suppliers() {
     return matchesSearch && matchesStatus;
   });
 
-  // Calculate totals
-  const totalSuppliers = suppliers.length;
-  const activeSuppliers = suppliers.filter((s) => s.status === "active").length;
-  const totalOutstanding = suppliers.reduce(
-    (sum, supplier) => sum + supplier.outstandingAmount,
+  // Calculate totals with null checks
+  const totalSuppliers = suppliers?.length || 0;
+  const activeSuppliers = suppliers?.filter((s) => s?.status === "active")?.length || 0;
+  const totalOutstanding = suppliers?.reduce(
+    (sum, supplier) => sum + (supplier?.outstandingAmount || 0),
     0,
-  );
-  const totalPurchases = suppliers.reduce(
-    (sum, supplier) => sum + supplier.totalPurchases,
+  ) || 0;
+  const totalPurchases = suppliers?.reduce(
+    (sum, supplier) => sum + (supplier?.totalPurchases || 0),
     0,
-  );
+  ) || 0;
 
   // Add, update, delete handlers
   const handleAddSupplier = async (formData: any) => {
@@ -244,7 +284,7 @@ export default function Suppliers() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{totalOutstanding.toLocaleString()}
+                ₹{typeof totalOutstanding === 'number' ? totalOutstanding.toLocaleString() : '0'}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Pending payments
@@ -259,7 +299,7 @@ export default function Suppliers() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{totalPurchases.toLocaleString()}
+                ₹{typeof totalPurchases === 'number' ? totalPurchases.toLocaleString() : '0'}
               </div>
               <p className="text-xs text-muted-foreground mt-1">This year</p>
             </CardContent>
@@ -335,9 +375,24 @@ export default function Suppliers() {
                     </TableRow>
                   ) : filteredSuppliers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <div className="text-muted-foreground">
-                          No suppliers found
+                      <TableCell colSpan={7} className="text-center py-12">
+                        <div className="flex flex-col items-center space-y-4">
+                          <Users className="h-12 w-12 text-muted-foreground" />
+                          <div className="text-center">
+                            <h3 className="text-lg font-medium">No suppliers found</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {suppliers.length === 0 
+                                ? "Get started by adding your first supplier"
+                                : "Try adjusting your search or filter criteria"
+                              }
+                            </p>
+                          </div>
+                          {suppliers.length === 0 && (
+                            <Button onClick={() => setShowAddDialog(true)} size="sm">
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add Your First Supplier
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -354,7 +409,7 @@ export default function Suppliers() {
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">
-                            ₹{supplier.outstandingAmount?.toLocaleString?.()}
+                            ₹{typeof supplier.outstandingAmount === 'number' ? supplier.outstandingAmount.toLocaleString() : '0'}
                           </div>
                           {supplier.outstandingAmount > 0 && (
                             <Badge
@@ -368,7 +423,7 @@ export default function Suppliers() {
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">
-                            ₹{supplier.totalPurchases?.toLocaleString?.()}
+                            ₹{typeof supplier.totalPurchases === 'number' ? supplier.totalPurchases.toLocaleString() : '0'}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {supplier.category}
@@ -579,7 +634,7 @@ function PaySupplierDialog({ open, onOpenChange, supplier, paymentAmount, setPay
           <DialogTitle>Record Payment</DialogTitle>
         </DialogHeader>
         <div>Supplier: <b>{supplier.name}</b></div>
-        <div>Outstanding: ₹{supplier.outstandingAmount?.toLocaleString?.()}</div>
+        <div>Outstanding: ₹{typeof supplier.outstandingAmount === 'number' ? supplier.outstandingAmount.toLocaleString() : '0'}</div>
         <Input
           type="number"
           min={1}

@@ -16,6 +16,14 @@ export default function EditTransaction() {
   useEffect(() => {
     const fetchTransaction = async () => {
       try {
+        // Only fetch data if user is authenticated and token is available
+        const token = localStorage.getItem("callmemobiles_token");
+        if (!token) {
+          setError("Authentication required");
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
         // RobustApiClient does not have getTransaction, so fetch all and filter
         let txns: any = await apiClient.getTransactions();

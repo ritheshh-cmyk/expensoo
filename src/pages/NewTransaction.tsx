@@ -9,7 +9,14 @@ export default function NewTransaction() {
 
   const handleSubmit = async (data: any) => {
     try {
-      await apiClient.createTransaction(data);
+      // Transform parts array to partsCost for backend compatibility
+      const transformedData = {
+        ...data,
+        partsCost: data.parts || [],
+        // Remove the parts field as backend expects partsCost
+        parts: undefined
+      };
+      await apiClient.createTransaction(transformedData);
     toast({
       title: "Transaction Created",
         description: `Transaction for ${data.customerName} has been created successfully and synced with backend.`,

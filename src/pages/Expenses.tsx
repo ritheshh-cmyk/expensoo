@@ -343,7 +343,7 @@ export default function Expenses() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-success">
-                ${totalIncome.toLocaleString()}
+                ${typeof totalIncome === 'number' ? totalIncome.toLocaleString() : '0'}
               </div>
               <p className="text-xs text-muted-foreground">
                 {transactions.filter((t) => t.type === "income").length}{" "}
@@ -361,7 +361,7 @@ export default function Expenses() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-destructive">
-                ${totalExpenses.toLocaleString()}
+                ${typeof totalExpenses === 'number' ? totalExpenses.toLocaleString() : '0'}
               </div>
               <p className="text-xs text-muted-foreground">
                 {transactions.filter((t) => t.type === "expense").length}{" "}
@@ -382,7 +382,7 @@ export default function Expenses() {
                   netBalance >= 0 ? "text-success" : "text-destructive",
                 )}
               >
-                ${netBalance.toLocaleString()}
+                ${typeof netBalance === 'number' ? netBalance.toLocaleString() : '0'}
               </div>
               <p className="text-xs text-muted-foreground">
                 {netBalance >= 0 ? "Profit" : "Loss"} this period
@@ -496,7 +496,7 @@ export default function Expenses() {
                             )}
                           >
                             {transaction.type === "income" ? "+" : "-"}$
-                            {transaction.amount.toLocaleString()}
+                            {typeof transaction.amount === 'number' ? transaction.amount.toLocaleString() : '0'}
                           </div>
                           <div className="flex gap-1">
                             <Button

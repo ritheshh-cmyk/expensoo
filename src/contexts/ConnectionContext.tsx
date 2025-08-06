@@ -114,11 +114,6 @@ export function ConnectionIndicator() {
           • Last sync: {lastSyncTime.toLocaleTimeString()}
         </span>
       )}
-      {backendUrl && (
-        <span className="text-xs text-muted-foreground hidden md:inline">
-          • {backendUrl.replace(/^https?:\/\//, '')}
-        </span>
-      )}
     </div>
   );
 }

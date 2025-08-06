@@ -74,27 +74,19 @@ interface Transaction {
   device: string;
   repairType: string;
   cost: number;
-  profit: number;
-  status: "pending" | "in-progress" | "completed" | "delivered";
   paymentMethod: "cash" | "upi" | "card" | "bank-transfer";
   freeGlass: boolean;
 }
 
-const statusConfig = {
-  pending: { label: "pending", color: "status-pending" },
-  "in-progress": { label: "in-progress", color: "status-progress" },
-  completed: { label: "completed", color: "status-completed" },
-  delivered: { label: "delivered", color: "status-delivered" },
-};
+
 
 export default function Transactions() {
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+
   const [paymentFilter, setPaymentFilter] = useState("all");
-  // Remove localStorage usage for showProfits, use only state
-  const [showProfits, setShowProfits] = useState(false);
+
   const [historyDialog, setHistoryDialog] = useState<{ open: boolean; customer: string | null }>({ open: false, customer: null });
   const { t } = useLanguage();
 
@@ -173,25 +165,11 @@ export default function Transactions() {
             <div className="font-semibold">
               ₹{typeof row.getValue<number>("cost") === "number" ? row.getValue<number>("cost").toLocaleString() : ""}
             </div>
-            {showProfits && (
-              <div className="text-xs text-success">
-                Profit: ₹{typeof row.original.profit === "number" ? row.original.profit.toLocaleString() : ""}
-              </div>
-            )}
+
           </div>
         ),
       }),
-      columnHelper.accessor("status", {
-        header: "Status",
-        cell: ({ row }) => {
-          const status = row.getValue<keyof typeof statusConfig>("status");
-          return (
-            <Badge className={cn("text-xs", statusConfig[status]?.color || "")}>
-              {t(statusConfig[status].label)}
-            </Badge>
-          );
-        },
-      }),
+
       columnHelper.accessor("paymentMethod", {
         header: "Payment",
         cell: ({ row }) => (
@@ -203,16 +181,7 @@ export default function Transactions() {
           </div>
         ),
       }),
-      columnHelper.accessor("profit", {
-        header: "Profit",
-        cell: ({ row }) => (
-          showProfits ? (
-            <span>₹{row.getValue("profit")}</span>
-          ) : (
-            <span className="text-muted-foreground">Hidden</span>
-          )
-        ),
-      }),
+
       columnHelper.display({
         id: "history",
         header: "History",
@@ -259,18 +228,16 @@ export default function Transactions() {
         ),
       }),
     ],
-    [showProfits],
+    [],
   );
 
   const filteredData = useMemo(() => {
     return data.filter((transaction) => {
-      const matchesStatus =
-        statusFilter === "all" || transaction.status === statusFilter;
       const matchesPayment =
         paymentFilter === "all" || transaction.paymentMethod === paymentFilter;
-      return matchesStatus && matchesPayment;
+      return matchesPayment;
     });
-  }, [data, statusFilter, paymentFilter]);
+  }, [data, paymentFilter]);
 
   const table = useReactTable({
     data: filteredData,
@@ -288,12 +255,51 @@ export default function Transactions() {
 
   // All transaction data is loaded from backend and updated via socket.io
   useEffect(() => {
+    // Only fetch data if user is authenticated and token is available
+    const token = localStorage.getItem("callmemobiles_token");
+    const user = localStorage.getItem("callmemobiles_user");
+    if (!token || !user) {
+      console.log('⏭️ Skipping transactions fetch - no authentication token or user');
+      setLoading(false);
+      return;
+    }
+
+    const fetchTransactions = async () => {
+      try {
+        // Add delay to ensure authentication is fully established
+        await new Promise(resolve => setTimeout(resolve, 3500));
+        
+        // Double-check authentication state after delay
+        const currentToken = localStorage.getItem("callmemobiles_token");
+        const currentUser = localStorage.getItem("callmemobiles_user");
+        if (!currentToken || !currentUser) {
+          console.log('⏭️ Authentication state changed during delay, aborting transactions fetch');
+          setLoading(false);
+          return;
+        }
+        
+        console.log('🔄 Fetching transactions data...');
+        const transactions = await apiClient.getTransactions();
+        setData(transactions);
+      } catch (error) {
+        console.error('❌ Failed to fetch transactions:', error);
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     // Initial fetch
-    apiClient.getTransactions().then(setData).finally(() => setLoading(false));
+    fetchTransactions();
 
     // Real-time updates
     const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
-    const update = () => apiClient.getTransactions().then(setData);
+    const update = () => {
+      const currentToken = localStorage.getItem("callmemobiles_token");
+      if (currentToken) {
+        apiClient.getTransactions().then(setData);
+      }
+    };
     socket.on("transactionCreated", update);
     socket.on("transactionUpdated", update);
     socket.on("transactionDeleted", update);
@@ -317,10 +323,7 @@ export default function Transactions() {
     await apiClient.deleteTransaction(id);
   };
 
-  const toggleProfits = () => {
-    const newValue = !showProfits;
-    setShowProfits(newValue);
-  };
+
 
   const exportToExcel = () => {
     // In a real app, this would export to Excel
@@ -337,40 +340,28 @@ export default function Transactions() {
     <AppLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
               {t("transactions")}
             </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Manage and track all repair transactions
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleProfits}
-              className="h-10 sm:h-9"
-            >
-              {showProfits ? (
-                <EyeOff className="mr-2 h-4 w-4" />
-              ) : (
-                <Eye className="mr-2 h-4 w-4" />
-              )}
-              {showProfits ? "Hide Profits" : "Show Profits"}
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-2 lg:flex-shrink-0">
+
             <Button
               variant="outline"
               size="sm"
               onClick={exportToExcel}
-              className="h-10 sm:h-9"
+              className="h-9 min-w-[100px] justify-start"
             >
               <Download className="mr-2 h-4 w-4" />
               {t("export")}
             </Button>
             <Link to="/transactions/new">
-              <Button size="sm" className="h-10 sm:h-9">
+              <Button size="sm" className="h-9 min-w-[140px] justify-start">
                 <Plus className="mr-2 h-4 w-4" />
                 {t("new-transaction")}
               </Button>
@@ -381,33 +372,20 @@ export default function Transactions() {
         {/* Filters */}
         <Card>
           <CardContent className="p-4 sm:p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="relative flex-1">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder={`${t("search")} transactions...`}
                   value={globalFilter}
                   onChange={(e) => setGlobalFilter(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-10"
                 />
               </div>
-              <div className="flex gap-2">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="All Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">{t("pending")}</SelectItem>
-                    <SelectItem value="in-progress">
-                      {t("in-progress")}
-                    </SelectItem>
-                    <SelectItem value="completed">{t("completed")}</SelectItem>
-                    <SelectItem value="delivered">{t("delivered")}</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-col sm:flex-row gap-2 lg:flex-shrink-0">
+
                 <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full sm:w-40 h-10">
                     <SelectValue placeholder="All Payments" />
                   </SelectTrigger>
                   <SelectContent>
@@ -427,14 +405,18 @@ export default function Transactions() {
 
         {/* Table */}
         <Card>
-          <CardHeader>
-            <CardTitle>Transaction List</CardTitle>
-            <CardDescription>
-              {table.getFilteredRowModel().rows.length} transactions found
-            </CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <CardTitle className="text-lg font-semibold">Transaction List</CardTitle>
+                <CardDescription className="mt-1">
+                  {table.getFilteredRowModel().rows.length} transactions found
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto border-t">
               <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -485,27 +467,31 @@ export default function Transactions() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between px-2 py-4">
-              <div className="text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-6 py-4 border-t bg-muted/20">
+              <div className="text-sm text-muted-foreground text-center sm:text-left">
                 Showing {table.getState().pagination.pageIndex + 1} of{" "}
                 {table.getPageCount()} pages
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center sm:justify-end space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => table.previousPage()}
                   disabled={!table.getCanPreviousPage()}
+                  className="h-9 px-3"
                 >
                   <ChevronLeft className="h-4 w-4" />
+                  <span className="sr-only">Previous page</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => table.nextPage()}
                   disabled={!table.getCanNextPage()}
+                  className="h-9 px-3"
                 >
                   <ChevronRight className="h-4 w-4" />
+                  <span className="sr-only">Next page</span>
                 </Button>
               </div>
             </div>
@@ -523,11 +509,9 @@ export default function Transactions() {
                 const txns = getCustomerTransactions(historyDialog.customer!);
                 // Sort by date descending
                 txns.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                const totalProfit = txns.reduce((sum, t) => sum + (t.profit || 0), 0);
                 // If you have parts/supplier info, list them here. For now, show a placeholder.
                 return (
                   <div>
-                    <div className="mb-2 font-medium">Total Profit: <span className="text-green-600">₹{totalProfit}</span></div>
                     {/* If you have parts/supplier info, map and show here */}
                     <div className="mt-2">
                       <div className="font-medium mb-1">Parts Purchased from Suppliers:</div>

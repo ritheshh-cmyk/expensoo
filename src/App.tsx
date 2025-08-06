@@ -14,6 +14,11 @@ import { useBackendStatus } from "./hooks/useBackendStatus";
 import { submitData, syncQueue } from "./lib/submitAndSync";
 import { apiClient, checkBackendVersion } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RoleBasedAccessProvider } from "@/components/RoleBasedAccess";
+import RealtimeDashboard from "@/components/RealtimeDashboard";
+import RealtimeNotifications from "@/components/RealtimeNotifications";
+import LiveActivityFeed from "@/components/LiveActivityFeed";
+import RealtimeInventory from "@/components/RealtimeInventory";
 
 // Pages
 import Login from "./pages/auth/Login";
@@ -37,10 +42,18 @@ import ConnectionStatus from "./components/ConnectionStatus";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(500 * 2 ** attemptIndex, 5000),
+      staleTime: 30 * 60 * 1000, // 30 minutes - keep data fresh longer
+      gcTime: 60 * 60 * 1000, // 1 hour - cache longer for offline support
+      refetchOnWindowFocus: false, // Prevent unnecessary refetches
+      refetchOnMount: false, // Use cached data when available
+      refetchOnReconnect: true, // Refetch when network reconnects
+      networkMode: 'offlineFirst', // Prioritize cached data
+    },
+    mutations: {
+      retry: 1,
+      networkMode: 'offlineFirst',
     },
   },
 });
@@ -53,8 +66,25 @@ function AppContent() {
   const location = useLocation();
 
   useEffect(() => {
-    checkBackendVersion(FRONTEND_VERSION, () => setShowUpdate(true));
-  }, []);
+    // Only check backend version if user is authenticated and token is available
+    if (user) {
+      // Add delay to ensure authentication is fully established
+      const timer = setTimeout(async () => {
+        const token = localStorage.getItem("callmemobiles_token");
+        if (token && user) {
+          // Additional delay to ensure backend is ready
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Double-check token and user are still available
+          const currentToken = localStorage.getItem("callmemobiles_token");
+          if (currentToken && user) {
+            checkBackendVersion(FRONTEND_VERSION, () => setShowUpdate(true));
+          }
+        }
+      }, 2000); // Wait 2 seconds after user is set
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   // Remove backendUrlError and checkingBackendUrl state
 
@@ -84,6 +114,7 @@ function AppContent() {
   return (
     <>
       <ConnectionStatus />
+      <RealtimeNotifications />
       {showUpdate && (
         <div className="fixed top-0 left-0 w-full bg-yellow-400 text-black p-4 z-50 text-center">
           A new version is available. <button onClick={() => window.location.reload()} className="underline font-bold">Refresh</button>
@@ -99,6 +130,33 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        {/* Real-time Dashboard Route */}
+        <Route
+          path="/realtime-dashboard"
+          element={
+            <ProtectedRoute requiredRoles={["admin", "owner", "worker"]}>
+              <RealtimeDashboard />
+            </ProtectedRoute>
+          }
+        />
+        {/* Real-time Inventory Route */}
+        <Route
+          path="/realtime-inventory"
+          element={
+            <ProtectedRoute requiredRoles={["admin", "owner", "worker"]}>
+              <RealtimeInventory />
+            </ProtectedRoute>
+          }
+        />
+        {/* Live Activity Feed Route */}
+        <Route
+          path="/activity-feed"
+          element={
+            <ProtectedRoute requiredRoles={["admin", "owner", "worker"]}>
+              <LiveActivityFeed />
             </ProtectedRoute>
           }
         />
@@ -188,9 +246,11 @@ const App = () => (
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <BrowserRouter basename="/expensoo-clean">
+              <BrowserRouter basename="/">
                 <AuthProvider>
-                  <AppContent />
+                  <RoleBasedAccessProvider>
+                    <AppContent />
+                  </RoleBasedAccessProvider>
                 </AuthProvider>
               </BrowserRouter>
             </TooltipProvider>
