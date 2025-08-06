@@ -1,19 +1,25 @@
-// Service Worker for Pixel Nest - Background Sync and Offline Support
+// Service Worker for Expensoo - Background Sync and Offline Support
 
-const CACHE_NAME = 'pixel-nest-v2'; // Bumped version
-const OFFLINE_URL = '/expensoo-clean/offline.html';
+const CACHE_NAME = 'expensoo-v1';
+const OFFLINE_URL = '/offline.html';
+const API_CACHE_NAME = 'expensoo-api-v1';
+const STATIC_CACHE_NAME = 'expensoo-static-v1';
 
-// Files to cache for offline use
+// Files to cache for offline use - will be updated dynamically
 const CACHE_FILES = [
-  '/expensoo-clean/index.html',
-  '/expensoo-clean/assets/index-BkxW-ran.js',
-  '/expensoo-clean/assets/router-YwT0eWhh.js',
-  '/expensoo-clean/assets/ui-COXvrXvd.js',
-  '/expensoo-clean/assets/utils-Bj7X0qp-.js',
-  '/expensoo-clean/assets/index-uGcDmYcs.css',
-  '/expensoo-clean/assets/vendor-CWc6w16D.js',
-  '/expensoo-clean/manifest.json',
-  '/expensoo-clean/favicon.ico'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/favicon.ico'
+];
+
+// API endpoints to cache for instant loading
+const API_CACHE_PATTERNS = [
+  /\/api\/transactions/,
+  /\/api\/suppliers/,
+  /\/api\/customers/,
+  /\/api\/auth\/me/,
+  /\/api\/system\/status/
 ];
 
 // Install event - cache files
@@ -52,22 +58,128 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - implement cache-first strategy for instant loading
 self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Handle API requests with cache-first strategy for instant loading
+  if (API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname))) {
+    event.respondWith(handleApiRequestWithCache(request));
+    return;
+  }
+
+  // Handle navigation requests
+  if (request.mode === 'navigate') {
+    event.respondWith(handleNavigationRequest(request));
+    return;
+  }
+
+  // Handle static assets with cache-first strategy
+  if (request.destination === 'script' || request.destination === 'style' || 
+      request.destination === 'image' || request.destination === 'font') {
+    event.respondWith(handleStaticAsset(request));
+    return;
+  }
+
+  // Default network-first strategy
   event.respondWith(
-    fetch(event.request)
-      .catch(async () => {
-        const cache = await caches.open('v1');
-        const cachedResponse = await cache.match(event.request);
-        if (cachedResponse) return cachedResponse;
-        // Fallback to a generic response for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/expensoo-clean/index.html');
-        }
-        return new Response('Network error', { status: 503, statusText: 'Service Unavailable' });
-      })
+    fetch(request).catch(async () => {
+      const cache = await caches.open(CACHE_NAME);
+      return cache.match(request) || new Response('Network error', { 
+        status: 503, 
+        statusText: 'Service Unavailable' 
+      });
+    })
   );
 });
+
+// Handle API requests with cache-first for instant loading
+async function handleApiRequestWithCache(request) {
+  const cache = await caches.open(API_CACHE_NAME);
+  const cachedResponse = await cache.match(request);
+  
+  // Return cached response immediately for instant loading
+  if (cachedResponse && request.method === 'GET') {
+    // Update cache in background
+    updateCacheInBackground(request, cache);
+    return cachedResponse;
+  }
+  
+  // If no cache or non-GET request, try network
+  try {
+    const response = await fetch(request);
+    
+    // Cache successful GET responses
+    if (response.ok && request.method === 'GET') {
+      cache.put(request, response.clone());
+    }
+    
+    return response;
+  } catch (error) {
+    // Return cached response if available
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    // Return offline response
+    return new Response(
+      JSON.stringify({ 
+        error: 'Offline', 
+        message: 'No internet connection and no cached data available',
+        cached: false
+      }),
+      { 
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+}
+
+// Update cache in background for stale-while-revalidate
+async function updateCacheInBackground(request, cache) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
+  } catch (error) {
+    console.log('Background cache update failed:', error);
+  }
+}
+
+// Handle navigation requests
+async function handleNavigationRequest(request) {
+  try {
+    const response = await fetch(request);
+    return response;
+  } catch (error) {
+    const cache = await caches.open(CACHE_NAME);
+    return cache.match('/index.html') || 
+           cache.match('/');
+  }
+}
+
+// Handle static assets with cache-first strategy
+async function handleStaticAsset(request) {
+  const cache = await caches.open(STATIC_CACHE_NAME);
+  const cachedResponse = await cache.match(request);
+  
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    return new Response('Asset not available offline', { status: 503 });
+  }
+}
 
 // Handle API requests with offline support
 async function handleApiRequest(request) {
@@ -153,37 +265,46 @@ async function syncOfflineActions() {
   }
 }
 
+// Get backend URL from environment or fallback
+function getBackendUrl() {
+  // In production, use environment variable or default
+  if (typeof importScripts !== 'undefined') {
+    // Service worker context - use correct production URL
+    return self.location.hostname === 'localhost' 
+      ? 'http://localhost:10000'
+      : 'https://positive-kodiak-friendly.ngrok-free.app'; // Use ngrok URL for production
+  }
+  return self.location.hostname === 'localhost' 
+    ? 'http://localhost:10000'
+    : 'https://positive-kodiak-friendly.ngrok-free.app';
+}
+
 // Process individual offline action
 async function processOfflineAction(action) {
-  const backends = [
-    'https://positive-kodiak-friendly.ngrok-free.app'
-  ];
+  const backendUrl = getBackendUrl();
+  
+  try {
+    const url = `${backendUrl}${action.endpoint}`;
+    const token = await getStoredToken();
+    
+    const response = await fetch(url, {
+      method: action.method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: action.data ? JSON.stringify(action.data) : undefined
+    });
 
-  for (const backendUrl of backends) {
-    try {
-      const url = `${backendUrl}${action.endpoint}`;
-      const token = await getStoredToken();
-      
-      const response = await fetch(url, {
-        method: action.method,
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        },
-        body: action.data ? JSON.stringify(action.data) : undefined
-      });
-
-      if (response.ok) {
-        return await response.json();
-      }
-    } catch (error) {
-      console.warn(`Backend ${backendUrl} failed:`, error);
-      continue;
+    if (response.ok) {
+      return await response.json();
+    } else {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
+  } catch (error) {
+    console.error(`Backend request failed:`, error);
+    throw error;
   }
-
-  throw new Error('All backends failed');
 }
 
 // Get stored authentication token
@@ -333,4 +454,4 @@ self.addEventListener('notificationclick', (event) => {
   }
 });
 
-console.log('Service Worker: Loaded'); 
+console.log('Service Worker: Loaded');
