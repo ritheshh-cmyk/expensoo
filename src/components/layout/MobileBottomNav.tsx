@@ -25,16 +25,16 @@ const mobileNavigation = [
     roles: ["admin", "owner", "worker"] as UserRole[],
   },
   {
+    name: "expenditures",
+    href: "/expenditures",
+    icon: Receipt,
+    roles: ["admin", "owner", "worker"] as UserRole[],
+  },
+  {
     name: "suppliers",
     href: "/suppliers",
     icon: Users,
     roles: ["admin", "owner"] as UserRole[],
-  },
-  {
-    name: "bills",
-    href: "/bills",
-    icon: Receipt,
-    roles: ["admin", "owner", "worker"] as UserRole[],
   },
   {
     name: "settings",
@@ -61,9 +61,9 @@ export function MobileBottomNav() {
   );
 
   return (
-    <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur border-t border-border safe-area-bottom">
+    <nav className="mobile-nav-bottom bg-background/95 backdrop-blur border-t border-border">
       <div
-        className={`grid px-2 py-2`}
+        className={`grid px-1 py-1`}
         style={{
           gridTemplateColumns: `repeat(${visibleNavigation.length}, 1fr)`,
         }}
@@ -73,14 +73,14 @@ export function MobileBottomNav() {
             key={item.name}
             to={item.href}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 rounded-lg p-2 touch-target transition-colors",
+              "thumb-target flex flex-col items-center justify-center gap-1 rounded-xl p-3 transition-all duration-200 active:scale-95",
               isActive(item)
-                ? "text-primary bg-primary/10"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                ? "text-primary bg-primary/10 shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
             )}
           >
-            <item.icon className="h-5 w-5" />
-            <span className="text-xs font-medium">{t(item.name)}</span>
+            <item.icon className="h-6 w-6" />
+            <span className="text-xs font-medium leading-tight">{t(item.name)}</span>
           </Link>
         ))}
       </div>

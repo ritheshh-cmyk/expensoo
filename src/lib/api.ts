@@ -24,18 +24,70 @@ interface CachedResponse {
 }
 
 class RobustApiClient {
-  private backend: BackendConfig = {
-    url: this.getBackendUrl(),
-    name: import.meta.env.MODE === 'production' ? "Production Backend" : "Local Backend",
-    priority: 1,
-    timeout: 15000
-  };
+  private backend: BackendConfig;
+
+  constructor() {
+    // Initialize backend URL from environment
+    const backendUrl = this.getBackendUrl();
+    this.backend = {
+      url: backendUrl,
+      name: 'Digital Ocean Backend',
+      priority: 1,
+      timeout: 30000
+    };
+    console.log('🌐 API Client initialized with backend URL:', backendUrl);
+    console.log('🔧 Environment variables:', {
+      VITE_BACKEND_URL: import.meta.env.VITE_BACKEND_URL,
+      NODE_ENV: import.meta.env.NODE_ENV,
+      MODE: import.meta.env.MODE
+    });
+  }
 
   private getBackendUrl(): string {
-    if (import.meta.env.MODE === 'production') {
-      return import.meta.env.VITE_PRODUCTION_BACKEND_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
+    const prodUrl = import.meta.env.VITE_PRODUCTION_BACKEND_URL;
+    const devUrl = import.meta.env.VITE_BACKEND_URL;
+    const mode = import.meta.env.MODE;
+    const digitalOceanUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
+    
+    console.log('🔧 API Client Environment:', {
+      MODE: mode,
+      VITE_BACKEND_URL: devUrl,
+      VITE_PRODUCTION_BACKEND_URL: prodUrl,
+      DIGITAL_OCEAN_URL: digitalOceanUrl,
+      WINDOW_LOCATION: window.location.origin
+    });
+    
+    // Always prioritize environment variables if they exist
+    if (devUrl && devUrl !== 'http://localhost:10000') {
+      console.log('🌐 Using VITE_BACKEND_URL from environment:', devUrl);
+      return devUrl;
     }
-    return import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
+    
+    if (prodUrl) {
+      console.log('🌐 Using VITE_PRODUCTION_BACKEND_URL from environment:', prodUrl);
+      return prodUrl;
+    }
+    
+    // Check if we're running on Vercel production
+    const isVercelProduction = window.location.origin.includes('vercel.app');
+    
+    // Use environment variables for production deployment
+    if (mode === 'production' || isVercelProduction) {
+      // Use Digital Ocean backend URL for Vercel deployments
+      if (isVercelProduction) {
+        console.log('🌐 Using Digital Ocean backend URL for Vercel deployment:', digitalOceanUrl);
+        return digitalOceanUrl;
+      }
+      
+      const url = prodUrl || digitalOceanUrl;
+      console.log('🌐 Using production backend URL:', url);
+      return url;
+    }
+    
+    // For development, use Digital Ocean if no localhost backend is running
+    const url = devUrl || digitalOceanUrl;
+    console.log('🌐 Using development backend URL:', url);
+    return url;
   }
 
   // Method to update backend URL dynamically
@@ -48,10 +100,6 @@ class RobustApiClient {
   private cache: Map<string, CachedResponse> = new Map();
   private isOnline = navigator.onLine;
   private syncInProgress = false;
-
-  constructor() {
-    this.initialize();
-  }
 
   private async initialize() {
     await this.loadOfflineQueue();
@@ -88,6 +136,23 @@ class RobustApiClient {
           this.updateCacheInBackground(endpoint, options, cacheKey);
         }
         return cached;
+      }
+    }
+
+    // For dashboard and transactions, use optimistic loading with fallback
+    if (endpoint.includes('/dashboard') || endpoint.includes('/transactions')) {
+      const fallbackData = this.getEmptyResponse<T>(endpoint);
+      if (this.isOnline) {
+        try {
+          const result = await this.makeOnlineRequest<T>(endpoint, options);
+          this.cacheResponse(cacheKey, result);
+          return result;
+        } catch (error) {
+          console.warn('Online request failed, using fallback:', error);
+          return fallbackData;
+        }
+      } else {
+        return fallbackData;
       }
     }
 
@@ -192,28 +257,43 @@ class RobustApiClient {
     const url = `${this.backend.url}${endpoint}`;
     const token = localStorage.getItem("callmemobiles_token");
 
+    // Create a new headers object to avoid modifying the original options.headers
+    const headers = new Headers(options.headers);
+    
+    // Set essential headers for proper CORS and API handling
+    headers.set("Content-Type", "application/json");
+    headers.set("ngrok-skip-browser-warning", "true");
+    headers.set("Accept", "application/json");
+    headers.set("Cache-Control", "no-cache");
+    headers.set("Origin", window.location.origin);
+    
+    // Add authorization if token exists
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    
     const config: RequestInit = {
-      headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
-        "Accept": "application/json",
-        "Cache-Control": "no-cache",
-        ...(token && { "Authorization": `Bearer ${token}` }),
-        ...options.headers,
-      },
-      mode: 'cors',
-      credentials: 'omit',
-      signal: AbortSignal.timeout(this.backend.timeout),
       ...options,
+      headers,
+      mode: 'cors',
+      credentials: 'include', // Changed from 'omit' to 'include' to support cookies if needed
+      signal: options.signal || AbortSignal.timeout(this.backend.timeout),
     };
 
     console.log(`🌐 Making request to: ${url}`);
     console.log(`🔑 Token present: ${token ? 'Yes' : 'No'}`);
+    console.log(`⚙️ Request config:`, {
+      method: config.method,
+      headers: Object.fromEntries(headers.entries()),
+      mode: config.mode,
+      credentials: config.credentials
+    });
     
     try {
       const response = await fetch(url, config);
       
       console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      console.log(`📡 Response headers:`, Object.fromEntries([...response.headers.entries()]));
       
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
@@ -234,6 +314,18 @@ class RobustApiClient {
       return data;
     } catch (error) {
       console.error(`❌ Request failed for ${endpoint}:`, error);
+      
+      // Enhanced error logging for network issues
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        console.error('💥 Network error details:', {
+          url,
+          online: navigator.onLine,
+          backend: this.backend.url,
+          error: error.message,
+          stack: error.stack
+        });
+      }
+      
       throw error;
     }
   }
@@ -341,24 +433,52 @@ class RobustApiClient {
   private async processOfflineAction(action: OfflineAction) {
     const url = `${this.backend.url}${action.endpoint}`;
     const token = localStorage.getItem("callmemobiles_token");
-    const response = await fetch(url, {
+    
+    // Enhanced request configuration with improved CORS handling
+    const config: RequestInit = {
       method: action.method,
       headers: {
         "Content-Type": "application/json",
         "ngrok-skip-browser-warning": "true",
         "Accept": "application/json",
         "Cache-Control": "no-cache",
+        "Origin": window.location.origin,
         ...(token && { "Authorization": `Bearer ${token}` }),
       },
       mode: 'cors',
-      credentials: 'omit',
+      credentials: 'include', // Changed from 'omit' to 'include' to support cookies if needed
       body: action.data ? JSON.stringify(action.data) : undefined,
       signal: AbortSignal.timeout(10000)
-    });
-    if (!response.ok) {
-      throw new Error(`Sync failed: ${response.status}`);
+    };
+    
+    console.log(`🔄 Processing offline action to: ${url}`, action);
+    console.log('⚙️ Request options:', config);
+    
+    try {
+      const response = await fetch(url, config);
+      
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      
+      if (!response.ok) {
+        let errorMessage = `Sync failed: HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.text();
+          console.error(`❌ Error response body:`, errorData);
+          if (errorData) {
+            errorMessage += ` - ${errorData}`;
+          }
+        } catch (e) {
+          console.error(`❌ Could not read error response:`, e);
+        }
+        throw new Error(errorMessage);
+      }
+      
+      console.log('✅ Synced offline action:', action);
+      return response;
+    } catch (error) {
+      console.error(`❌ Offline action processing failed:`, error);
+      throw error;
     }
-    console.log('✅ Synced offline action:', action);
   }
 
   // Helper methods for empty responses
@@ -397,6 +517,65 @@ class RobustApiClient {
     return { success: true, _offline: true } as T;
   }
 
+  // Token refresh method for Supabase Auth
+  async refreshToken(): Promise<string | null> {
+    try {
+      console.log('🔄 Refreshing access token...');
+      
+      // Use Supabase auth service if available
+      const { supabaseAuthService } = await import('../services/supabaseAuthService');
+      
+      if (supabaseAuthService.getCurrentSession()) {
+        await supabaseAuthService.refreshSession();
+        const newToken = supabaseAuthService.getAccessToken();
+        
+        if (newToken) {
+          localStorage.setItem("callmemobiles_token", newToken);
+          console.log('✅ Token refreshed successfully');
+          return newToken;
+        }
+      }
+      
+      console.warn('⚠️ No valid session to refresh');
+      return null;
+      
+    } catch (error) {
+      console.error('❌ Token refresh failed:', error);
+      
+      // If refresh fails, clear invalid tokens and redirect to login
+      localStorage.removeItem("callmemobiles_token");
+      localStorage.removeItem("callmemobiles_user");
+      
+      // Notify app about auth failure
+      window.dispatchEvent(new CustomEvent('auth:token-expired'));
+      
+      return null;
+    }
+  }
+
+  // Enhanced request method with automatic token refresh
+  async requestWithAuth<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    try {
+      return await this.request<T>(endpoint, options);
+    } catch (error) {
+      // Check if it's an auth error (401/403)
+      if (error instanceof Error && (error.message.includes('401') || error.message.includes('403'))) {
+        console.log('🔄 Auth error detected, attempting token refresh...');
+        
+        const newToken = await this.refreshToken();
+        if (newToken) {
+          // Retry the request with new token
+          return await this.request<T>(endpoint, options);
+        }
+        
+        // If refresh failed, throw auth error
+        throw new Error('Authentication expired. Please log in again.');
+      }
+      
+      throw error;
+    }
+  }
+
   // Public API methods (same as before, just use this.request everywhere)
   getConnectionStatus() {
     return {
@@ -417,10 +596,175 @@ class RobustApiClient {
 
   // Authentication methods
   async login(username: string, password: string) {
-    return this.request('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password })
-    });
+    // Force refresh backend URL to ensure we have the latest environment variables
+    this.backend.url = this.getBackendUrl();
+    
+    console.log('🔐 API: Attempting login for:', username);
+    console.log('🌐 API: Using backend URL:', this.backend.url);
+    console.log('🌐 API: Full login URL:', `${this.backend.url}/api/auth/login`);
+    
+    // Login should wait for actual response, not use optimistic updates
+    const url = `${this.backend.url}/api/auth/login`;
+    console.log('📍 API: Full URL:', url);
+    
+    // Try both fetch and XHR approaches for maximum compatibility
+    try {
+      // First attempt: Use fetch with enhanced CORS configuration
+      console.log('🔄 API: Attempting login with fetch API');
+      
+      const headers = new Headers();
+      headers.set('Content-Type', 'application/json');
+      headers.set('ngrok-skip-browser-warning', 'true');
+      headers.set('Accept', 'application/json');
+      headers.set('Cache-Control', 'no-cache');
+      headers.set('Origin', window.location.origin);
+      
+      const config: RequestInit = {
+        method: 'POST',
+        headers,
+        mode: 'cors',
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+        signal: AbortSignal.timeout(15000) // 15 second timeout
+      };
+      
+      console.log('⚙️ API: Request options:', {
+        method: config.method,
+        headers: Object.fromEntries(headers.entries()),
+        mode: config.mode,
+        credentials: config.credentials
+      });
+
+      console.log(`🌐 Making login request to: ${url}`);
+      
+      try {
+        const response = await fetch(url, config);
+        
+        console.log(`📡 Login response status: ${response.status} ${response.statusText}`);
+        console.log('📡 API: Login response headers:', Object.fromEntries(response.headers.entries()));
+        
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          try {
+            const errorData = await response.text();
+            console.error(`❌ Login error response body:`, errorData);
+            if (errorData) {
+              errorMessage += ` - ${errorData}`;
+            }
+          } catch (e) {
+            console.error(`❌ Could not read login error response:`, e);
+          }
+          throw new Error(errorMessage);
+        }
+
+        const responseText = await response.text();
+        console.log('📄 API: Raw response text:', responseText);
+        
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log('📦 API: Parsed JSON data:', data);
+          
+          // Store token in localStorage if present in response
+          if (data && data.token) {
+            console.log('🔑 API: Storing token in localStorage');
+            localStorage.setItem("callmemobiles_token", data.token);
+            
+            // Store user data if present
+            if (data.user) {
+              console.log('👤 API: Storing user data in localStorage');
+              localStorage.setItem("callmemobiles_user", JSON.stringify(data.user));
+            }
+          } else {
+            console.warn('⚠️ API: No token found in login response');
+          }
+          
+          return data;
+        } catch (parseError) {
+          console.error('❌ API: JSON parse error:', parseError);
+          console.error('❌ API: Failed to parse response:', responseText);
+          throw new Error('Invalid JSON response from server');
+        }
+      } catch (fetchError) {
+        // If fetch fails, try XMLHttpRequest as fallback
+        console.warn('⚠️ API: Fetch login attempt failed, trying XMLHttpRequest fallback:', fetchError);
+        
+        // Second attempt: Use XMLHttpRequest as fallback
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', url, true);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.setRequestHeader('ngrok-skip-browser-warning', 'true');
+          xhr.setRequestHeader('Accept', 'application/json');
+          xhr.setRequestHeader('Cache-Control', 'no-cache');
+          xhr.setRequestHeader('Origin', window.location.origin);
+          xhr.withCredentials = true;
+          xhr.timeout = 15000; // 15 second timeout
+          
+          xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              console.log('📡 XHR Login response status:', xhr.status);
+              console.log('📡 XHR Login response headers:', xhr.getAllResponseHeaders());
+              console.log('📄 XHR Raw response text:', xhr.responseText);
+              
+              try {
+                const data = JSON.parse(xhr.responseText);
+                console.log('📦 XHR Parsed JSON data:', data);
+                
+                // Store token in localStorage if present in response
+                if (data && data.token) {
+                  console.log('🔑 XHR: Storing token in localStorage');
+                  localStorage.setItem("callmemobiles_token", data.token);
+                  
+                  // Store user data if present
+                  if (data.user) {
+                    console.log('👤 XHR: Storing user data in localStorage');
+                    localStorage.setItem("callmemobiles_user", JSON.stringify(data.user));
+                  }
+                } else {
+                  console.warn('⚠️ XHR: No token found in login response');
+                }
+                
+                resolve(data);
+              } catch (parseError) {
+                console.error('❌ XHR JSON parse error:', parseError);
+                reject(new Error('Invalid JSON response from server'));
+              }
+            } else {
+              console.error(`❌ XHR Login failed with status: ${xhr.status}`);
+              reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+            }
+          };
+          
+          xhr.onerror = function() {
+            console.error('❌ XHR Network error occurred');
+            reject(new Error('Network error occurred'));
+          };
+          
+          xhr.ontimeout = function() {
+            console.error('❌ XHR Request timed out');
+            reject(new Error('Request timed out'));
+          };
+          
+          xhr.send(JSON.stringify({ username, password }));
+        });
+      }
+    } catch (error) {
+      console.error(`❌ Login request failed:`, error);
+      
+      // Enhanced error logging for network issues
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        console.error('💥 Network error details:', {
+          url,
+          online: navigator.onLine,
+          backend: this.backend.url,
+          error: error.message,
+          stack: error.stack
+        });
+      }
+      
+      throw error;
+    }
   }
 
   async getCurrentUser() {
@@ -449,26 +793,40 @@ class RobustApiClient {
   async getTransactions() {
     const response = await this.request('/api/transactions');
     // Transform backend response to match frontend interface
-    return response.map((transaction: any) => ({
-      id: transaction.id?.toString() || '',
-      date: new Date(transaction.createdAt || transaction.created_at || Date.now()),
-      customer: transaction.customerName || transaction.customer_name || '',
-      phone: transaction.mobileNumber || transaction.mobile_number || '',
-      device: transaction.deviceModel || transaction.device_model || '',
-      repairType: transaction.repairType || transaction.repair_type || '',
-      cost: transaction.repairCost || transaction.repair_cost || 0,
-      profit: transaction.profit || 0,
-      status: transaction.status?.toLowerCase() || 'pending',
-      paymentMethod: transaction.paymentMethod || transaction.payment_method || 'cash',
-      freeGlass: transaction.freeGlass || transaction.free_glass_installation || false
-    }));
+    if (Array.isArray(response)) {
+      return response.map((transaction: any) => ({
+        id: transaction.id?.toString() || '',
+        date: new Date(transaction.createdAt || transaction.created_at || Date.now()),
+        customer: transaction.customerName || transaction.customer_name || '',
+        phone: transaction.mobileNumber || transaction.mobile_number || '',
+        device: transaction.deviceModel || transaction.device_model || '',
+        repairType: transaction.repairType || transaction.repair_type || '',
+        cost: transaction.repairCost || transaction.repair_cost || 0,
+        profit: transaction.profit || 0,
+        status: transaction.status?.toLowerCase() || 'pending',
+        paymentMethod: transaction.paymentMethod || transaction.payment_method || 'cash',
+        freeGlass: transaction.freeGlass || transaction.free_glass_installation || false,
+        amountGiven: transaction.amountGiven || transaction.amount_given || 0,
+        changeReturned: transaction.changeReturned || transaction.change_returned || 0,
+        remarks: transaction.remarks || ''
+      }));
+    }
+    return [];
   }
 
   async createTransaction(data: any) {
-    return this.request('/api/transactions', {
+    console.log('🔄 Creating transaction with data:', data);
+    const result = await this.request('/api/transactions', {
       method: 'POST',
       body: JSON.stringify(data)
     });
+    
+    // Invalidate related caches immediately
+    this.invalidateRelatedCaches('/api/transactions');
+    this.invalidateRelatedCaches('/api/dashboard');
+    
+    console.log('✅ Transaction created successfully:', result);
+    return result;
   }
 
   async updateTransaction(id: string, data: any) {
@@ -516,7 +874,8 @@ class RobustApiClient {
 
   // Dashboard methods
   async getDashboardData() {
-    return this.request('/api/dashboard');
+    // Use working dashboard/stats endpoint instead of broken /api/dashboard
+    return this.request('/api/dashboard/stats');
   }
 
   // Reports methods
@@ -589,20 +948,26 @@ class RobustApiClient {
   }
 
   // Statistics methods
-  async getTodayStats() {
-    return this.request('/api/statistics/today');
+  async getTodayStatistics() {
+    // Use dashboard/stats for today stats
+    const response = await this.request('/api/dashboard/stats') as any;
+    return response?.today || {};
   }
 
-  async getWeekStats() {
-    return this.request('/api/statistics/week');
+  async getWeekStatistics() {
+    // Use dashboard/stats for week stats  
+    const response = await this.request('/api/dashboard/stats') as any;
+    return response?.week || {};
   }
 
-  async getMonthStats() {
-    return this.request('/api/statistics/month');
+  async getMonthStatistics() {
+    // Use dashboard/totals for month stats
+    return this.request('/api/dashboard/totals');
   }
 
-  async getYearStats() {
-    return this.request('/api/statistics/year');
+  async getYearStatistics() {
+    // Use dashboard/totals for year stats
+    return this.request('/api/dashboard/totals');
   }
 
   // Supplier payment methods
@@ -639,34 +1004,14 @@ export default apiClient;
 // Add version check function
 export async function checkBackendVersion(currentVersion: string, onUpdate: () => void) {
   try {
-    // Only check version if user is authenticated and token is available
-    const token = localStorage.getItem("callmemobiles_token");
-    if (!token) {
-      console.log('⏭️ Skipping version check - no authentication token');
-      return;
-    }
-    
-    // Add additional delay to ensure authentication is fully established
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Double-check token is still available after delay
-    const currentToken = localStorage.getItem("callmemobiles_token");
-    if (!currentToken) {
-      console.log('⏭️ Skipping version check - token removed during delay');
-      return;
-    }
-    
-    console.log('🔍 Checking backend version...');
-    // Use the API client's backend URL instead of hardcoded localhost
-    const response = await apiClient.request('/api/version');
-    console.log('✅ Version check response:', response);
-    
-    if (response?.version && response.version !== currentVersion) {
-      console.log('🔄 New version available:', response.version);
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+    const response = await fetch(`${backendUrl}/api/version`);
+    if (!response.ok) return;
+    const { version } = await response.json();
+    if (version && version !== currentVersion) {
       onUpdate();
     }
-  } catch (error) {
-    console.log('⚠️ Version check failed (this is normal if backend is not ready):', error.message);
-    // Don't throw error to prevent console errors
+  } catch (e) {
+    // Ignore errors (offline, etc.)
   }
 }

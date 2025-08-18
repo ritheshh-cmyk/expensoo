@@ -157,7 +157,7 @@ export default function Login() {
                   <Input
                     id="username"
                     type="text"
-                    placeholder="username"
+                    placeholder="Enter your username"
                     value={formData.username}
                     onChange={(e) =>
                       handleInputChange("username", e.target.value)

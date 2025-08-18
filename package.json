@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:simple": "tsc && vite build",
+    "build:vercel": "npm run generate-icons && tsc && vite build && npm run copy-pwa-assets",
     "build:pwa": "npm run generate-icons && tsc && vite build && npm run copy-pwa-assets",
     "generate-icons": "node scripts/generate-pwa-icons.cjs",
     "copy-pwa-assets": "npm run copy-manifest && npm run copy-offline && npm run copy-icons && npm run copy-sw",
@@ -140,7 +142,9 @@
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "vite": "^6.2.2",
-    "vitest": "^3.1.4"
+    "vite-plugin-pwa": "^1.0.2",
+    "vitest": "^3.1.4",
+    "workbox-window": "^7.3.0"
   },
   "main": "electron-main.cjs",
   "homepage": "https://callmemobiles.vercel.app/",

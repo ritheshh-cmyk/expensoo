@@ -86,7 +86,7 @@ export default function SupplierDetails() {
     apiClient.getSupplier(id).then(setSupplier).finally(() => setLoading(false));
 
     // Real-time updates
-    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
+    const socket = io("https://expensoo-app-gu3wg.ondigitalocean.app", { transports: ["websocket"] });
     const update = () => {
       const currentToken = localStorage.getItem("callmemobiles_token");
       if (currentToken) {

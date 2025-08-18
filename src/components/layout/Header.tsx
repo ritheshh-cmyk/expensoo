@@ -25,30 +25,40 @@ import { ConnectionIndicator } from "@/contexts/ConnectionContext";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   onMenuClick: () => void;
+  showMenuButton?: boolean;
+  compact?: boolean;
 }
 
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header({ onMenuClick, showMenuButton = true, compact = false }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const { logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-x-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6 shadow-sm safe-area-top electron-drag">
+    <header className={cn(
+      "sticky top-0 z-40 flex shrink-0 items-center justify-between gap-x-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6 shadow-sm safe-area-top electron-drag",
+      // Enhanced dark mode contrast
+      "dark:bg-black/98 dark:border-white/10 dark:shadow-white/5",
+      compact ? "h-14" : "h-16"
+    )}>
       {/* Left section */}
       <div className="flex items-center gap-x-4">
-        {/* Mobile menu button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMenuClick}
-          className="lg:hidden h-10 w-10 electron-no-drag touch-target"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        {/* Mobile menu button - conditionally rendered */}
+        {showMenuButton && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMenuClick}
+            className="lg:hidden h-10 w-10 electron-no-drag touch-target"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
 
         {/* Search */}
         <div className="hidden sm:flex flex-1 max-w-md">
@@ -59,7 +69,10 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Search className="pointer-events-none absolute inset-y-0 left-3 h-full w-4 text-muted-foreground" />
             <Input
               id="search-field"
-              className="h-10 border bg-muted/50 pl-10 pr-4 focus-visible:ring-1 focus-visible:ring-ring text-sm placeholder:text-muted-foreground"
+              className={cn(
+                "border bg-muted/50 pl-10 pr-4 focus-visible:ring-1 focus-visible:ring-ring text-sm placeholder:text-muted-foreground",
+                compact ? "h-8" : "h-10"
+              )}
               placeholder={`${t("search")}...`}
               type="search"
               value={searchQuery}

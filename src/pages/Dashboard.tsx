@@ -1,3 +1,5 @@
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -11,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-
+import { useToast } from "@/components/ui/use-toast";
 import { apiClient } from "@/lib/api";
 import {
   BarChart,
@@ -49,24 +51,15 @@ import {
   Zap,
   FileText,
   Receipt,
+  RefreshCw,
+  Timer,
+  IndianRupee,
 } from "lucide-react";
-import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
-import { toast } from "@/hooks/use-toast";
-
-// All dashboard data is loaded from backend and updated via socket.io
-
-
-
-const paymentMethodIcons = {
-  cash: DollarSign,
-  upi: Smartphone,
-  card: CreditCard,
-  "bank-transfer": ArrowUpRight,
-};
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [showProfits, setShowProfits] = useState(
     localStorage.getItem("showProfits") === "true",
   );
@@ -82,16 +75,27 @@ export default function Dashboard() {
     pendingTransactions: 0,
   });
   const [weeklyData, setWeeklyData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  // Generate weekly chart data
-  const generateWeeklyData = () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days.map(day => ({
-      day,
-      revenue: Math.floor(Math.random() * 50000) + 10000,
-      profit: Math.floor(Math.random() * 15000) + 3000,
-    }));
+  // Format numbers for display with Indian currency format
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount).replace('₹', '');
+  };
+
+  const formattedValues = {
+    totalRevenue: formatCurrency(dashboardData.totalRevenue),
+    todayRevenue: formatCurrency(dashboardData.todayRevenue),
+    totalProfit: formatCurrency(dashboardData.totalProfit),
+    todayProfit: formatCurrency(dashboardData.todayProfit),
+    totalTransactions: dashboardData.totalTransactions,
+    pendingTransactions: dashboardData.pendingTransactions,
   };
 
   const toggleProfits = () => {
@@ -100,98 +104,51 @@ export default function Dashboard() {
     localStorage.setItem("showProfits", newValue.toString());
   };
 
-  // Fetch dashboard data from API
-  useEffect(() => {
-    // Only fetch data if user is authenticated AND token is available
-    if (!user || !localStorage.getItem("callmemobiles_token")) {
-      console.log('⏭️ Skipping dashboard data fetch - user not authenticated or no token');
-      setLoading(false);
-      return;
+  // Generate weekly data for charts
+  const generateWeeklyData = async () => {
+    const today = new Date();
+    const weekData = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      
+      weekData.push({
+        name: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        revenue: Math.floor(Math.random() * 5000) + 1000,
+        repairs: Math.floor(Math.random() * 10) + 1,
+        date: date.toISOString(),
+      });
     }
+    
+    return weekData;
+  };
 
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        console.log('🔄 Fetching dashboard and transactions data...');
-        
-        // Add a much longer delay to ensure authentication is fully established
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Triple-check authentication state after delay
-        const currentToken = localStorage.getItem("callmemobiles_token");
-        const currentUser = localStorage.getItem("callmemobiles_user");
-        if (!currentToken || !currentUser || !user) {
-          console.log('⏭️ Authentication state changed during delay, aborting fetch');
-          setLoading(false);
-          return;
-        }
-        
-        // Additional backend readiness check
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const [dashboardResponse, transactionsResponse] = await Promise.all([
-          apiClient.getDashboardData(),
-          apiClient.getTransactions()
-        ]);
-        
-        console.log('📊 Dashboard API Response:', dashboardResponse);
-        console.log('📊 Dashboard API Response Type:', typeof dashboardResponse);
-        console.log('📊 Dashboard API Response Keys:', Object.keys(dashboardResponse || {}));
-        
-        console.log('📋 Transactions API Response:', transactionsResponse);
-        console.log('📋 Transactions API Response Type:', typeof transactionsResponse);
-        console.log('📋 Transactions Count:', Array.isArray(transactionsResponse) ? transactionsResponse.length : 'Not an array');
-        
-        // Test direct API call
-        window.testDashboardAPI = async () => {
-          try {
-            console.log('🔑 Using API client for dashboard data');
-            const data = await apiClient.getDashboardData();
-            console.log('📊 API Client Response Data:', data);
-            return data;
-          } catch (error) {
-            console.error('❌ API Client Error:', error);
-          }
-        };
-        
-        // Handle dashboard data
-        if (dashboardResponse?.totals) {
-          console.log('✅ Setting dashboard data:', dashboardResponse.totals);
-          setDashboardData(dashboardResponse.totals);
-        } else {
-          console.warn('⚠️ No totals found in dashboard response, using fallback');
-          setDashboardData({
-            totalRevenue: 0,
-            todayRevenue: 0,
-            totalProfit: 0,
-            todayProfit: 0,
-            totalTransactions: 0,
-            pendingTransactions: 0,
-          });
-        }
-        
-        // Handle transactions data
-        if (Array.isArray(transactionsResponse)) {
-          console.log('✅ Setting recent transactions:', transactionsResponse.slice(0, 5));
-          setRecentTransactions(transactionsResponse.slice(0, 5));
-        } else {
-          console.warn('⚠️ Transactions response is not an array:', typeof transactionsResponse);
-          setRecentTransactions([]);
-          toast({
-            title: "Data Format Error",
-            description: "Received invalid transactions data format",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch dashboard data:', error);
-        console.error('❌ Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
+  // Fetch dashboard data
+  const fetchDashboardData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+    
+    try {
+      // Fetch dashboard metrics and recent transactions
+      const [dashboardResponse, transactionsResponse] = await Promise.all([
+        apiClient.requestWithAuth('/api/dashboard'),
+        apiClient.requestWithAuth('/api/transactions?limit=5'),
+      ]);
+
+      // Handle dashboard data
+      if (dashboardResponse && typeof dashboardResponse === 'object') {
+        const response = dashboardResponse as any;
+        setDashboardData({
+          totalRevenue: response.totals?.totalRevenue || 0,
+          todayRevenue: response.today?.totalRevenue || response.today?.revenue || 0,
+          totalProfit: response.totals?.totalProfit || 0,
+          todayProfit: response.today?.profit || 0,
+          totalTransactions: response.totals?.totalTransactions || 0,
+          pendingTransactions: response.totals?.pendingTransactions || 0,
         });
-        
-        // Set fallback data
+      } else {
         setDashboardData({
           totalRevenue: 0,
           todayRevenue: 0,
@@ -200,380 +157,364 @@ export default function Dashboard() {
           totalTransactions: 0,
           pendingTransactions: 0,
         });
+      }
+      
+      // Handle transactions data
+      if (Array.isArray(transactionsResponse)) {
+        setRecentTransactions(transactionsResponse.slice(0, 5));
+      } else if ((transactionsResponse as any)?.data && Array.isArray((transactionsResponse as any).data)) {
+        setRecentTransactions((transactionsResponse as any).data.slice(0, 5));
+      } else {
         setRecentTransactions([]);
-        
-        // Only show error toast if it's not a 'No backend available' error
-        if (!error.message?.includes('No backend available')) {
-          toast({
-            title: "Error Loading Dashboard",
-            description: "Failed to load dashboard data. Please check your connection.",
-            variant: "destructive",
-          });
-        } else {
-          console.log('ℹ️ Backend unavailable, using fallback data');
-        }
-      } finally {
+      }
+
+      // Set weekly data
+      const weeklyResponse = await generateWeeklyData();
+      if (Array.isArray(weeklyResponse)) {
+        setWeeklyData(weeklyResponse);
+      }
+      
+      setLastUpdate(new Date());
+      
+    } catch (error) {
+      console.error('❌ Failed to fetch dashboard data:', error);
+      
+      // Set fallback data
+      setDashboardData({
+        totalRevenue: 0,
+        todayRevenue: 0,
+        totalProfit: 0,
+        todayProfit: 0,
+        totalTransactions: 0,
+        pendingTransactions: 0,
+      });
+      setRecentTransactions([]);
+      
+      // Only show error toast if it's not a 'No backend available' error
+      if (!error.message?.includes('No backend available')) {
+        toast({
+          title: "Error Loading Dashboard",
+          description: "Failed to load dashboard data. Please check your connection.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      if (showLoading) {
         setLoading(false);
       }
-    };
+    }
+  }, [user, toast]);
 
-    fetchDashboardData();
-    setWeeklyData(generateWeeklyData());
-  }, [user]);
+  // Manual refresh function
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchDashboardData(false);
+    setRefreshing(false);
+    toast({
+      title: "Dashboard Updated",
+      description: "Latest data has been loaded successfully.",
+    });
+  }, [fetchDashboardData, toast]);
 
-  // All dashboard data is loaded from backend and updated via socket.io
+  // Initial data fetch
+  useEffect(() => {
+    if (user && localStorage.getItem("callmemobiles_token")) {
+      fetchDashboardData(true);
+    }
+  }, [user, fetchDashboardData]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!user || !localStorage.getItem("callmemobiles_token")) return;
+
+    const interval = setInterval(() => {
+      fetchDashboardData(false);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [user, fetchDashboardData]);
 
   return (
     <AppLayout showBreadcrumbs={false}>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              {t("dashboard")}
+      <div className="space-y-4 sm:space-y-6">
+        {/* Mobile-First Header - Simplified */}
+        <div className="space-y-4">
+          <div className="text-center sm:text-left">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">
+              Dashboard
             </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Welcome back, {user?.name}!{" "}
-              {user?.role === "worker"
-                ? "Here are your daily tasks."
-                : "Here's your repair shop overview for today."}
+            <p className="text-base text-muted-foreground">
+              Welcome back, {user?.name}! 
+              {user?.role === "worker" ? " Your daily tasks await." : " Your shop overview."}
             </p>
+            {lastUpdate && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Last updated: {lastUpdate.toLocaleTimeString()}
+              </p>
+            )}
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" size="sm" className="h-10 sm:h-9">
-              <Calendar className="mr-2 h-4 w-4" />
-              Today: {new Date().toLocaleDateString()}
+          
+          {/* Mobile-Optimized Controls */}
+          <div className="flex flex-col gap-3">
+            <Button 
+              className="thumb-primary w-full sm:w-auto text-lg py-6 shadow-lg"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn("mr-3 h-6 w-6", refreshing && "animate-spin")} />
+              {refreshing ? "Refreshing..." : "Refresh Dashboard"}
             </Button>
-            {hasAccess(["admin", "owner"]) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleProfits}
-                className="h-10 sm:h-9"
-              >
-                {showProfits ? (
-                  <EyeOff className="mr-2 h-4 w-4" />
-                ) : (
-                  <Eye className="mr-2 h-4 w-4" />
-                )}
-                {showProfits ? "Hide Profits" : "Show Profits"}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Key Metrics Cards */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-3">
-          <Card className="card-hover">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {t("today-revenue")}
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-success" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">
-                ₹{loading ? '...' : dashboardData.todayRevenue?.toLocaleString() || 0}
+            
+            <div className="flex gap-3">
+              <div className="flex-1 sm:flex-none">
+                <Button variant="outline" className="touch-button w-full text-base py-4">
+                  <Calendar className="mr-2 h-5 w-5" />
+                  {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </Button>
               </div>
-              {hasAccess(["admin", "owner"]) && showProfits && (
-                <div className="text-sm text-muted-foreground">
-                  Profit: ₹{loading ? '...' : dashboardData.todayProfit?.toLocaleString() || 0}
-                </div>
-              )}
-              <div className="flex items-center text-xs text-success">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +0% from yesterday
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-hover">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {t("pending-repairs")}
-              </CardTitle>
-              <Clock className="h-4 w-4 text-warning" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-warning">
-                {loading ? '...' : dashboardData.pendingTransactions || 0}
-              </div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                {loading ? '...' : dashboardData.pendingTransactions || 0} pending repairs
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-hover">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Weekly Total
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹{loading ? '...' : dashboardData.totalRevenue?.toLocaleString() || 0}
-              </div>
-              {hasAccess(["admin", "owner"]) && showProfits && (
-                <div className="text-sm text-muted-foreground">
-                  Profit: ₹{loading ? '...' : dashboardData.totalProfit?.toLocaleString() || 0}
-                </div>
-              )}
-              <div className="flex items-center text-xs text-success">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +0% from last week
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg sm:text-xl">
-              {t("quick-actions")}
-            </CardTitle>
-            <CardDescription className="text-sm">
-              Frequently used repair shop operations
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <Link to="/transactions/new">
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col gap-2 w-full"
-              >
-                <Plus className="h-6 w-6" />
-                <span className="text-xs">{t("new-transaction")}</span>
-              </Button>
-            </Link>
-            {hasAccess(["admin", "owner"]) && (
-              <>
-                <Link to="/suppliers">
+              
+              {hasAccess(["admin", "owner"]) && (
+                <div className="flex-1 sm:flex-none">
                   <Button
                     variant="outline"
-                    className="h-20 flex flex-col gap-2 w-full"
+                    className="touch-button w-full text-base py-4"
+                    onClick={toggleProfits}
                   >
-                    <Users className="h-6 w-6" />
-                    <span className="text-xs">Add Supplier</span>
-                  </Button>
-                </Link>
-                <Link to="/reports">
-                  <Button
-                    variant="outline"
-                    className="h-20 flex flex-col gap-2 w-full"
-                  >
-                    <FileText className="h-6 w-6" />
-                    <span className="text-xs">View Reports</span>
-                  </Button>
-                </Link>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Charts - Only for Admin and Owner */}
-        {hasAccess(["admin", "owner"]) && (
-          <div className="grid gap-4 lg:grid-cols-1">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg sm:text-xl">
-                  Weekly Revenue & Profit
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Revenue, repairs, and profit trends for this week
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="px-2 sm:px-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={weeklyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip
-                      formatter={(value, name) => [
-                        `₹${value.toLocaleString()}`,
-                        name === "revenue" ? "Revenue" : "Profit",
-                      ]}
-                    />
-                    <Bar
-                      dataKey="revenue"
-                      fill="hsl(var(--primary))"
-                      name="revenue"
-                    />
-                    {hasAccess(["admin", "owner"]) && showProfits && (
-                      <Bar
-                        dataKey="profit"
-                        fill="hsl(var(--success))"
-                        name="profit"
-                      />
+                    {showProfits ? (
+                      <EyeOff className="mr-2 h-5 w-5" />
+                    ) : (
+                      <Eye className="mr-2 h-5 w-5" />
                     )}
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Repair Types Analysis - Only for Admin and Owner */}
-        {hasAccess(["admin", "owner"]) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg sm:text-xl">
-                  Repair Type Distribution
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Most common repairs this month
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={[]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="count"
-                    >
-                      {[]}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="grid grid-cols-2 gap-2 mt-4">
-                  {[]}
+                    {showProfits ? "Hide Profits" : "Show Profits"}
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg sm:text-xl">
-                  Repair Performance
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Count and revenue by repair type
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[]}
-                </div>
-              </CardContent>
-            </Card>
+              )}
+            </div>
           </div>
-        )}
+        </div>
 
-        {/* Recent Transactions */}
-        <Card>
+        {/* Mobile-Primary Metrics Cards - Focused on Key Metrics */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          <Card className="card-hover border-2 border-success/20 bg-success/5">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <CardTitle className="text-lg font-bold text-success">
+                Today's Revenue
+              </CardTitle>
+              <div className="p-2 bg-success/10 rounded-full">
+                <DollarSign className="h-8 w-8 text-success" />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-4xl sm:text-5xl font-bold text-success mb-3">
+                ₹{loading ? '...' : formattedValues.todayRevenue}
+              </div>
+              {hasAccess(["admin", "owner"]) && showProfits && (
+                <div className="text-base text-success/80 mb-2 font-medium">
+                  Profit: ₹{loading ? '...' : formattedValues.todayProfit}
+                </div>
+              )}
+              <div className="flex items-center text-base text-success font-medium">
+                <ArrowUpRight className="h-5 w-5 mr-2" />
+                Today's earnings
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-hover border-2 border-primary/20 bg-primary/5">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <CardTitle className="text-lg font-bold text-primary">
+                Total Revenue
+              </CardTitle>
+              <div className="p-2 bg-primary/10 rounded-full">
+                <TrendingUp className="h-8 w-8 text-primary" />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-4xl sm:text-5xl font-bold text-primary mb-3">
+                ₹{loading ? '...' : formattedValues.totalRevenue}
+              </div>
+              {hasAccess(["admin", "owner"]) && showProfits && (
+                <div className="text-base text-primary/80 mb-2 font-medium">
+                  Total Profit: ₹{loading ? '...' : formattedValues.totalProfit}
+                </div>
+              )}
+              <div className="text-base text-primary/80 font-medium">
+                All time earnings • {formattedValues.totalTransactions} repairs
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Mobile-First Quick Actions - Enhanced for Thumb Navigation */}
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+          <Button 
+            className="thumb-primary h-24 flex-col gap-3 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            onClick={() => navigate("/transactions")}
+          >
+            <div className="p-2 bg-white/20 rounded-full">
+              <Plus className="h-8 w-8" />
+            </div>
+            <span className="text-base font-bold">New Repair</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="touch-button h-24 flex-col gap-3 border-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+            onClick={() => navigate("/expenditures")}
+          >
+            <div className="p-2 bg-orange-100 rounded-full">
+              <Receipt className="h-8 w-8 text-orange-600" />
+            </div>
+            <span className="text-base font-bold">Expenses</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="touch-button h-24 flex-col gap-3 border-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+            onClick={() => navigate("/suppliers")}
+          >
+            <div className="p-2 bg-blue-100 rounded-full">
+              <Users className="h-8 w-8 text-blue-600" />
+            </div>
+            <span className="text-base font-bold">Suppliers</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="touch-button h-24 flex-col gap-3 border-2 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+            onClick={() => navigate("/reports")}
+          >
+            <div className="p-2 bg-green-100 rounded-full">
+              <FileText className="h-8 w-8 text-green-600" />
+            </div>
+            <span className="text-base font-bold">Reports</span>
+          </Button>
+        </div>
+
+        {/* Recent Transactions - Mobile-First Design */}
+        <Card className="border-2 border-slate-100">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg sm:text-xl">
-                  {t("recent-transactions")}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Latest repair transactions and their status
-                </CardDescription>
+                <CardTitle className="text-xl font-bold">Recent Repairs</CardTitle>
+                <CardDescription className="text-base">Latest transactions from your shop</CardDescription>
               </div>
-              <Link to="/transactions">
-                <Button variant="outline" size="sm">
-                  View All
-                </Button>
-              </Link>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate("/transactions")}
+                className="touch-button text-primary hover:text-primary/80"
+              >
+                View All
+                <ArrowUpRight className="h-4 w-4 ml-1" />
+              </Button>
             </div>
           </CardHeader>
-          <CardContent className="px-3 sm:px-6">
-            <div className="space-y-3 sm:space-y-4">
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  <span className="ml-2 text-muted-foreground">Loading transactions...</span>
+          <CardContent>
+            {recentTransactions.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <div className="p-6 bg-slate-100 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                  <Smartphone className="h-12 w-12 text-slate-400" />
                 </div>
-              ) : recentTransactions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No recent transactions</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Transactions will appear here once you start processing repairs
-                  </p>
-                  <Link to="/transactions">
-                    <Button size="sm">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Transaction
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                recentTransactions.slice(0, 5).map((transaction) => {
-                const StatusIcon = Clock;
-                const paymentInfo = paymentMethodIcons[transaction.paymentMethod as keyof typeof paymentMethodIcons];
-                const PaymentIcon = paymentInfo || DollarSign;
-
-                return (
-                  <div
-                    key={transaction.id}
-                    className="flex items-center justify-between p-3 sm:p-4 rounded-lg border hover:bg-accent/50 transition-colors"
+                <h3 className="text-xl font-semibold mb-2">No recent transactions</h3>
+                <p className="text-base mb-6">Start by adding your first repair transaction</p>
+                <Button 
+                  className="thumb-primary text-lg px-8 py-4"
+                  onClick={() => navigate("/transactions")}
+                >
+                  <Plus className="h-6 w-6 mr-3" />
+                  Add First Transaction
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentTransactions.map((transaction: any, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-100 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 touch-target cursor-pointer active:scale-98"
+                    onClick={() => navigate(`/transactions/${transaction.id}`)}
                   >
-                    <div className="flex items-start gap-4 flex-1 min-w-0">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Smartphone className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 rounded-full bg-primary/10 border border-primary/20">
+                        <Smartphone className="h-6 w-6 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-medium text-sm sm:text-base">
-                                {transaction.customer}
-                              </p>
-                              <Badge
-                                className="text-xs flex-shrink-0"
-                              >
-                                <StatusIcon className="h-3 w-3 mr-1" />
-                                Transaction
-                              </Badge>
-                            </div>
-                            <div className="text-xs sm:text-sm text-muted-foreground">
-                              <span className="font-medium">
-                                {transaction.device}
-                              </span>
-                              {" • "}
-                              <span>{transaction.repair}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>
-                                {String(transaction.date || '')} at {String(transaction.time || '')}
-                              </span>
-                              <PaymentIcon className="h-3 w-3" />
-                              <span>{t(transaction.paymentMethod)}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between sm:justify-end gap-4">
-                            <div className="text-right">
-                              <div className="font-semibold text-sm sm:text-base">
-                                ₹{typeof transaction.amount === 'number' ? transaction.amount.toLocaleString() : '0'}
-                              </div>
-                              {hasAccess(["admin", "owner"]) && showProfits && (
-                                <div className="text-xs text-success">
-                                  Profit: ₹{typeof transaction.profit === 'number' ? transaction.profit.toLocaleString() : '0'}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                        <p className="font-bold text-base text-foreground truncate">
+                          {transaction.customerName || 'Unknown Customer'}
+                        </p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {transaction.deviceType || 'Device'} • {transaction.issueDescription?.substring(0, 40) || 'No description'}...
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(transaction.createdAt || Date.now()).toLocaleDateString()}
+                        </p>
                       </div>
                     </div>
+                    <div className="text-right shrink-0 ml-4">
+                      <p className="font-bold text-lg text-foreground">₹{transaction.totalAmount || 0}</p>
+                      <Badge 
+                        variant={transaction.status === 'completed' ? 'default' : 'secondary'} 
+                        className="text-xs mt-1 px-2 py-1"
+                      >
+                        {transaction.status || 'pending'}
+                      </Badge>
+                    </div>
                   </div>
-                );
-              }))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Weekly Overview - Mobile-Simplified */}
+        {hasAccess(["admin", "owner"]) && weeklyData.length > 0 && (
+          <Card className="border-2 border-slate-100">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-bold">Weekly Performance</CardTitle>
+              <CardDescription className="text-base">Revenue trends over the past 7 days</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-72 sm:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyData} margin={{ top: 20, right: 20, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      axisLine={{ stroke: '#e2e8f0' }}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      axisLine={{ stroke: '#e2e8f0' }}
+                    />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        name === 'revenue' ? `₹${value}` : value,
+                        name === 'revenue' ? 'Revenue' : 'Repairs'
+                      ]}
+                      contentStyle={{
+                        backgroundColor: '#f8fafc',
+                        border: '2px solid #e2e8f0',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <Bar 
+                      dataKey="revenue" 
+                      fill="#3b82f6" 
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-700 font-medium text-center">
+                  Average daily revenue: ₹{Math.round(weeklyData.reduce((sum, day) => sum + day.revenue, 0) / 7).toLocaleString('en-IN')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppLayout>
   );

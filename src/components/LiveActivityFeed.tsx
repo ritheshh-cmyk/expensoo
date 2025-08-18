@@ -402,15 +402,15 @@ const LiveActivityFeed: React.FC = () => {
   const getActivityIcon = (type: string, action: string) => {
     switch (type) {
       case 'transaction':
-        return <DollarSign className="h-4 w-4 text-green-500" />
+        return <DollarSign className="h-4 w-4 text-green-600" />
       case 'inventory':
         return action === 'restocked' 
-          ? <Package className="h-4 w-4 text-blue-500" />
-          : <Package className="h-4 w-4 text-orange-500" />
+          ? <Package className="h-4 w-4 text-blue-600" />
+          : <Package className="h-4 w-4 text-orange-600" />
       case 'order':
-        return <ShoppingCart className="h-4 w-4 text-purple-500" />
+        return <ShoppingCart className="h-4 w-4 text-purple-600" />
       case 'user':
-        return <User className="h-4 w-4 text-indigo-500" />
+        return <User className="h-4 w-4 text-indigo-600" />
       case 'system':
         return <Wrench className="h-4 w-4 text-gray-500" />
       default:
@@ -487,9 +487,9 @@ const LiveActivityFeed: React.FC = () => {
             <Activity className="h-5 w-5" />
             <span>Live Activity Feed</span>
             {isConnected ? (
-              <Wifi className="h-4 w-4 text-green-500" />
+              <Wifi className="h-4 w-4 text-green-600" />
             ) : (
-              <WifiOff className="h-4 w-4 text-red-500" />
+              <WifiOff className="h-4 w-4 text-red-600" />
             )}
           </CardTitle>
           

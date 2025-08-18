@@ -1,0 +1,139 @@
+const fs = require('fs');
+const path = require('path');
+
+// Simple SVG icon for Expensoo
+const iconSVG = `
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="64" ry="64" fill="url(#bg)"/>
+  
+  <!-- Mobile icon -->
+  <rect x="160" y="120" width="80" height="120" rx="12" ry="12" fill="#ffffff" opacity="0.9"/>
+  <rect x="170" y="130" width="60" height="80" rx="4" ry="4" fill="#3b82f6"/>
+  <rect x="175" y="215" width="50" height="8" rx="4" ry="4" fill="#ffffff"/>
+  
+  <!-- Tablet icon -->
+  <rect x="260" y="140" width="100" height="80" rx="8" ry="8" fill="#ffffff" opacity="0.8"/>
+  <rect x="270" y="150" width="80" height="50" rx="4" ry="4" fill="#1d4ed8"/>
+  <rect x="275" y="205" width="70" height="6" rx="3" ry="3" fill="#ffffff"/>
+  
+  <!-- Desktop icon -->
+  <rect x="200" y="280" width="140" height="100" rx="8" ry="8" fill="#ffffff" opacity="0.7"/>
+  <rect x="210" y="290" width="120" height="70" rx="4" ry="4" fill="#0f172a"/>
+  <rect x="215" y="365" width="110" height="8" rx="4" ry="4" fill="#ffffff"/>
+  
+  <!-- Auto-switch arrows -->
+  <path d="M140 256 L160 240 L160 250 L180 250 L180 262 L160 262 L160 272 Z" fill="#fbbf24"/>
+  <path d="M372 256 L352 240 L352 250 L332 250 L332 262 L352 262 L352 272 Z" fill="#fbbf24"/>
+  
+  <!-- Center circle -->
+  <circle cx="256" cy="256" r="24" fill="#fbbf24"/>
+  <text x="256" y="266" text-anchor="middle" fill="#0f172a" font-family="Arial, sans-serif" font-size="20" font-weight="bold">$</text>
+</svg>
+`;
+
+// Create icons directory if it doesn't exist
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+
+// Write the main SVG icon
+fs.writeFileSync(path.join(publicDir, 'icon.svg'), iconSVG);
+
+// Create a simple HTML file to help generate PNG versions
+const iconGeneratorHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PWA Icon Generator</title>
+    <style>
+        canvas { border: 1px solid #ccc; margin: 10px; }
+        .container { text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>PWA Icon Generator</h2>
+        <div id="svgContainer"></div>
+        <div id="canvases"></div>
+        <button onclick="downloadIcons()">Download All Icons</button>
+    </div>
+
+    <script>
+        const iconSVG = \`${iconSVG}\`;
+        const sizes = [64, 144, 192, 512];
+        
+        // Display the SVG
+        document.getElementById('svgContainer').innerHTML = iconSVG;
+        
+        function createCanvas(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            canvas.style.width = size/2 + 'px';
+            canvas.style.height = size/2 + 'px';
+            
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, size, size);
+                
+                // Add label
+                const label = document.createElement('div');
+                label.textContent = size + 'x' + size;
+                label.style.textAlign = 'center';
+                
+                const wrapper = document.createElement('div');
+                wrapper.style.display = 'inline-block';
+                wrapper.style.margin = '10px';
+                wrapper.appendChild(canvas);
+                wrapper.appendChild(label);
+                
+                document.getElementById('canvases').appendChild(wrapper);
+            };
+            
+            const svgBlob = new Blob([iconSVG], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+            img.src = url;
+            
+            return canvas;
+        }
+        
+        function downloadIcons() {
+            sizes.forEach(size => {
+                const canvas = createCanvas(size);
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.download = \`pwa-\${size}x\${size}.png\`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                }, 100 * size);
+            });
+        }
+        
+        // Create canvases on load
+        sizes.forEach(createCanvas);
+    </script>
+</body>
+</html>
+`;
+
+fs.writeFileSync(path.join(publicDir, 'icon-generator.html'), iconGeneratorHTML);
+
+console.log('✅ PWA icons setup created!');
+console.log('📁 Files created:');
+console.log('  - public/icon.svg');
+console.log('  - public/icon-generator.html');
+console.log('');
+console.log('📋 Next steps:');
+console.log('1. Open public/icon-generator.html in your browser');
+console.log('2. Click "Download All Icons" to generate PNG files');
+console.log('3. Save the downloaded files to the public/ directory');
+console.log('4. The PWA will automatically use these icons');

@@ -1,4 +1,8 @@
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { SupplierPaymentManagement } from "@/components/suppliers/SupplierPaymentManagement";
+import { useRealTimeRefresh } from "@/services/realTimeRefreshService";
+import { apiClient } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -26,677 +30,733 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { defaultSuppliers } from "@/data/suppliers";
-import { apiClient } from "@/lib/api";
-import { io } from "socket.io-client";
-import {
-  Users,
   Plus,
-  DollarSign,
-  Phone,
-  MessageCircle,
-  Download,
   Search,
-  Filter,
-  Edit,
-  Eye,
+  Building,
+  Phone,
+  Mail,
   MapPin,
-  Calendar,
+  Star,
   TrendingUp,
-  AlertCircle,
-  Loader2,
+  Users,
+  Package,
+  RefreshCw,
+  Edit,
+  Trash2,
+  Eye,
+  MoreVertical,
+  Download,
+  Filter,
+  CreditCard,
+  IndianRupee,
+  History,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-// Define a PaymentRecord type
-type PaymentRecord = {
-  date: string;
-  amount: number;
-  mode: string;
-  remarks: string;
-  supplierId: string;
-  supplierName: string;
-};
-
-// Define a Supplier type with paymentHistory
-type Supplier = {
+interface Supplier {
   id: string;
   name: string;
   contactPerson: string;
   phone: string;
-  whatsapp: string;
+  email: string;
   address: string;
-  outstandingAmount: number;
-  totalPurchases: number;
-  lastOrderDate: string;
-  status: string;
-  paymentTerms: string;
+  city: string;
   category: string;
-  paymentHistory: PaymentRecord[];
-};
-
-export default function Suppliers() {
-  const { t } = useLanguage();
-  const { toast } = useToast();
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [payDialogOpen, setPayDialogOpen] = useState<{ open: boolean; supplierId: string | null }>({ open: false, supplierId: null });
-  const [historyDialogOpen, setHistoryDialogOpen] = useState<{ open: boolean; supplierId: string | null }>({ open: false, supplierId: null });
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMode, setPaymentMode] = useState("cash");
-  const [paymentRemarks, setPaymentRemarks] = useState("");
-
-  useEffect(() => {
-    // Initial fetch with proper error handling
-    const fetchSuppliers = async () => {
-      try {
-        console.log('🔄 Fetching suppliers data...');
-        const suppliersData = await apiClient.getSuppliers();
-        console.log('✅ Suppliers data received:', suppliersData);
-        console.log('📊 Suppliers count:', Array.isArray(suppliersData) ? suppliersData.length : 'Not an array');
-        
-        if (Array.isArray(suppliersData)) {
-          setSuppliers(suppliersData);
-        } else {
-          console.warn('⚠️ Suppliers data is not an array:', typeof suppliersData);
-          setSuppliers([]);
-          toast({
-            title: "Data Format Error",
-            description: "Received invalid suppliers data format",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch suppliers:', error);
-        setSuppliers([]);
-        toast({
-          title: "Error Loading Suppliers",
-          description: "Failed to load suppliers data. Please check your connection.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchSuppliers();
-
-    // Real-time updates
-    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
-    const update = async () => {
-      try {
-        const suppliersData = await apiClient.getSuppliers();
-        if (Array.isArray(suppliersData)) {
-          setSuppliers(suppliersData);
-        }
-      } catch (error) {
-        console.error('❌ Failed to update suppliers:', error);
-      }
-    };
-    socket.on("supplierCreated", update);
-    socket.on("supplierUpdated", update);
-    socket.on("supplierDeleted", update);
-    return () => {
-      socket.off("supplierCreated", update);
-      socket.off("supplierUpdated", update);
-      socket.off("supplierDeleted", update);
-      socket.disconnect();
-    };
-  }, [toast]);
-
-  // Filter suppliers based on search and status
-  const filteredSuppliers = suppliers.filter((supplier) => {
-    const matchesSearch = supplier.name
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || supplier.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  // Calculate totals with null checks
-  const totalSuppliers = suppliers?.length || 0;
-  const activeSuppliers = suppliers?.filter((s) => s?.status === "active")?.length || 0;
-  const totalOutstanding = suppliers?.reduce(
-    (sum, supplier) => sum + (supplier?.outstandingAmount || 0),
-    0,
-  ) || 0;
-  const totalPurchases = suppliers?.reduce(
-    (sum, supplier) => sum + (supplier?.totalPurchases || 0),
-    0,
-  ) || 0;
-
-  // Add, update, delete handlers
-  const handleAddSupplier = async (formData: any) => {
-    await apiClient.createSupplier(formData);
-  };
-  const handleUpdateSupplier = async (id: string, formData: any) => {
-    await apiClient.updateSupplier(id, formData);
-  };
-  const handleDeleteSupplier = async (id: string) => {
-    await apiClient.deleteSupplier(id);
-  };
-
-  const openWhatsApp = (phone: string, name: string) => {
-    const message = encodeURIComponent(
-      `Hello ${name}, I hope you're doing well. I wanted to check on our recent orders and discuss any pending items.`,
-    );
-    window.open(
-      `https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${message}`,
-    );
-  };
-
-  // Helper to get supplier by ID
-  const getSupplierById = (id: string) => suppliers.find(s => s.id === id);
-
-  // Handle payment
-  const handlePaySupplier = (supplierId: string, amount: number, mode: string, remarks: string) => {
-    setSuppliers(prev => prev.map(s => {
-      if (s.id === supplierId) {
-        const newOutstanding = Math.max(0, (s.outstandingAmount || 0) - amount);
-        const paymentRecord = {
-          date: new Date().toISOString(),
-          amount,
-          mode,
-          remarks,
-          supplierId: s.id,
-          supplierName: s.name,
-        };
-        return {
-          ...s,
-          outstandingAmount: newOutstanding,
-          paymentHistory: [...(s.paymentHistory || []), paymentRecord],
-        };
-      }
-      return s;
-    }));
-    setPayDialogOpen({ open: false, supplierId: null });
-    setPaymentAmount("");
-    setPaymentMode("cash");
-    setPaymentRemarks("");
-    toast({ title: "Payment Recorded", description: `Payment of ₹${amount} recorded.` });
-  };
-
-  return (
-    <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              {t("suppliers")}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Manage your supplier relationships and track purchases
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Supplier
-                </Button>
-              </DialogTrigger>
-              <AddSupplierDialog onAdd={handleAddSupplier} />
-            </Dialog>
-          </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Suppliers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalSuppliers}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {activeSuppliers} active
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Outstanding Amount
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹{typeof totalOutstanding === 'number' ? totalOutstanding.toLocaleString() : '0'}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Pending payments
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Purchases
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹{typeof totalPurchases === 'number' ? totalPurchases.toLocaleString() : '0'}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">This year</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Average Terms
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">30 days</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Payment period
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Suppliers Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Suppliers</CardTitle>
-            <CardDescription>
-              Manage your supplier database and track payments
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search suppliers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Outstanding</TableHead>
-                    <TableHead>Total Purchases</TableHead>
-                    <TableHead>Last Order</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <div className="flex items-center justify-center space-x-2">
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          <span>Loading suppliers...</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredSuppliers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12">
-                        <div className="flex flex-col items-center space-y-4">
-                          <Users className="h-12 w-12 text-muted-foreground" />
-                          <div className="text-center">
-                            <h3 className="text-lg font-medium">No suppliers found</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {suppliers.length === 0 
-                                ? "Get started by adding your first supplier"
-                                : "Try adjusting your search or filter criteria"
-                              }
-                            </p>
-                          </div>
-                          {suppliers.length === 0 && (
-                            <Button onClick={() => setShowAddDialog(true)} size="sm">
-                              <Plus className="mr-2 h-4 w-4" />
-                              Add Your First Supplier
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredSuppliers.map((supplier) => (
-                      <TableRow key={supplier.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{supplier.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {supplier.contactPerson}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            ₹{typeof supplier.outstandingAmount === 'number' ? supplier.outstandingAmount.toLocaleString() : '0'}
-                          </div>
-                          {supplier.outstandingAmount > 0 && (
-                            <Badge
-                              variant="destructive"
-                              className="text-xs mt-1"
-                            >
-                              <AlertCircle className="mr-1 h-3 w-3" />
-                              Due
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            ₹{typeof supplier.totalPurchases === 'number' ? supplier.totalPurchases.toLocaleString() : '0'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {supplier.category}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center text-sm">
-                            <Calendar className="mr-1 h-3 w-3" />
-                            {new Date(supplier.lastOrderDate).toLocaleDateString()}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {supplier.paymentTerms}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              supplier.status === "active"
-                                ? "default"
-                                : "secondary"
-                            }
-                          >
-                            {supplier.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => {
-                              setPayDialogOpen({ open: true, supplierId: supplier.id });
-                              setPaymentMode("cash");
-                              setPaymentRemarks("");
-                            }} disabled={supplier.outstandingAmount <= 0}>Pay</Button>
-                            <Button variant="outline" size="sm" onClick={() => setHistoryDialogOpen({ open: true, supplierId: supplier.id })}>History</Button>
-                            <Link to={`/suppliers/${supplier.id}`}>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      {payDialogOpen.open && (
-        <PaySupplierDialog
-          open={payDialogOpen.open}
-          onOpenChange={(open) => setPayDialogOpen({ open, supplierId: open ? payDialogOpen.supplierId : null })}
-          supplier={getSupplierById(payDialogOpen.supplierId)}
-          paymentAmount={paymentAmount}
-          setPaymentAmount={setPaymentAmount}
-          onPay={(amount, mode, remarks) => handlePaySupplier(payDialogOpen.supplierId, amount, mode, remarks)}
-        />
-      )}
-      {historyDialogOpen.open && (
-        <SupplierHistoryDialog
-          open={historyDialogOpen.open}
-          onOpenChange={(open) => setHistoryDialogOpen({ open, supplierId: open ? historyDialogOpen.supplierId : null })}
-          suppliers={suppliers}
-        />
-      )}
-    </AppLayout>
-  );
+  rating: number;
+  totalOrders: number;
+  totalAmount: number;
+  lastOrderDate: Date;
+  status: "active" | "inactive" | "blocked";
+  notes?: string;
 }
 
-// Add Supplier Dialog Component
-function AddSupplierDialog({ onAdd }: { onAdd: (data: any) => void }) {
+export default function Suppliers() {
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedSupplierForPayment, setSelectedSupplierForPayment] = useState<Supplier | null>(null);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+
+  // Real-time data refresh
+  useRealTimeRefresh('suppliers', async () => {
+    await fetchSuppliers();
+  });
+
+  // Form state for new supplier
   const [formData, setFormData] = useState({
     name: "",
     contactPerson: "",
     phone: "",
-    whatsapp: "",
+    email: "",
     address: "",
-    paymentTerms: "30 days",
-    category: "Electronics",
+    city: "",
+    category: "",
+    notes: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onAdd(formData);
+  // Sample suppliers data
+  const sampleSuppliers: Supplier[] = [
+    {
+      id: "SUP001",
+      name: "TechParts India",
+      contactPerson: "Rajesh Kumar",
+      phone: "+91 98765 43210",
+      email: "sales@techparts.in",
+      address: "123, Electronic Market, Nehru Place",
+      city: "New Delhi",
+      category: "parts",
+      rating: 4.5,
+      totalOrders: 45,
+      totalAmount: 125000,
+      lastOrderDate: new Date(),
+      status: "active",
+      notes: "Reliable supplier for iPhone parts"
+    },
+    {
+      id: "SUP002",
+      name: "Mobile Solutions Pvt Ltd",
+      contactPerson: "Priya Sharma",
+      phone: "+91 87654 32109",
+      email: "orders@mobilesolutions.com",
+      address: "456, Tech Hub, Sector 62",
+      city: "Gurgaon",
+      category: "accessories",
+      rating: 4.2,
+      totalOrders: 32,
+      totalAmount: 85000,
+      lastOrderDate: new Date(Date.now() - 86400000),
+      status: "active",
+      notes: "Good for bulk orders"
+    },
+    {
+      id: "SUP003",
+      name: "Repair Tools Co",
+      contactPerson: "Amit Singh",
+      phone: "+91 76543 21098",
+      email: "support@repairtools.co",
+      address: "789, Industrial Area, Phase 1",
+      city: "Chandigarh",
+      category: "tools",
+      rating: 4.8,
+      totalOrders: 28,
+      totalAmount: 65000,
+      lastOrderDate: new Date(Date.now() - 172800000),
+      status: "active",
+      notes: "Premium quality tools"
+    },
+  ];
+
+  useEffect(() => {
+    fetchSuppliers();
+  }, []);
+
+  const fetchSuppliers = async () => {
+    setLoading(true);
+    try {
+      // Try to fetch from backend first
+      const response = await apiClient.get('/api/suppliers');
+      if (response && Array.isArray(response)) {
+        setSuppliers(response);
+      } else {
+        // Fallback to sample data
+        setSuppliers(sampleSuppliers);
+      }
+    } catch (error) {
+      console.log('Using sample suppliers data:', error);
+      setSuppliers(sampleSuppliers);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const categories = [
+    { value: "parts", label: "Parts & Components", icon: Package, color: "bg-blue-100 text-blue-700" },
+    { value: "accessories", label: "Accessories", icon: ShoppingCart, color: "bg-green-100 text-green-700" },
+    { value: "tools", label: "Tools & Equipment", icon: Building, color: "bg-purple-100 text-purple-700" },
+    { value: "consumables", label: "Consumables", icon: Package, color: "bg-orange-100 text-orange-700" },
+    { value: "services", label: "Services", icon: Users, color: "bg-indigo-100 text-indigo-700" },
+  ];
+
+  const getCategoryInfo = (category: string) => {
+    const categoryInfo = categories.find(cat => cat.value === category.toLowerCase());
+    return categoryInfo || categories[0];
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active": return "bg-green-100 text-green-800 border-green-200";
+      case "inactive": return "bg-gray-100 text-gray-800 border-gray-200";
+      case "blocked": return "bg-red-100 text-red-800 border-red-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+      toast({
+        title: "Refreshed",
+        description: "Supplier data updated successfully.",
+      });
+    }, 1000);
+  };
+
+  const handleAddSupplier = () => {
+    if (!formData.name || !formData.contactPerson || !formData.phone || !formData.category) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newSupplier: Supplier = {
+      id: `SUP${String(suppliers.length + 1).padStart(3, '0')}`,
+      name: formData.name,
+      contactPerson: formData.contactPerson,
+      phone: formData.phone,
+      email: formData.email,
+      address: formData.address,
+      city: formData.city,
+      category: formData.category,
+      rating: 0,
+      totalOrders: 0,
+      totalAmount: 0,
+      lastOrderDate: new Date(),
+      status: "active",
+      notes: formData.notes,
+    };
+
+    setSuppliers([newSupplier, ...suppliers]);
     setFormData({
       name: "",
       contactPerson: "",
       phone: "",
-      whatsapp: "",
+      email: "",
       address: "",
-      paymentTerms: "30 days",
-      category: "Electronics",
+      city: "",
+      category: "",
+      notes: "",
+    });
+    setIsAddDialogOpen(false);
+
+    toast({
+      title: "Success",
+      description: "Supplier added successfully.",
     });
   };
 
-  return (
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>Add New Supplier</DialogTitle>
-        <DialogDescription>
-          Add a new supplier to your database
-        </DialogDescription>
-      </DialogHeader>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="name">Supplier Name</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Company name"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="contactPerson">Contact Person</Label>
-          <Input
-            id="contactPerson"
-            value={formData.contactPerson}
-            onChange={(e) =>
-              setFormData({ ...formData, contactPerson: e.target.value })
-            }
-            placeholder="Primary contact name"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="phone">Phone</Label>
-          <Input
-            id="phone"
-            value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-            placeholder="+91 98765 43210"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="whatsapp">WhatsApp</Label>
-          <Input
-            id="whatsapp"
-            value={formData.whatsapp}
-            onChange={(e) =>
-              setFormData({ ...formData, whatsapp: e.target.value })
-            }
-            placeholder="+91 98765 43210"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="address">Address</Label>
-          <Input
-            id="address"
-            value={formData.address}
-            onChange={(e) =>
-              setFormData({ ...formData, address: e.target.value })
-            }
-            placeholder="Business address"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="category">Category</Label>
-          <Select
-            value={formData.category}
-            onValueChange={(value) =>
-              setFormData({ ...formData, category: value })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Electronics">Electronics</SelectItem>
-              <SelectItem value="Parts">Parts</SelectItem>
-              <SelectItem value="Screen & Display">Screen & Display</SelectItem>
-              <SelectItem value="Batteries & Charging">
-                Batteries & Charging
-              </SelectItem>
-              <SelectItem value="Tools & Equipment">
-                Tools & Equipment
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <DialogFooter>
-          <Button type="submit">Add Supplier</Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  );
-}
+  const filteredSuppliers = suppliers.filter(supplier => {
+    const matchesSearch = 
+      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.phone.includes(searchTerm) ||
+      supplier.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.city.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = categoryFilter === "all" || supplier.category === categoryFilter;
+    const matchesStatus = statusFilter === "all" || supplier.status === statusFilter;
+    
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
 
-// PaySupplierDialog component
-function PaySupplierDialog({ open, onOpenChange, supplier, paymentAmount, setPaymentAmount, onPay }) {
-  const [mode, setMode] = useState("cash");
-  const [remarks, setRemarks] = useState("");
-  if (!supplier) return null;
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
-        </DialogHeader>
-        <div>Supplier: <b>{supplier.name}</b></div>
-        <div>Outstanding: ₹{typeof supplier.outstandingAmount === 'number' ? supplier.outstandingAmount.toLocaleString() : '0'}</div>
-        <Input
-          type="number"
-          min={1}
-          max={supplier.outstandingAmount}
-          value={paymentAmount}
-          onChange={e => setPaymentAmount(e.target.value)}
-          placeholder="Enter payment amount"
-        />
-        <div className="flex gap-2 mt-2">
-          <Label>Mode:</Label>
-          <select value={mode} onChange={e => setMode(e.target.value)} className="border rounded px-2 py-1">
-            <option value="cash">Cash</option>
-            <option value="online">Online</option>
-          </select>
-        </div>
-        <div className="mt-2">
-          <Label>Remarks:</Label>
-          <Input
-            value={remarks}
-            onChange={e => setRemarks(e.target.value)}
-            placeholder="Remarks (optional)"
-          />
-        </div>
-        <DialogFooter>
-          <Button onClick={() => onPay(Number(paymentAmount), mode, remarks)} disabled={!paymentAmount || Number(paymentAmount) <= 0 || Number(paymentAmount) > supplier.outstandingAmount}>Pay</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+  const totalSuppliers = filteredSuppliers.length;
+  const activeSuppliers = filteredSuppliers.filter(s => s.status === "active").length;
+  const totalSpent = filteredSuppliers.reduce((sum, s) => sum + s.totalAmount, 0);
 
-// SupplierHistoryDialog component
-function SupplierHistoryDialog({ open, onOpenChange, suppliers }: { open: boolean; onOpenChange: (open: boolean) => void; suppliers: Supplier[] }) {
-  // Gather all payments from all suppliers
-  const allPayments = suppliers.flatMap(s => (s.paymentHistory || []).map(p => ({ ...p, supplierName: s.name })));
-  // Sort by date descending
-  allPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star
+        key={i}
+        className={cn("h-3 w-3", i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")}
+      />
+    ));
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>All Supplier Payments</DialogTitle>
-        </DialogHeader>
-        {allPayments.length > 0 ? (
-          <ul className="space-y-2">
-            {allPayments.map((p, idx) => (
-              <li key={idx} className="flex flex-col border-b pb-2">
-                <div className="flex justify-between">
-                  <span><b>{p.supplierName}</b></span>
-                  <span>{new Date(p.date).toLocaleString()}</span>
+    <AppLayout showBreadcrumbs={false}>
+      <div className="space-y-4 sm:space-y-6">
+        {/* Mobile-First Header */}
+        <div className="space-y-4">
+          <div className="text-center sm:text-left">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+              Suppliers
+            </h1>
+            <p className="text-base text-muted-foreground mt-1">
+              Manage your business suppliers and vendors
+            </p>
+          </div>
+
+          {/* Quick Stats - Mobile Optimized */}
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
+            <Card className="border-2 border-blue-100 bg-blue-50">
+              <CardContent className="p-3">
+                <div className="flex items-center space-x-2">
+                  <div className="p-1 bg-blue-100 rounded-full">
+                    <Users className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-blue-600">Total Suppliers</p>
+                    <p className="text-lg font-bold text-blue-700">{totalSuppliers}</p>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>₹{p.amount} ({p.mode})</span>
-                  <span>{p.remarks}</span>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-green-100 bg-green-50">
+              <CardContent className="p-3">
+                <div className="flex items-center space-x-2">
+                  <div className="p-1 bg-green-100 rounded-full">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-green-600">Active</p>
+                    <p className="text-lg font-bold text-green-700">{activeSuppliers}</p>
+                  </div>
                 </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div>No payments recorded.</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-purple-100 bg-purple-50 col-span-2 sm:col-span-1">
+              <CardContent className="p-3">
+                <div className="flex items-center space-x-2">
+                  <div className="p-1 bg-purple-100 rounded-full">
+                    <IndianRupee className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-purple-600">Total Spent</p>
+                    <p className="text-lg font-bold text-purple-700">₹{totalSpent.toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Primary Action Button */}
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="thumb-primary w-full text-lg py-6 shadow-lg">
+                <Plus className="mr-3 h-6 w-6" />
+                Add New Supplier
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-xl">Add New Supplier</DialogTitle>
+                <DialogDescription>
+                  Enter supplier information and contact details
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Company Name *</Label>
+                  <Input
+                    id="name"
+                    placeholder="Supplier company name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contactPerson">Contact Person *</Label>
+                  <Input
+                    id="contactPerson"
+                    placeholder="Primary contact name"
+                    value={formData.contactPerson}
+                    onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
+                    className="h-12"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone *</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+91 12345 67890"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      className="h-12"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="supplier@email.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category *</Label>
+                  <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          <div className="flex items-center space-x-2">
+                            <category.icon className="h-4 w-4" />
+                            <span>{category.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Textarea
+                      id="address"
+                      placeholder="Street address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                      className="min-h-[60px]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      placeholder="City name"
+                      value={formData.city}
+                      onChange={(e) => setFormData({...formData, city: e.target.value})}
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Additional notes about this supplier..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    className="min-h-[60px]"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+                <Button onClick={handleAddSupplier} className="w-full sm:w-auto thumb-primary">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Supplier
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Secondary Actions */}
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="touch-button py-4 border-2"
+            >
+              <RefreshCw className={cn("mr-2 h-5 w-5", refreshing && "animate-spin")} />
+              {refreshing ? "Refreshing..." : "Refresh"}
+            </Button>
+            <Button
+              variant="outline"
+              className="touch-button py-4 border-2"
+              onClick={() => {
+                toast({
+                  title: "Export Started",
+                  description: "Downloading suppliers as Excel file.",
+                });
+              }}
+            >
+              <Download className="mr-2 h-5 w-5" />
+              Export Data
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile-Optimized Search and Filters */}
+        <Card className="border-2 border-slate-100">
+          <CardContent className="p-4">
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search suppliers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-12 h-12 text-base border-2 border-slate-200 focus:border-primary"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="h-12 text-base border-2 border-slate-200">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        <div className="flex items-center space-x-2">
+                          <category.icon className="h-4 w-4" />
+                          <span>{category.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-12 text-base border-2 border-slate-200">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="blocked">Blocked</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Mobile-First Supplier Cards */}
+        <div className="space-y-3">
+          {filteredSuppliers.length === 0 ? (
+            <Card className="border-2 border-dashed border-slate-200">
+              <CardContent className="py-12 text-center">
+                <div className="p-6 bg-slate-100 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                  <Building className="h-12 w-12 text-slate-400" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">No suppliers found</h3>
+                <p className="text-base text-muted-foreground mb-6">
+                  {searchTerm ? "Try adjusting your search filters" : "Start by adding your first supplier"}
+                </p>
+                <Button 
+                  className="thumb-primary text-lg px-8 py-4"
+                  onClick={() => setIsAddDialogOpen(true)}
+                >
+                  <Plus className="h-6 w-6 mr-3" />
+                  Add First Supplier
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            filteredSuppliers.map((supplier) => {
+              const categoryInfo = getCategoryInfo(supplier.category);
+              const CategoryIcon = categoryInfo.icon;
+              
+              return (
+                <Card 
+                  key={supplier.id} 
+                  className="border-2 border-slate-100 hover:border-primary/30 hover:shadow-md transition-all duration-200 cursor-pointer"
+                  onClick={() => navigate(`/suppliers/${supplier.id}`)}
+                >
+                  <CardContent className="p-4">
+                    {/* Header Row */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className={cn("p-2 rounded-full", categoryInfo.color)}>
+                          <CategoryIcon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-base">{supplier.name}</p>
+                          <p className="text-sm text-muted-foreground">{supplier.id}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Badge className={cn("px-2 py-1 text-xs border", getStatusColor(supplier.status))}>
+                          {supplier.status}
+                        </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/suppliers/${supplier.id}`);
+                            }}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSupplierForPayment(supplier);
+                              setIsPaymentDialogOpen(true);
+                            }}>
+                              <CreditCard className="mr-2 h-4 w-4" />
+                              Manage Payments
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              // Handle edit
+                            }}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Handle delete
+                              }}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{supplier.contactPerson}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">{supplier.phone}</span>
+                      </div>
+                      {supplier.email && (
+                        <div className="flex items-center space-x-2">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">{supplier.email}</span>
+                        </div>
+                      )}
+                      {supplier.city && (
+                        <div className="flex items-center space-x-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">{supplier.city}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Rating and Stats */}
+                    <div className="bg-slate-50 rounded-lg p-3 mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex">{renderStars(supplier.rating)}</div>
+                          <span className="text-sm font-medium">{supplier.rating.toFixed(1)}</span>
+                        </div>
+                        <Badge className={cn("px-2 py-1 text-xs", categoryInfo.color)}>
+                          {categoryInfo.label}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
+                        <div>
+                          <span className="font-medium">{supplier.totalOrders}</span> orders
+                        </div>
+                        <div>
+                          <span className="font-medium">₹{supplier.totalAmount.toLocaleString('en-IN')}</span> spent
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    {supplier.notes && (
+                      <div className="pt-3 border-t border-slate-100">
+                        <p className="text-sm text-muted-foreground">{supplier.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Last Order Date */}
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs text-muted-foreground">
+                      <span>Last order: {supplier.lastOrderDate.toLocaleDateString('en-IN')}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+
+        {/* Payment Management Dialog */}
+        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+          <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl flex items-center space-x-2">
+                <CreditCard className="h-5 w-5" />
+                <span>Payment Management - {selectedSupplierForPayment?.name}</span>
+              </DialogTitle>
+              <DialogDescription>
+                Manage payments and track payment history for this supplier
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedSupplierForPayment && (
+              <SupplierPaymentManagement
+                supplierId={selectedSupplierForPayment.id}
+                supplierName={selectedSupplierForPayment.name}
+                currentBalance={0} // This would come from API
+                totalSpent={selectedSupplierForPayment.totalAmount}
+                onPaymentAdded={(payment) => {
+                  toast({
+                    title: "Payment Recorded",
+                    description: `₹${payment.amount.toLocaleString('en-IN')} payment recorded for ${selectedSupplierForPayment.name}`,
+                  });
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Load More for Mobile */}
+        {filteredSuppliers.length > 0 && (
+          <Card className="border-2 border-slate-100">
+            <CardContent className="py-6 text-center">
+              <p className="text-sm text-muted-foreground mb-4">
+                Showing {filteredSuppliers.length} suppliers • {activeSuppliers} active
+              </p>
+              <Button variant="outline" className="touch-button">
+                Load More Suppliers
+              </Button>
+            </CardContent>
+          </Card>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </AppLayout>
   );
 }

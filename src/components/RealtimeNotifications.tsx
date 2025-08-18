@@ -287,13 +287,13 @@ const RealtimeNotifications: React.FC = () => {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
+        return <CheckCircle className="h-4 w-4 text-green-600" />
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />
+        return <XCircle className="h-4 w-4 text-red-600" />
       default:
-        return <Info className="h-4 w-4 text-blue-500" />
+        return <Info className="h-4 w-4 text-blue-600" />
     }
   }
 

@@ -492,7 +492,7 @@ const RealtimeDashboard: React.FC = () => {
               {notifications.length > 0 ? (
                 notifications.map((notification, index) => (
                   <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
-                    <AlertTriangle className="h-4 w-4 mt-1 text-yellow-500" />
+                    <AlertTriangle className="h-4 w-4 mt-1 text-yellow-600" />
                     <div className="flex-1">
                       <p className="text-sm font-medium">{notification.title}</p>
                       <p className="text-xs text-muted-foreground">{notification.message}</p>

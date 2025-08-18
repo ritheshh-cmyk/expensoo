@@ -480,9 +480,9 @@ const RealtimeInventory: React.FC = () => {
             <Package className="h-8 w-8" />
             <span>Real-Time Inventory</span>
             {isConnected ? (
-              <Wifi className="h-5 w-5 text-green-500" />
+              <Wifi className="h-5 w-5 text-green-600" />
             ) : (
-              <WifiOff className="h-5 w-5 text-red-500" />
+              <WifiOff className="h-5 w-5 text-red-600" />
             )}
           </h1>
           <p className="text-muted-foreground">
@@ -513,7 +513,7 @@ const RealtimeInventory: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <AlertTriangle className="h-5 w-5 text-red-600" />
               <span>Active Alerts ({unacknowledgedAlerts.length})</span>
             </CardTitle>
           </CardHeader>
@@ -636,9 +636,9 @@ const RealtimeInventory: React.FC = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Quantity</span>
                     <span className={`text-lg font-bold ${
-                      item.quantity === 0 ? 'text-red-500' :
-                      item.quantity <= item.min_quantity ? 'text-yellow-500' :
-                      'text-green-500'
+                      item.quantity === 0 ? 'text-red-600' :
+                      item.quantity <= item.min_quantity ? 'text-yellow-600' :
+                      'text-green-600'
                     }`}>
                       {item.quantity}
                     </span>

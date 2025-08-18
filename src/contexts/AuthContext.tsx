@@ -80,34 +80,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<boolean> => {
     setLoading(true);
     try {
+      console.log('🔐 AuthContext: Starting login process for:', username);
+      
       // Try backend authentication first
       const response = await apiClient.login(username, password) as any;
       
-      if (response.token && response.user) {
-        const userData: User = {
-          id: response.user.id?.toString() || "1",
-          username: response.user.username,
-          role: response.user.role || "worker",
-          name: response.user.name || response.user.username,
-          email: response.user.email,
-        };
-
-        // Set token and localStorage first, then user to ensure proper order
+      console.log('📥 AuthContext: Received response:', response);
+      console.log('📥 AuthContext: Response type:', typeof response);
+      console.log('📥 AuthContext: Response keys:', response ? Object.keys(response) : 'null');
+      
+      if (response && response.token && response.user) {
+        console.log('✅ AuthContext: Valid response structure detected');
+        console.log('🎫 AuthContext: Token present:', !!response.token);
+        console.log('👤 AuthContext: User data:', response.user);
+        
+        // Set token first
         setToken(response.token);
         localStorage.setItem("callmemobiles_token", response.token);
+        console.log('💾 AuthContext: Token saved to localStorage');
+        
+        // Use user data from login response directly
+        const userData: User = {
+          id: response.user.id?.toString() || "1",
+          username: response.user.username || username,
+          role: response.user.role || "admin",
+          name: response.user.name || response.user.username || username,
+          email: response.user.email,
+        };
+        
+        console.log('👤 AuthContext: Processed user data:', userData);
+        
         localStorage.setItem("callmemobiles_user", JSON.stringify(userData));
-        
-        // Small delay to ensure token is properly set
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
         setUser(userData);
+        console.log('💾 AuthContext: User data saved to localStorage');
+        
         setLoading(false);
+        console.log('✅ AuthContext: Login successful!');
         return true;
-      } else {
-        throw new Error("Invalid response from backend");
       }
+      
+      console.error('❌ AuthContext: Invalid response structure:', {
+        hasResponse: !!response,
+        hasToken: response?.token,
+        hasUser: response?.user,
+        responseKeys: response ? Object.keys(response) : 'null'
+      });
+      
+      throw new Error("Invalid response from backend");
     } catch (error) {
-      console.error("Backend login failed:", error);
+      console.error("❌ AuthContext: Backend login failed:", error);
+      console.error("❌ AuthContext: Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       setLoading(false);
       return false;
     }

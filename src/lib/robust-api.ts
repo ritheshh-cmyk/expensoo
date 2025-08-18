@@ -26,8 +26,10 @@ interface CachedResponse {
 class RobustApiClient {
   private backends: BackendConfig[] = [
     {
-      url: import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://positive-kodiak-friendly.ngrok-free.app",
-      name: "Ngrok Backend",
+      url: import.meta.env.MODE === 'production' 
+        ? (import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://your-backend-domain.com")
+        : (import.meta.env.VITE_BACKEND_URL || "http://localhost:10000"),
+      name: import.meta.env.MODE === 'production' ? "Production Backend" : "Local Backend",
       priority: 1,
       timeout: 15000
     }
@@ -126,7 +128,7 @@ class RobustApiClient {
 
     // For read operations, try cache first if offline
     if (!isWriteAction && !this.isOnline) {
-      const cached = this.getCachedResponse(cacheKey);
+      const cached = this.getCachedResponse<T>(cacheKey);
       if (cached) {
         console.log('📦 Serving from cache:', endpoint);
         return cached;
@@ -156,7 +158,7 @@ class RobustApiClient {
 
     // For read actions when offline, return cached data or empty result
     if (!isWriteAction && !this.isOnline) {
-      const cached = this.getCachedResponse(cacheKey);
+      const cached = this.getCachedResponse<T>(cacheKey);
       if (cached) {
         return cached;
       }
@@ -240,7 +242,7 @@ class RobustApiClient {
       return null;
     }
 
-    return cached.data;
+    return cached.data as T;
   }
 
   // Offline queue management
@@ -457,7 +459,8 @@ class RobustApiClient {
 
   // Dashboard methods
   async getDashboardData() {
-    return this.request('/api/dashboard');
+    // Use working dashboard/stats endpoint instead of broken /api/dashboard
+    return this.request('/api/dashboard/stats');
   }
 
   // Reports methods

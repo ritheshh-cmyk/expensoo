@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Switching Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .device-info {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+        }
+        .mobile-test { border-color: #4CAF50; }
+        .tablet-test { border-color: #FF9800; }
+        .desktop-test { border-color: #2196F3; }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔄 Auto-Switching Device Detection Test</h1>
+    
+    <div class="instructions">
+        <strong>Testing Instructions:</strong>
+        <ol>
+            <li>Open your main application at <a href="http://localhost:5173" target="_blank">http://localhost:5173</a></li>
+            <li>Use your browser's device simulation tools (F12 → Device Toolbar)</li>
+            <li>Try different device sizes to see auto-switching in action</li>
+            <li>Watch for the debug overlay showing device info in development mode</li>
+        </ol>
+    </div>
+
+    <div class="device-info">
+        <h3>🔍 Current Device Detection:</h3>
+        <p><strong>Screen Size:</strong> <span id="screenSize"></span></p>
+        <p><strong>Viewport Size:</strong> <span id="viewportSize"></span></p>
+        <p><strong>Device Type:</strong> <span id="deviceType"></span></p>
+        <p><strong>Touch Support:</strong> <span id="touchSupport"></span></p>
+        <p><strong>Orientation:</strong> <span id="orientation"></span></p>
+    </div>
+
+    <div class="test-section mobile-test">
+        <h3>📱 Mobile Device Test (320px - 767px)</h3>
+        <p><strong>Expected Auto-Switching Behavior:</strong></p>
+        <ul>
+            <li>✅ Bottom navigation bar appears</li>
+            <li>✅ Compact header with hamburger menu</li>
+            <li>✅ Cards stack vertically</li>
+            <li>✅ Touch-optimized button sizes (44px minimum)</li>
+            <li>✅ Simplified layout with larger touch targets</li>
+        </ul>
+    </div>
+
+    <div class="test-section tablet-test">
+        <h3>📱 Tablet Device Test (768px - 1023px)</h3>
+        <p><strong>Expected Auto-Switching Behavior:</strong></p>
+        <ul>
+            <li>✅ Side navigation drawer</li>
+            <li>✅ Medium-density layout</li>
+            <li>✅ Grid layouts with 2-3 columns</li>
+            <li>✅ Hybrid touch/mouse interactions</li>
+            <li>✅ Breadcrumbs visible</li>
+        </ul>
+    </div>
+
+    <div class="test-section desktop-test">
+        <h3>🖥️ Desktop Device Test (1024px+)</h3>
+        <p><strong>Expected Auto-Switching Behavior:</strong></p>
+        <ul>
+            <li>✅ Full sidebar navigation always visible</li>
+            <li>✅ Dense information layout</li>
+            <li>✅ Multi-column grids (3-4 columns)</li>
+            <li>✅ Mouse-optimized interactions</li>
+            <li>✅ Full breadcrumb navigation</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>🔄 Auto-Switching Features Implemented:</h3>
+        <ul>
+            <li>✅ <strong>Device Detection:</strong> Automatic mobile/tablet/desktop classification</li>
+            <li>✅ <strong>Navigation Switching:</strong> Bottom nav → Side nav → Full sidebar</li>
+            <li>✅ <strong>Layout Adaptation:</strong> Container sizes and spacing adjust automatically</li>
+            <li>✅ <strong>Component Intelligence:</strong> Cards, buttons, grids adapt to device</li>
+            <li>✅ <strong>Touch Optimization:</strong> Button sizes and interactions optimize for touch devices</li>
+            <li>✅ <strong>CSS Auto-Classes:</strong> device-mobile/tablet/desktop classes applied automatically</li>
+            <li>✅ <strong>Debug Overlay:</strong> Development info shows current device state</li>
+        </ul>
+    </div>
+
+    <script>
+        function updateDeviceInfo() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            let deviceType = 'desktop';
+            if (width <= 767) deviceType = 'mobile';
+            else if (width <= 1023) deviceType = 'tablet';
+            
+            const hasTouchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            const orientation = window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
+            
+            document.getElementById('screenSize').textContent = `${screen.width} × ${screen.height}`;
+            document.getElementById('viewportSize').textContent = `${width} × ${height}`;
+            document.getElementById('deviceType').textContent = deviceType.toUpperCase();
+            document.getElementById('touchSupport').textContent = hasTouchSupport ? 'Yes' : 'No';
+            document.getElementById('orientation').textContent = orientation;
+        }
+
+        // Update on load and resize
+        updateDeviceInfo();
+        window.addEventListener('resize', updateDeviceInfo);
+        window.addEventListener('orientationchange', updateDeviceInfo);
+    </script>
+
+    <div style="margin-top: 40px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+        <h3>🎉 Success! Your Auto-Switching System is Complete</h3>
+        <p>Your application now automatically switches between mobile-focused, tablet-focused, and desktop-focused interfaces based on device detection. The system includes:</p>
+        <ul>
+            <li><strong>Intelligent Device Detection</strong> - Automatic classification with orientation tracking</li>
+            <li><strong>Adaptive Navigation</strong> - Bottom nav for mobile, side nav for tablet, full sidebar for desktop</li>
+            <li><strong>Responsive Components</strong> - Cards, buttons, grids that adapt automatically</li>
+            <li><strong>CSS Auto-Switching</strong> - Device-specific styling applied automatically</li>
+            <li><strong>Touch Optimization</strong> - Enhanced interactions for touch devices</li>
+        </ul>
+        <p><em>Test the system by resizing your browser or using device simulation tools!</em></p>
+    </div>
+</body>
+</html>

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ConnectionProvider } from "@/contexts/ConnectionContext";
+import { DeviceProvider } from "@/contexts/DeviceContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -15,6 +16,7 @@ import { submitData, syncQueue } from "./lib/submitAndSync";
 import { apiClient, checkBackendVersion } from "@/lib/api";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RoleBasedAccessProvider } from "@/components/RoleBasedAccess";
+import RealtimeDashboardDemo from "@/components/RealtimeDashboardDemo";
 import RealtimeDashboard from "@/components/RealtimeDashboard";
 import RealtimeNotifications from "@/components/RealtimeNotifications";
 import LiveActivityFeed from "@/components/LiveActivityFeed";
@@ -29,6 +31,7 @@ import EditTransaction from "./pages/EditTransaction";
 import Suppliers from "./pages/Suppliers";
 import SupplierDetails from "./pages/SupplierDetails";
 import Expenditures from "./pages/Expenditures";
+import ExpenditureManagement from "./pages/ExpenditureManagement";
 import Bills from "./pages/Bills";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -38,6 +41,37 @@ import NotFound from "./pages/NotFound";
 // Import PWA components
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import ConnectionStatus from "./components/ConnectionStatus";
+
+// Register service worker for PWA functionality (manual registration)
+// Initialize PWA service worker without virtual imports
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/',
+      });
+      
+      console.log('✅ Service worker registered successfully');
+      
+      // Handle updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New version available
+              if (window.confirm('🔄 New version available. Reload to update?')) {
+                window.location.reload();
+              }
+            }
+          });
+        }
+      });
+    } catch (error) {
+      console.error('❌ Service worker registration failed:', error);
+    }
+  });
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -133,6 +167,15 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        {/* Real-time Demo Dashboard Route */}
+        <Route
+          path="/realtime-demo"
+          element={
+            <ProtectedRoute requiredRoles={["admin", "owner", "worker"]}>
+              <RealtimeDashboardDemo />
+            </ProtectedRoute>
+          }
+        />
         {/* Real-time Dashboard Route */}
         <Route
           path="/realtime-dashboard"
@@ -212,6 +255,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/expenditure-management"
+          element={
+            <ProtectedRoute requiredRoles={["admin", "owner", "worker"]}>
+              <ExpenditureManagement />
+            </ProtectedRoute>
+          }
+        />
         {/* Bill routes - accessible by all roles */}
         <Route
           path="/bills"
@@ -241,21 +292,23 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system" storageKey="callmemobiles-theme">
-        <LanguageProvider>
-          <ConnectionProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter basename="/">
-                <AuthProvider>
-                  <RoleBasedAccessProvider>
-                    <AppContent />
-                  </RoleBasedAccessProvider>
-                </AuthProvider>
-              </BrowserRouter>
-            </TooltipProvider>
-          </ConnectionProvider>
-        </LanguageProvider>
+        <DeviceProvider debugMode={process.env.NODE_ENV === 'development'}>
+          <LanguageProvider>
+            <ConnectionProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter basename="/">
+                  <AuthProvider>
+                    <RoleBasedAccessProvider>
+                      <AppContent />
+                    </RoleBasedAccessProvider>
+                  </AuthProvider>
+                </BrowserRouter>
+              </TooltipProvider>
+            </ConnectionProvider>
+          </LanguageProvider>
+        </DeviceProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </ErrorBoundary>

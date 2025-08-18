@@ -1,0 +1,1254 @@
+/* 📱 MOBILE-FIRST Business Tracker - Phone Primary Design System */
+/* PRIMARY: Phone (320px-767px) | SECONDARY: Tablet (768px-1023px) | VIEWING: Desktop (1024px+) */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =============================================================================
+   PWA & PERFORMANCE OPTIMIZATION CLASSES
+   Real-time device adaptation with performance optimization
+   ============================================================================= */
+
+/* Performance-based optimizations */
+.performance-low {
+  --animation-duration: 0ms;
+  --transition-duration: 0ms;
+}
+
+.performance-low * {
+  animation-duration: 0ms !important;
+  transition-duration: 0ms !important;
+}
+
+.performance-medium {
+  --animation-duration: 200ms;
+  --transition-duration: 150ms;
+}
+
+.performance-high {
+  --animation-duration: 300ms;
+  --transition-duration: 200ms;
+}
+
+/* PWA-specific optimizations */
+.pwa-standalone {
+  --header-height: 3rem;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pwa-standalone .auto-header {
+  padding-top: var(--safe-area-top);
+  height: calc(var(--header-height) + var(--safe-area-top));
+}
+
+.pwa-standalone .auto-content {
+  padding-bottom: calc(6rem + var(--safe-area-bottom));
+}
+
+.pwa-browser {
+  --header-height: 4rem;
+}
+
+.pwa-installable::after {
+  content: '📱 Install App';
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background: #3b82f6;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  z-index: 1000;
+  animation: pulse 2s infinite;
+}
+
+/* Connection-based optimizations */
+.connection-slow .auto-image {
+  @apply bg-gray-200 animate-pulse;
+}
+
+.connection-slow img {
+  loading: lazy;
+}
+
+.connection-fast .auto-preload {
+  @apply block;
+}
+
+.connection-slow .auto-preload {
+  @apply hidden;
+}
+
+@layer base {
+  /* 📱 MOBILE-FIRST COLOR SYSTEM - Phone Primary Experience */
+  /* Optimized for thumb navigation and one-handed usage */
+  :root {
+    /* Mobile-First Base Colors - Optimized for phone screens */
+    --background: 0 0% 100%;
+    --foreground: 215 16% 14%;
+
+    /* Card & Surface Colors - Touch-friendly contrast */
+    --card: 0 0% 100%;
+    --card-foreground: 215 16% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 16% 14%;
+
+    /* Primary Theme Colors - Mobile-optimized visibility */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-50: 217 91% 98%;
+    --primary-100: 217 91% 95%;
+    --primary-200: 217 91% 90%;
+    --primary-300: 217 91% 80%;
+    --primary-400: 217 91% 70%;
+    --primary-500: 217 91% 60%;
+    --primary-600: 217 91% 50%;
+    --primary-700: 217 91% 45%;
+    --primary-800: 217 91% 35%;
+    --primary-900: 217 91% 25%;
+
+    /* Mobile Status Colors - High contrast for phone visibility */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    /* Business Status Colors - Mobile visibility optimized */
+    --repair-pending: 38 92% 50%;
+    --repair-progress: 199 89% 48%;
+    --repair-completed: 142 76% 36%;
+    --repair-delivered: 262 83% 58%;
+
+    /* Stock Level Indicators */
+    --stock-critical: 0 84% 60%;
+    --stock-low: 38 92% 50%;
+    --stock-good: 142 76% 36%;
+
+    /* Neutral Colors */
+    --secondary: 215 20% 98%;
+    --secondary-foreground: 215 16% 14%;
+    --muted: 215 20% 96%;
+    --muted-foreground: 215 16% 46%;
+    --accent: 215 20% 96%;
+    --accent-foreground: 215 16% 14%;
+
+    /* UI Elements */
+    --border: 215 20% 91%;
+    --input: 215 20% 91%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+
+    /* Sidebar - Responsive */
+    --sidebar-background: 215 25% 98%;
+    --sidebar-foreground: 215 16% 14%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 20% 96%;
+    --sidebar-accent-foreground: 215 16% 14%;
+    --sidebar-border: 215 20% 91%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  /* 🌙 Dark Mode - All Device Optimized */
+  .dark {
+    --background: 215 16% 6%;
+    --foreground: 215 20% 98%;
+    --card: 215 16% 8%;
+    --card-foreground: 215 20% 98%;
+    --popover: 215 16% 8%;
+    --popover-foreground: 215 20% 98%;
+
+    --primary: 217 91% 65%;
+    --primary-foreground: 215 16% 6%;
+
+    --success: 142 76% 45%;
+    --warning: 38 92% 60%;
+    --destructive: 0 84% 70%;
+    --info: 199 89% 58%;
+
+    --secondary: 215 16% 12%;
+    --secondary-foreground: 215 20% 98%;
+    --muted: 215 16% 12%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 215 16% 12%;
+    --accent-foreground: 215 20% 98%;
+
+    --border: 215 16% 15%;
+    --input: 215 16% 15%;
+    --ring: 217 91% 65%;
+
+    --sidebar-background: 215 16% 4%;
+    --sidebar-foreground: 215 20% 95%;
+    --sidebar-primary: 217 91% 65%;
+    --sidebar-primary-foreground: 215 16% 6%;
+    --sidebar-accent: 215 16% 10%;
+    --sidebar-accent-foreground: 215 20% 95%;
+    --sidebar-border: 215 16% 15%;
+  }
+
+  /* 📐 Base Styles - Mobile First */
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+    font-variation-settings: "opsz" 32;
+    line-height: 1.5;
+    min-height: 100vh;
+    min-height: 100svh; /* Support for new viewport units */
+    overflow-x: hidden;
+  }
+
+  /* 📱 Touch-Friendly Scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-border/80;
+  }
+
+  /* Focus outline improvements for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Typography improvements for mobile readability */
+  h1, h2, h3, h4, h5, h6 {
+    line-height: 1.2;
+    font-weight: 600;
+  }
+
+  /* Better text readability on small screens */
+  @media (max-width: 640px) {
+    body {
+      font-size: 16px; /* Prevent iOS zoom on inputs */
+    }
+  }
+
+  /* Telugu and multilingual font support */
+  .telugu {
+    font-family: "Noto Sans Telugu", "Inter", system-ui, sans-serif;
+  }
+
+  .hindi {
+    font-family: "Noto Sans Devanagari", "Inter", system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  /* 🏢 Business Application Components */
+  
+  /* Responsive Container System */
+  .container-responsive {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-mobile {
+    @apply w-full px-4 sm:px-6;
+  }
+
+  .container-tablet {
+    @apply w-full max-w-4xl mx-auto px-6 lg:px-8;
+  }
+
+  .container-desktop {
+    @apply w-full max-w-7xl mx-auto px-8;
+  }
+
+  /* 🎨 Visual Enhancement Components */
+  .expenso-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-600)));
+  }
+
+  .glass-effect {
+    @apply backdrop-blur-md bg-white/20 border border-white/20;
+  }
+
+  .dark .glass-effect {
+    @apply backdrop-blur-md bg-black/20 border border-white/10;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .animate-in {
+    @apply animate-fade-in;
+  }
+
+  /* 📊 Business Status Indicators */
+  .status-pending {
+    @apply bg-repair-pending/10 text-repair-pending border-repair-pending/20;
+  }
+
+  .status-progress {
+    @apply bg-repair-progress/10 text-repair-progress border-repair-progress/20;
+  }
+
+  .status-completed {
+    @apply bg-repair-completed/10 text-repair-completed border-repair-completed/20;
+  }
+
+  .status-delivered {
+    @apply bg-repair-delivered/10 text-repair-delivered border-repair-delivered/20;
+  }
+
+  /* Stock Level Indicators */
+  .stock-critical {
+    @apply bg-stock-critical/10 text-stock-critical border-stock-critical/20;
+  }
+
+  .stock-low {
+    @apply bg-stock-low/10 text-stock-low border-stock-low/20;
+  }
+
+  .stock-good {
+    @apply bg-stock-good/10 text-stock-good border-stock-good/20;
+  }
+
+  /* 🔒 Privacy & Business Features */
+  .profit-hidden {
+    @apply blur-sm select-none cursor-not-allowed opacity-60;
+  }
+
+  .profit-visible {
+    @apply transition-all duration-300;
+  }
+
+  /* 🌐 Connection Status */
+  .status-online {
+    @apply bg-success text-success-foreground;
+  }
+
+  .status-offline {
+    @apply bg-destructive text-destructive-foreground;
+  }
+
+  .connection-pulse {
+    @apply animate-pulse;
+  }
+
+  /* 📱 Mobile Navigation Components */
+  .mobile-nav {
+    @apply lg:hidden;
+  }
+
+  .desktop-nav {
+    @apply hidden lg:flex;
+  }
+
+  .tablet-nav {
+    @apply hidden md:flex lg:hidden;
+  }
+
+  /* 📋 Form & Workflow Components */
+  .step-active {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .step-completed {
+    @apply bg-success text-success-foreground;
+  }
+
+  .step-inactive {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  /* 🎭 Loading & Feedback Components */
+  .skeleton {
+    @apply animate-pulse bg-muted rounded-md;
+  }
+
+  .loading-spinner {
+    @apply animate-spin rounded-full border-2 border-primary/20 border-t-primary;
+  }
+
+  /* 📤 Export & Action Buttons */
+  .export-btn {
+    @apply bg-success hover:bg-success/90 text-success-foreground transition-colors duration-200;
+  }
+
+  .action-btn {
+    @apply bg-primary hover:bg-primary/90 text-primary-foreground transition-colors duration-200;
+  }
+
+  /* 🗣️ Language & Localization */
+  .lang-switch {
+    @apply transition-all duration-200 hover:bg-accent rounded-md;
+  }
+
+  /* 📱 MOBILE-PRIMARY Touch Navigation - Phone First */
+  .touch-target {
+    @apply min-h-[48px] min-w-[48px] flex items-center justify-center touch-manipulation;
+    /* Optimized for thumb interaction */
+  }
+
+  .touch-button {
+    @apply min-h-[52px] px-6 py-3 rounded-xl font-medium transition-all duration-200 active:scale-95 touch-manipulation;
+    /* Larger buttons for easy thumb tapping */
+  }
+
+  .thumb-primary {
+    @apply w-full min-h-[56px] text-lg font-semibold rounded-xl touch-manipulation;
+    /* Primary mobile actions - full width and prominent */
+  }
+
+  .mobile-fab {
+    @apply fixed bottom-20 right-6 w-16 h-16 rounded-full shadow-lg z-50 touch-manipulation;
+    /* Floating action button in thumb reach zone */
+  }
+
+  /* Mobile-first navigation zones */
+  .mobile-nav-bottom {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t z-50;
+    /* Bottom navigation for thumb accessibility */
+  }
+
+  .mobile-header-minimal {
+    @apply sticky top-0 bg-white/95 backdrop-blur-sm border-b z-40 h-14;
+    /* Minimal header to maximize content space */
+  }
+
+  /* 📊 Data Visualization Components */
+  .chart-container {
+    @apply w-full h-[300px] sm:h-[350px] lg:h-[400px];
+  }
+
+  .metric-card {
+    @apply bg-card border rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  /* 📋 Table Responsive Components */
+  .table-responsive {
+    @apply w-full overflow-x-auto -mx-4 sm:mx-0;
+  }
+
+  .table-mobile {
+    @apply block sm:hidden space-y-4;
+  }
+
+  .table-desktop {
+    @apply hidden sm:table w-full;
+  }
+
+  /* 🎨 Card System - Mobile Optimized */
+  .card-compact {
+    @apply bg-card border rounded-lg p-3 sm:p-4 shadow-sm;
+  }
+
+  .card-standard {
+    @apply bg-card border rounded-lg p-4 sm:p-6 shadow-sm;
+  }
+
+  .card-expanded {
+    @apply bg-card border rounded-lg p-6 sm:p-8 shadow-sm;
+  }
+
+  /* 🔍 Search & Filter Components */
+  .search-container {
+    @apply relative flex-1 min-w-0;
+  }
+
+  .filter-group {
+    @apply flex flex-col sm:flex-row gap-2 sm:gap-4 w-full;
+  }
+
+  .filter-item {
+    @apply w-full sm:w-auto min-w-[200px];
+  }
+
+  /* 📱 Mobile-Specific Layouts */
+  .mobile-grid {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  .mobile-stack {
+    @apply flex flex-col space-y-4 sm:space-y-6;
+  }
+
+  .mobile-header {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  /* 💳 Transaction & Financial Components */
+  .transaction-row {
+    @apply flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors;
+  }
+
+  .amount-display {
+    @apply font-mono font-semibold text-lg sm:text-xl;
+  }
+
+  .profit-toggle:hover {
+    @apply bg-muted/50 transition-colors duration-200;
+  }
+
+  /* 🎯 Business Priority Indicators */
+  .priority-high {
+    @apply bg-destructive/10 text-destructive border-l-4 border-destructive;
+  }
+
+  .priority-medium {
+    @apply bg-warning/10 text-warning border-l-4 border-warning;
+  }
+
+  .priority-low {
+    @apply bg-success/10 text-success border-l-4 border-success;
+  }
+
+  /* 🖥️ Cross-Platform Compatibility */
+  .electron-drag {
+    -webkit-app-region: drag;
+  }
+
+  .electron-no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /* 📱 Mobile App Safe Areas */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left, 0);
+  }
+
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right, 0);
+  }
+
+  /* 🌐 Progressive Web App Optimizations */
+  .pwa-safe-area {
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  }
+
+  /* 🎪 Animation System */
+  .slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+
+  .slide-in-left {
+    animation: slideInLeft 0.3s ease-out;
+  }
+
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  /* 📊 Dashboard Grid System */
+  .dashboard-grid {
+    @apply grid gap-4 sm:gap-6;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .metrics-grid {
+    @apply grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+
+  /* 🎨 Enhanced Visual Effects */
+  .glow-effect {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .dark .glow-effect {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
+  }
+
+  /* 📱 Mobile Menu & Navigation */
+  .mobile-menu-backdrop {
+    @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden;
+  }
+
+  .mobile-menu {
+    @apply fixed inset-y-0 left-0 w-64 bg-background border-r border-border z-50 transform transition-transform duration-300;
+  }
+
+  .mobile-menu.open {
+    @apply translate-x-0;
+  }
+
+  .mobile-menu.closed {
+    @apply -translate-x-full;
+  }
+
+  /* 🎯 Focus Management for Accessibility */
+  .focus-trap {
+    @apply outline-none;
+  }
+
+  .focus-visible {
+    @apply ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* 🌈 Theme Transitions */
+  .theme-transition {
+    @apply transition-colors duration-300 ease-in-out;
+  }
+}
+
+/* 🎭 Enhanced Animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px hsl(var(--primary) / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
+  }
+}
+
+/* 📱 DEVICE AUTO-SWITCHING SYSTEM - Intelligent Responsive Design */
+
+/* ===============================================
+   MOBILE-FOCUSED USERS (320px - 767px)
+   Primary interaction method: Touch/Thumb
+   =============================================== */
+
+/* Extra Small Phones (320px - 383px) - iPhone SE, older Android */
+@media (max-width: 383px) {
+  /* Ultra-compact mobile interface */
+  .card-compact {
+    @apply p-2;
+  }
+  
+  .touch-button {
+    @apply min-h-[48px] text-sm px-4;
+  }
+  
+  .amount-display {
+    @apply text-sm font-semibold;
+  }
+
+  .metrics-grid {
+    @apply grid-cols-1 gap-2;
+  }
+
+  .mobile-header {
+    @apply py-2;
+  }
+
+  .thumb-primary {
+    @apply min-h-[52px] text-base;
+  }
+
+  .responsive-card-mobile {
+    @apply p-3 space-y-2 rounded-lg;
+  }
+
+  .mobile-nav-ultra-compact {
+    @apply px-2 py-1;
+  }
+}
+
+/* Small Phones (384px - 480px) - iPhone 12 Mini, standard Android */
+@media (min-width: 384px) and (max-width: 480px) {
+  .card-compact {
+    @apply p-3;
+  }
+  
+  .touch-button {
+    @apply min-h-[52px] text-base px-5;
+  }
+  
+  .amount-display {
+    @apply text-base sm:text-lg;
+  }
+
+  .metrics-grid {
+    @apply grid-cols-1 gap-3;
+  }
+
+  .responsive-card-mobile {
+    @apply p-4 space-y-3 rounded-xl;
+  }
+
+  .mobile-optimized-layout {
+    @apply space-y-4;
+  }
+}
+
+/* Large Phones (481px - 640px) - iPhone Pro Max, large Android */
+@media (min-width: 481px) and (max-width: 640px) {
+  .metrics-grid {
+    @apply grid-cols-2 gap-3;
+  }
+
+  .touch-button {
+    @apply min-h-[56px] text-base px-6;
+  }
+
+  .responsive-card-mobile {
+    @apply p-4 space-y-3 rounded-xl;
+  }
+
+  .mobile-dual-column {
+    @apply grid grid-cols-2 gap-4;
+  }
+}
+
+/* Phablet/Small Tablet Portrait (641px - 767px) - Still mobile-first */
+@media (min-width: 641px) and (max-width: 767px) {
+  .metrics-grid {
+    @apply grid-cols-2 gap-4;
+  }
+
+  .touch-button {
+    @apply min-h-[56px] text-lg px-6;
+  }
+
+  .responsive-card-mobile {
+    @apply p-5 space-y-4 rounded-xl;
+  }
+
+  .phablet-layout {
+    @apply grid grid-cols-2 gap-4;
+  }
+}
+
+/* ===============================================
+   TABLET-FOCUSED USERS (768px - 1023px)
+   Balanced touch and precision interaction
+   =============================================== */
+
+/* Small Tablets (768px - 899px) - iPad Mini, small Android tablets */
+@media (min-width: 768px) and (max-width: 899px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    @apply gap-4;
+  }
+  
+  .tablet-nav {
+    @apply flex;
+  }
+
+  .touch-button {
+    @apply min-h-[52px] text-base px-6;
+  }
+
+  .responsive-card-tablet {
+    @apply p-5 space-y-4 rounded-xl shadow-md;
+  }
+
+  .tablet-sidebar-compact {
+    @apply w-60;
+  }
+
+  .tablet-dual-pane {
+    @apply grid grid-cols-2 gap-6;
+  }
+
+  .metrics-grid {
+    @apply grid-cols-3 gap-4;
+  }
+}
+
+/* Large Tablets (900px - 1023px) - iPad Pro, large Android tablets */
+@media (min-width: 900px) and (max-width: 1023px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    @apply gap-5;
+  }
+
+  .tablet-nav {
+    @apply flex;
+  }
+
+  .touch-button {
+    @apply min-h-[48px] text-base px-6;
+  }
+
+  .responsive-card-tablet {
+    @apply p-6 space-y-4 rounded-xl shadow-md;
+  }
+
+  .tablet-sidebar-full {
+    @apply w-72;
+  }
+
+  .tablet-triple-pane {
+    @apply grid grid-cols-3 gap-6;
+  }
+
+  .metrics-grid {
+    @apply grid-cols-4 gap-4;
+  }
+}
+
+/* ===============================================
+   DESKTOP-FOCUSED USERS (1024px+)
+   Precision interaction, viewing-focused
+   =============================================== */
+
+/* Small Desktop (1024px - 1279px) - Small laptops, compact monitors */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    @apply gap-6;
+  }
+
+  .desktop-nav {
+    @apply flex;
+  }
+
+  .responsive-card-desktop {
+    @apply p-6 space-y-5 rounded-xl shadow-lg hover:shadow-xl transition-shadow;
+  }
+
+  .desktop-sidebar-standard {
+    @apply w-80;
+  }
+
+  .desktop-content-area {
+    @apply p-8 space-y-6;
+  }
+
+  .metrics-grid {
+    @apply grid-cols-4 gap-6;
+  }
+
+  .desktop-table-view {
+    @apply block;
+  }
+}
+
+/* Medium Desktop (1280px - 1439px) - Standard monitors */
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    @apply gap-6;
+  }
+
+  .responsive-card-desktop {
+    @apply p-7 space-y-5 rounded-xl shadow-lg;
+  }
+
+  .desktop-sidebar-wide {
+    @apply w-96;
+  }
+
+  .desktop-multi-column {
+    @apply grid grid-cols-12 gap-8;
+  }
+
+  .metrics-grid {
+    @apply grid-cols-5 gap-6;
+  }
+}
+
+/* Large Desktop (1440px - 1919px) - Large monitors */
+@media (min-width: 1440px) and (max-width: 1919px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    @apply gap-8;
+  }
+
+  .responsive-card-desktop {
+    @apply p-8 space-y-6 rounded-2xl shadow-lg;
+  }
+
+  .desktop-sidebar-extra-wide {
+    @apply w-[26rem];
+  }
+
+  .desktop-content-spacious {
+    @apply p-10 space-y-8;
+  }
+
+  .metrics-grid {
+    @apply grid-cols-6 gap-8;
+  }
+
+  .large-desktop-layout {
+    @apply max-w-7xl mx-auto;
+  }
+}
+
+/* Ultra-wide Desktop (1920px+) - Ultra-wide monitors, 4K displays */
+@media (min-width: 1920px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    @apply gap-10;
+  }
+
+  .responsive-card-desktop {
+    @apply p-10 space-y-8 rounded-2xl shadow-xl;
+  }
+
+  .desktop-sidebar-massive {
+    @apply w-[30rem];
+  }
+
+  .desktop-content-ultra-spacious {
+    @apply p-12 space-y-10;
+  }
+
+  .metrics-grid {
+    @apply grid-cols-8 gap-10;
+  }
+
+  .ultra-wide-layout {
+    @apply max-w-[1800px] mx-auto;
+  }
+}
+
+/* ===============================================
+   DEVICE-SPECIFIC AUTO-SWITCHING CLASSES
+   Applied via JavaScript based on device detection
+   =============================================== */
+
+/* Mobile Device Classes - Auto-applied for phones */
+.device-mobile {
+  /* Mobile-first optimizations automatically applied */
+  
+  .auto-layout {
+    @apply flex flex-col space-y-4;
+  }
+
+  .auto-navigation {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t z-50;
+  }
+
+  .auto-header {
+    @apply sticky top-0 h-14 bg-white/95 backdrop-blur-sm border-b z-40;
+  }
+
+  .auto-content {
+    @apply p-4 pb-20; /* Account for bottom navigation */
+  }
+
+  .auto-card {
+    @apply p-4 space-y-3 rounded-xl border-2 active:scale-95;
+  }
+
+  .auto-button {
+    @apply w-full min-h-[56px] text-lg font-semibold rounded-xl;
+  }
+
+  .auto-grid {
+    @apply grid grid-cols-1 gap-4;
+  }
+}
+
+/* Tablet Device Classes - Auto-applied for tablets */
+.device-tablet {
+  .auto-layout {
+    @apply flex flex-row;
+  }
+
+  .auto-navigation {
+    @apply w-64 border-r bg-muted/30 flex-shrink-0;
+  }
+
+  .auto-header {
+    @apply h-16 bg-white border-b;
+  }
+
+  .auto-content {
+    @apply p-6 space-y-6;
+  }
+
+  .auto-card {
+    @apply p-5 space-y-4 rounded-xl shadow-md hover:shadow-lg;
+  }
+
+  .auto-button {
+    @apply min-h-[52px] px-6 rounded-xl;
+  }
+
+  .auto-grid {
+    @apply grid grid-cols-2 lg:grid-cols-3 gap-5;
+  }
+}
+
+/* Desktop Device Classes - Auto-applied for desktops */
+.device-desktop {
+  .auto-layout {
+    @apply flex flex-row;
+  }
+
+  .auto-navigation {
+    @apply w-80 border-r bg-muted/30 flex-shrink-0;
+  }
+
+  .auto-header {
+    @apply h-16 bg-white border-b;
+  }
+
+  .auto-content {
+    @apply p-8 space-y-8;
+  }
+
+  .auto-card {
+    @apply p-6 space-y-5 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1;
+  }
+
+  .auto-button {
+    @apply min-h-[48px] px-6 rounded-xl;
+  }
+
+  .auto-grid {
+    @apply grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6;
+  }
+}
+
+/* Touch Device Optimizations - Auto-applied for touch screens */
+.device-touch {
+  .auto-interactive {
+    @apply min-h-[44px] min-w-[44px] touch-manipulation;
+  }
+
+  .auto-button {
+    @apply active:scale-95 transition-transform;
+  }
+
+  .auto-card {
+    @apply active:scale-95 transition-transform;
+  }
+
+  .auto-link {
+    @apply min-h-[44px] flex items-center px-4 rounded-lg;
+  }
+}
+
+/* Non-touch Device Optimizations - Auto-applied for mouse/trackpad */
+.device-no-touch {
+  .auto-interactive {
+    @apply min-h-[32px] min-w-[32px];
+  }
+
+  .auto-button {
+    @apply hover:shadow-md transition-shadow;
+  }
+
+  .auto-card {
+    @apply hover:shadow-lg hover:-translate-y-1 transition-all;
+  }
+
+  .auto-link {
+    @apply hover:bg-muted/50 transition-colors;
+  }
+}
+
+/* Retina Display Optimizations - Auto-applied for high DPI */
+.device-retina {
+  .auto-icon {
+    @apply antialiased;
+  }
+
+  .auto-text {
+    @apply antialiased;
+  }
+
+  .auto-border {
+    @apply border-[0.5px];
+  }
+}
+
+/* Orientation-based Auto-switching */
+.device-portrait {
+  .auto-orientation-layout {
+    @apply flex-col space-y-4;
+  }
+
+  .auto-orientation-nav {
+    @apply w-full h-auto;
+  }
+}
+
+.device-landscape {
+  .auto-orientation-layout {
+    @apply flex-row space-x-6 space-y-0;
+  }
+
+  .auto-orientation-nav {
+    @apply w-64 h-full;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .glow-effect {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
+  }
+}
+
+/* Landscape orientation optimizations */
+@media (orientation: landscape) and (max-height: 640px) {
+  .mobile-header {
+    @apply py-2;
+  }
+  
+  .card-compact {
+    @apply py-2;
+  }
+}
+
+/* Print styles for reports */
+@media print {
+  .mobile-nav,
+  .desktop-nav,
+  .tablet-nav {
+    @apply hidden;
+  }
+  
+  .card-standard,
+  .card-compact,
+  .card-expanded {
+    @apply border shadow-none;
+  }
+  
+  .bg-background {
+    background: white !important;
+  }
+  
+  .text-foreground {
+    color: black !important;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .card-hover {
+    @apply transform-none;
+  }
+  
+  .slide-in-right,
+  .slide-in-left,
+  .fade-in,
+  .scale-in {
+    animation: none;
+  }
+  
+  .animate-in {
+    @apply animate-none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .glass-effect {
+    @apply bg-background border-2;
+  }
+  
+  .card-hover {
+    @apply shadow-xl border-2;
+  }
+}
+
+/* ============================================
+   ANIMATION AND LOADING STATES
+   ============================================ */
+
+/* Loading spinner animation */
+.loading-spinner {
+  border: 2px solid #f3f4f6;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Fade in animation for content */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Pulse animation for loading states */
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
