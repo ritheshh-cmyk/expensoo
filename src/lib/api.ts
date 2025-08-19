@@ -1,672 +1,491 @@
-// Robust API Client for Pixel Nest - Works Offline and Online
-// Supports single backend (ngrok), local storage, sync queue, and automatic failover
 
-interface BackendConfig {
-  url: string;
-  name: string;
-  priority: number;
-  timeout: number;
+// 🔗 PRODUCTION API CLIENT WITH ADVANCED ERROR HANDLING AND RETRY LOGIC
+import { toast } from '../components/ui/use-toast';
+
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  status?: number;
+  message?: string;
 }
 
-interface OfflineAction {
-  id: string;
-  endpoint: string;
-  method: string;
-  data?: any;
-  timestamp: number;
-  retryCount: number;
-}
-
-interface CachedResponse {
-  data: any;
-  timestamp: number;
-  etag?: string;
-}
-
-class RobustApiClient {
-  private backend: BackendConfig = {
-    url: this.getBackendUrl(),
-    name: import.meta.env.MODE === 'production' ? "Production Backend" : "Local Backend",
-    priority: 1,
-    timeout: 15000
+interface ApiConfig {
+  baseUrl: string;
+  retryConfig: {
+    maxRetries: number;
+    baseDelay: number;
+    maxDelay: number;
   };
+  debug: boolean;
+}
 
-  private getBackendUrl(): string {
-    if (import.meta.env.MODE === 'production') {
-      return import.meta.env.VITE_PRODUCTION_BACKEND_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
-    }
-    return import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
-  }
-
-  // Method to update backend URL dynamically
-  updateBackendUrl(url: string) {
-    this.backend.url = url;
-    console.log(`🔄 Backend URL updated to: ${url}`);
-  }
-
-  private offlineQueue: OfflineAction[] = [];
-  private cache: Map<string, CachedResponse> = new Map();
-  private isOnline = navigator.onLine;
-  private syncInProgress = false;
+class ApiClient {
+  private config: ApiConfig;
+  private token: string | null;
 
   constructor() {
-    this.initialize();
-  }
+    const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
+    const prodUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
+    const baseUrl = envBaseUrl || (import.meta.env.PROD ? prodUrl : 'http://localhost:10000');
 
-  private async initialize() {
-    await this.loadOfflineQueue();
-    this.setupNetworkListeners();
-    this.processOfflineQueue();
-  }
+    this.config = {
+      baseUrl,
+      retryConfig: {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 10000
+      },
+      debug: import.meta.env.DEV || false
+    };
 
-  // Network status management
-  private setupNetworkListeners() {
-    window.addEventListener('online', () => {
-      this.isOnline = true;
-      console.log('🌐 Network: Online - Processing offline queue');
-      this.processOfflineQueue();
-    });
-
-    window.addEventListener('offline', () => {
-      this.isOnline = false;
-      console.log('📴 Network: Offline - Using local cache');
-    });
-  }
-
-  // Main request method with offline support and instant loading
-  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const isWriteAction = ['POST', 'PUT', 'DELETE'].includes(options.method || 'GET');
-    const cacheKey = `${options.method || 'GET'}:${endpoint}`;
-
-    // For GET requests, return cached data immediately for instant loading
-    if (!isWriteAction) {
-      const cached = this.getCachedResponse<T>(cacheKey);
-      if (cached) {
-        console.log('⚡ Instant loading from cache:', endpoint);
-        // Update cache in background if online
-        if (this.isOnline) {
-          this.updateCacheInBackground(endpoint, options, cacheKey);
-        }
-        return cached;
-      }
-    }
-
-    // For write actions, implement optimistic updates
-    if (isWriteAction && this.isOnline) {
-      // Return optimistic response immediately
-      const optimisticResponse = this.getOptimisticResponse<T>(endpoint, {
-        id: `temp-${Date.now()}`,
-        endpoint,
-        method: options.method || 'POST',
-        data: options.body ? JSON.parse(options.body as string) : undefined,
-        timestamp: Date.now(),
-        retryCount: 0
+    this.token = null;
+    if (this.config.debug) {
+      console.log('🌐 API Client initialized:', {
+        baseUrl: this.config.baseUrl,
+        mode: import.meta.env.MODE,
+        retryConfig: this.config.retryConfig
       });
-      
-      // Execute actual request in background
-      this.executeWriteInBackground(endpoint, options, cacheKey);
-      
-      return optimisticResponse;
     }
-
-    // Try online request for first-time loads
-    if (this.isOnline) {
-      try {
-        const result = await this.makeOnlineRequest<T>(endpoint, options);
-        // Cache successful responses
-        if (!isWriteAction) {
-          this.cacheResponse(cacheKey, result);
-        }
-        return result;
-      } catch (error) {
-        console.warn('Online request failed:', error);
-      }
-    }
-
-    // Handle write actions when offline
-    if (isWriteAction && !this.isOnline) {
-      return this.handleOfflineWrite<T>(endpoint, options);
-    }
-
-    // For read actions when offline, return cached data or empty result
-    if (!isWriteAction && !this.isOnline) {
-      const cached = this.getCachedResponse<T>(cacheKey);
-      if (cached) {
-        return cached;
-      }
-      // Return appropriate empty data structure based on endpoint
-      return this.getEmptyResponse<T>(endpoint);
-    }
-
-    throw new Error('No backend available and no cached data');
   }
 
-  // Update cache in background for stale-while-revalidate pattern
-  private async updateCacheInBackground(endpoint: string, options: RequestInit, cacheKey: string) {
+  private debug(...args: any[]) {
+    if (this.config.debug) {
+      console.log(...args);
+    }
+  }
+
+  private error(...args: any[]) {
+    console.error(...args);
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private getAuthToken(): string | null {
     try {
-      const data = await this.makeOnlineRequest(endpoint, options);
-      this.cacheResponse(cacheKey, data);
-      console.log('🔄 Background cache update completed for:', endpoint);
+      return localStorage.getItem('auth_token');
     } catch (error) {
-      console.log('Background cache update failed:', error);
+      this.error('Failed to access localStorage:', error);
+      return null;
     }
   }
 
-  // Execute write operations in background
-  private async executeWriteInBackground(endpoint: string, options: RequestInit, cacheKey: string) {
-    try {
-      const data = await this.makeOnlineRequest(endpoint, options);
-      // Invalidate related caches
-      this.invalidateRelatedCaches(endpoint);
-      console.log('✅ Background write operation completed for:', endpoint);
-    } catch (error) {
-      console.error('Background write operation failed:', error);
-      // Handle failure - could show notification to user
-    }
-  }
-
-  // Invalidate related caches when data changes
-  private invalidateRelatedCaches(endpoint: string) {
-    const keysToInvalidate: string[] = [];
-    
-    if (endpoint.includes('/transactions')) {
-      keysToInvalidate.push('GET:/api/transactions', 'GET:/api/dashboard', 'GET:/api/reports');
-    }
-    if (endpoint.includes('/suppliers')) {
-      keysToInvalidate.push('GET:/api/suppliers');
-    }
-    if (endpoint.includes('/expenditures')) {
-      keysToInvalidate.push('GET:/api/expenditures', 'GET:/api/dashboard');
-    }
-    if (endpoint.includes('/bills')) {
-      keysToInvalidate.push('GET:/api/bills', 'GET:/api/dashboard');
-    }
-    
-    keysToInvalidate.forEach(key => {
-      this.cache.delete(key);
-      console.log('🗑️ Invalidated cache:', key);
-    });
-  }
-
-  private async makeOnlineRequest<T>(endpoint: string, options: RequestInit): Promise<T> {
-    const url = `${this.backend.url}${endpoint}`;
-    const token = localStorage.getItem("callmemobiles_token");
+  private async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    const url = `${this.config.baseUrl}${endpoint}`;
+    const token = this.getAuthToken();
+    let attempt = 0;
+    const { maxRetries, baseDelay, maxDelay } = this.config.retryConfig;
 
     const config: RequestInit = {
       headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
-        "Accept": "application/json",
-        "Cache-Control": "no-cache",
-        ...(token && { "Authorization": `Bearer ${token}` }),
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
-      mode: 'cors',
-      credentials: 'omit',
-      signal: AbortSignal.timeout(this.backend.timeout),
       ...options,
     };
 
-    console.log(`🌐 Making request to: ${url}`);
-    console.log(`🔑 Token present: ${token ? 'Yes' : 'No'}`);
-    
-    try {
-      const response = await fetch(url, config);
-      
-      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
-      
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        try {
-          const errorData = await response.text();
-          console.error(`❌ Error response body:`, errorData);
-          if (errorData) {
-            errorMessage += ` - ${errorData}`;
-          }
-        } catch (e) {
-          console.error(`❌ Could not read error response:`, e);
+    while (true) {
+      try {
+        this.debug(`🔌 API Request: ${endpoint} (Attempt ${attempt + 1}/${maxRetries})`, {
+          url,
+          method: config.method || 'GET'
+        });
+
+        const response = await fetch(url, config);
+        const data = await response.json().catch(() => null);
+
+        // Handle authentication issues
+        if (response.status === 401) {
+          this.debug('🔒 Authentication required');
+          return {
+            success: false,
+            error: 'Authentication required',
+            status: 401,
+            message: data?.message || 'Please log in to continue'
+          };
         }
-        throw new Error(errorMessage);
-      }
 
-      const data = await response.json();
-      console.log(`✅ Response data for ${endpoint}:`, data);
-      return data;
-    } catch (error) {
-      console.error(`❌ Request failed for ${endpoint}:`, error);
-      throw error;
-    }
-  }
+        // Handle successful responses
+        if (response.ok) {
+          this.debug(`✅ API Response: ${endpoint}`, {
+            status: response.status,
+            data
+          });
 
-  private async handleOfflineWrite<T>(endpoint: string, options: RequestInit): Promise<T> {
-    const action: OfflineAction = {
-      id: `${Date.now()}-${Math.random()}`,
-      endpoint,
-      method: options.method || 'POST',
-      data: options.body ? JSON.parse(options.body as string) : undefined,
-      timestamp: Date.now(),
-      retryCount: 0
-    };
-
-    this.offlineQueue.push(action);
-    await this.saveOfflineQueue();
-
-    console.log('📝 Queued offline action:', action);
-
-    // Return optimistic response
-    return this.getOptimisticResponse<T>(endpoint, action);
-  }
-
-  // Cache management
-  private cacheResponse(key: string, data: any) {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now()
-    });
-    // Limit cache size
-    if (this.cache.size > 100) {
-      const oldestKey = this.cache.keys().next().value;
-      this.cache.delete(oldestKey);
-    }
-  }
-
-  private getCachedResponse<T>(key: string): T | null {
-    const cached = this.cache.get(key);
-    if (!cached) return null;
-    
-    // Different cache durations for different types of data
-    let maxAge = 3600000; // 1 hour default
-    
-    if (key.includes('/dashboard')) maxAge = 300000; // 5 minutes for dashboard
-    else if (key.includes('/transactions')) maxAge = 1800000; // 30 minutes for transactions
-    else if (key.includes('/suppliers')) maxAge = 7200000; // 2 hours for suppliers
-    else if (key.includes('/inventory')) maxAge = 1800000; // 30 minutes for inventory
-    else if (key.includes('/reports')) maxAge = 3600000; // 1 hour for reports
-    
-    // Check if cache is still valid
-    if (Date.now() - cached.timestamp > maxAge) {
-      this.cache.delete(key);
-      return null;
-    }
-    return cached.data as T;
-  }
-
-  // Offline queue management
-  private async saveOfflineQueue() {
-    try {
-      localStorage.setItem('offlineQueue', JSON.stringify(this.offlineQueue));
-      } catch (error) {
-      console.error('Failed to save offline queue:', error);
-    }
-  }
-
-  private async loadOfflineQueue() {
-    try {
-      const saved = localStorage.getItem('offlineQueue');
-      if (saved) {
-        this.offlineQueue = JSON.parse(saved);
-      }
-    } catch (error) {
-      console.error('Failed to load offline queue:', error);
-    }
-  }
-
-  private async processOfflineQueue() {
-    if (this.syncInProgress || !this.isOnline || this.offlineQueue.length === 0) {
-      return;
-    }
-    this.syncInProgress = true;
-    console.log('🔄 Processing offline queue...');
-    try {
-      const actions = [...this.offlineQueue];
-      for (const action of actions) {
-        try {
-          await this.processOfflineAction(action);
-          this.offlineQueue = this.offlineQueue.filter(a => a.id !== action.id);
-        } catch (error) {
-          console.error('Failed to process offline action:', error);
-          action.retryCount++;
-          if (action.retryCount >= 3) {
-            this.offlineQueue = this.offlineQueue.filter(a => a.id !== action.id);
-            console.warn('Removed action after max retries:', action);
-          }
+          return {
+            success: true,
+            data,
+            status: response.status,
+            message: data?.message
+          };
         }
+
+        // Handle retryable errors
+        if (attempt < maxRetries && (response.status >= 500 || !response.status)) {
+          attempt++;
+          const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+          this.debug(`🔄 Retrying request (attempt ${attempt}/${maxRetries}). Waiting ${delay}ms...`);
+          await this.sleep(delay);
+          continue;
+        }
+
+        // Handle non-retryable errors
+        return {
+          success: false,
+          error: data?.error || data?.message || `HTTP ${response.status}: ${response.statusText}`,
+          status: response.status,
+          message: data?.message
+        };
+
+      } catch (error: any) {
+        // Handle network errors
+        if (attempt < maxRetries) {
+          attempt++;
+          const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+          this.debug(`🔄 Network error, retrying (attempt ${attempt}/${maxRetries}). Waiting ${delay}ms...`);
+          await this.sleep(delay);
+          continue;
+        }
+
+        return {
+          success: false,
+          error: error.message || 'Network error occurred',
+          status: 0,
+          message: 'Failed to connect to the server'
+        };
       }
-      await this.saveOfflineQueue();
-    } finally {
-      this.syncInProgress = false;
-    }
-  }
-
-  private async processOfflineAction(action: OfflineAction) {
-    const url = `${this.backend.url}${action.endpoint}`;
-    const token = localStorage.getItem("callmemobiles_token");
-    const response = await fetch(url, {
-      method: action.method,
-      headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
-        "Accept": "application/json",
-        "Cache-Control": "no-cache",
-        ...(token && { "Authorization": `Bearer ${token}` }),
-      },
-      mode: 'cors',
-      credentials: 'omit',
-      body: action.data ? JSON.stringify(action.data) : undefined,
-      signal: AbortSignal.timeout(10000)
-    });
-    if (!response.ok) {
-      throw new Error(`Sync failed: ${response.status}`);
-    }
-    console.log('✅ Synced offline action:', action);
-  }
-
-  // Helper methods for empty responses
-  private getEmptyResponse<T>(endpoint: string): T {
-    if (endpoint.includes('/transactions')) return [] as T;
-    if (endpoint.includes('/suppliers')) return [] as T;
-    if (endpoint.includes('/expenditures')) return [] as T;
-    if (endpoint.includes('/bills')) return [] as T;
-    if (endpoint.includes('/inventory')) return [] as T;
-    if (endpoint.includes('/dashboard')) return {
-      todayRevenue: 0,
-      todayProfit: 0,
-      totalRevenue: 0,
-      totalProfit: 0,
-      pendingRepairs: 0,
-      completedRepairs: 0,
-      totalCustomers: 0,
-      lowStockItems: 0,
-      pendingBills: 0,
-      recentTransactions: []
-    } as T;
-    if (endpoint.includes('/reports')) return [] as T;
-    if (endpoint.includes('/statistics')) return {} as T;
-    return {} as T;
-  }
-
-  private getOptimisticResponse<T>(endpoint: string, action: OfflineAction): T {
-    if (action.data) {
-      return {
-        ...action.data,
-        id: `temp-${Date.now()}`,
-        _offline: true,
-        _pendingSync: true
-      } as T;
-    }
-    return { success: true, _offline: true } as T;
-  }
-
-  // Public API methods (same as before, just use this.request everywhere)
-  getConnectionStatus() {
-    return {
-      online: this.isOnline,
-      backend: this.backend.name,
-      offlineQueueLength: this.offlineQueue.length,
-      cacheSize: this.cache.size
-    };
-  }
-
-  async getSystemStatus() {
-    try {
-      return await this.makeOnlineRequest('/health', {});
-    } catch (error) {
-      return { status: 'offline', error: (error as Error).message };
     }
   }
 
   // Authentication methods
-  async login(username: string, password: string) {
-    return this.request('/api/auth/login', {
+  async login(username: string, password: string): Promise<ApiResponse> {
+    this.debug('🔐 Attempting login:', username);
+    const response = await this.request('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password }),
     });
-  }
 
-  async getCurrentUser() {
-    try {
-      const userData = localStorage.getItem("callmemobiles_user");
-      if (userData) {
-        return JSON.parse(userData);
-      }
-      const response = await this.request<{ user: any }>('/api/auth/me');
-      if (response.user) {
-        localStorage.setItem("callmemobiles_user", JSON.stringify(response.user));
-        return response.user;
-      }
-    } catch (error) {
-      console.error('Get current user error:', error);
+    this.debug('🔍 Login response structure:', {
+      success: response.success,
+      hasData: !!response.data,
+      hasToken: !!(response.data?.token),
+      hasUser: !!(response.data?.user),
+      dataKeys: response.data ? Object.keys(response.data) : [],
+    });
+
+    if (response.success && response.data?.token) {
+      this.token = response.data.token;
+      localStorage.setItem('auth_token', response.data.token);
+      localStorage.setItem('auth_user', JSON.stringify(response.data.user));
+      this.debug('✅ Login successful - token and user saved');
+      
+      return {
+        success: true,
+        data: {
+          token: response.data.token,
+          user: response.data.user
+        },
+        message: response.data.message || 'Login successful'
+      };
+    } else {
+      this.error('❌ Login failed:', response.error);
+      return {
+        success: false,
+        error: response.error || 'Login failed',
+        message: response.message
+      };
     }
-    return null;
   }
 
-  async logout() {
-    localStorage.removeItem("callmemobiles_token");
-    localStorage.removeItem("callmemobiles_user");
-  }
-
-  // Transaction methods
-  async getTransactions() {
-    const response = await this.request('/api/transactions');
-    // Transform backend response to match frontend interface
-    return response.map((transaction: any) => ({
-      id: transaction.id?.toString() || '',
-      date: new Date(transaction.createdAt || transaction.created_at || Date.now()),
-      customer: transaction.customerName || transaction.customer_name || '',
-      phone: transaction.mobileNumber || transaction.mobile_number || '',
-      device: transaction.deviceModel || transaction.device_model || '',
-      repairType: transaction.repairType || transaction.repair_type || '',
-      cost: transaction.repairCost || transaction.repair_cost || 0,
-      profit: transaction.profit || 0,
-      status: transaction.status?.toLowerCase() || 'pending',
-      paymentMethod: transaction.paymentMethod || transaction.payment_method || 'cash',
-      freeGlass: transaction.freeGlass || transaction.free_glass_installation || false
-    }));
-  }
-
-  async createTransaction(data: any) {
-    return this.request('/api/transactions', {
+  async register(userData: any): Promise<ApiResponse> {
+    this.debug('📝 Attempting registration:', userData.username);
+    return this.request('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: JSON.stringify(userData),
     });
   }
 
-  async updateTransaction(id: string, data: any) {
+  async logout(): Promise<void> {
+    this.debug('🚪 Logging out...');
+    this.token = null;
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+  }
+
+  async verifyToken(): Promise<ApiResponse> {
+    this.debug('🔍 Verifying token...');
+    try {
+      const response = await this.request('/api/auth/verify');
+      return response;
+    } catch (error) {
+      // If verification endpoint doesn't exist, we'll consider it a success
+      // This allows the app to work with backends that don't have this endpoint
+      this.debug('Token verification endpoint not available, assuming valid token');
+      return {
+        success: true,
+        data: { valid: true },
+        message: 'Token verification skipped - endpoint not available'
+      };
+    }
+  }
+
+  // Dashboard
+  async getDashboardData(): Promise<ApiResponse> {
+    this.debug('📊 Fetching dashboard data...');
+    const response = await this.request('/api/dashboard');
+    
+    if (response.success) {
+      // Handle different response structures
+      const totals = response.data?.totals || response.data || {};
+      
+      return {
+        success: true,
+        data: {
+          totalRevenue: totals.totalRevenue || totals.total_revenue || 0,
+          todayRevenue: totals.todayRevenue || totals.today_revenue || 0,
+          totalProfit: totals.totalProfit || totals.total_profit || 0,
+          todayProfit: totals.todayProfit || totals.today_profit || 0,
+          totalTransactions: totals.totalTransactions || totals.total_transactions || 0,
+          pendingTransactions: totals.pendingTransactions || totals.pending_transactions || 0,
+        }
+      };
+    }
+    
+    this.error('❌ Dashboard data fetch failed:', response.error);
+    return response;
+  }
+
+  async getDashboardStats(): Promise<ApiResponse> {
+    this.debug('📊 Fetching dashboard stats from /api/dashboard/stats...');
+    const response = await this.request('/api/dashboard/stats');
+    
+    if (response.success) {
+      // The /api/dashboard/stats endpoint returns { totals, today, week }
+      const totals = response.data?.totals || {};
+      const today = response.data?.today || {};
+      const week = response.data?.week || {};
+      
+      return {
+        success: true,
+        totals: {
+          totalRevenue: totals.totalRevenue || 0,
+          totalProfit: totals.totalProfit || 0,
+          totalTransactions: totals.totalTransactions || 0,
+          pendingTransactions: totals.pendingTransactions || 0,
+          completedTransactions: totals.completedTransactions || 0,
+          avgTransactionValue: totals.avgTransactionValue || 0,
+        },
+        today: {
+          totalRevenue: today.totalRevenue || today.revenue || 0,
+          totalProfit: today.totalProfit || today.profit || 0,
+          totalTransactions: today.totalTransactions || today.transactions || 0,
+        },
+        week: {
+          totalRevenue: week.totalRevenue || week.revenue || 0,
+          totalProfit: week.totalProfit || week.profit || 0,
+          totalTransactions: week.totalTransactions || week.transactions || 0,
+        },
+        userRole: response.data?.userRole,
+        fullAccess: response.data?.fullAccess
+      };
+    }
+    
+    this.error('❌ Dashboard stats fetch failed:', response.error);
+    return response;
+  }
+
+  // Transactions
+  async getTransactions(): Promise<ApiResponse> {
+    this.debug('📋 Fetching transactions...');
+    const response = await this.request('/api/transactions');
+    
+    if (response.success) {
+      const transactions = response.data?.transactions || response.data || [];
+      return {
+        success: true,
+        data: Array.isArray(transactions) ? transactions : []
+      };
+    }
+    
+    this.error('❌ Transactions fetch failed:', response.error);
+    return {
+      success: false,
+      data: [],
+      error: response.error
+    };
+  }
+
+  async createTransaction(data: any): Promise<ApiResponse> {
+    this.debug('➕ Creating transaction:', data);
+    try {
+      // Always send all required and optional camelCase fields for backend validation
+      const validationData = {
+        customerName: data.customerName || data.customer_name,
+        mobileNumber: data.mobileNumber || data.mobile_number || data.phoneNumber,
+        deviceModel: data.deviceModel || data.device_model,
+        repairType: data.repairType || data.repair_type,
+        repairCost: Number(data.repairCost || data.repair_cost || 0),
+        amountGiven: Number(data.amountGiven || data.amount_given || 0),
+        changeReturned: Number(data.changeReturned || data.change_returned || Math.max(0, (Number(data.amountGiven || data.amount_given || 0)) - (Number(data.repairCost || data.repair_cost || 0)))),
+        paymentMethod: data.paymentMethod || data.payment_method || 'cash',
+        status: data.status || 'Completed',
+        remarks: data.remarks || '',
+        partsCost: data.partsCost || [],
+        freeGlass: data.freeGlass || false
+      };
+
+      this.debug('📤 Sending validation format (camelCase):', validationData);
+
+      const response = await this.request('/api/transactions', {
+        method: 'POST',
+        body: JSON.stringify(validationData),
+      });
+
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: 'Transaction created successfully'
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: response.error || 'Failed to create transaction',
+          variant: 'destructive'
+        });
+      }
+
+      return response;
+    } catch (error: any) {
+      this.error('❌ Transaction creation failed:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create transaction',
+        variant: 'destructive'
+      });
+      throw error;
+    }
+  }
+
+  async updateTransaction(id: string, data: any): Promise<ApiResponse> {
     return this.request(`/api/transactions/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
   }
 
-  async deleteTransaction(id: string) {
+  async deleteTransaction(id: string): Promise<ApiResponse> {
     return this.request(`/api/transactions/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     });
   }
 
-  // Supplier methods
-  async getSuppliers() {
-    return this.request('/api/suppliers');
+  // Suppliers
+  async getSuppliers(): Promise<ApiResponse> {
+    this.debug('🏢 Fetching suppliers...');
+    const response = await this.request('/api/suppliers');
+    
+    if (response.success) {
+      const suppliers = response.data?.suppliers || response.data || [];
+      return {
+        success: true,
+        data: Array.isArray(suppliers) ? suppliers : []
+      };
+    }
+    
+    return {
+      success: false,
+      data: [],
+      error: response.error
+    };
   }
 
-  async createSupplier(data: any) {
+  async createSupplier(data: any): Promise<ApiResponse> {
+    this.debug('🏢 Creating supplier:', data);
     return this.request('/api/suppliers', {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
   }
 
-  async updateSupplier(id: string, data: any) {
-    return this.request(`/api/suppliers/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
+  async getExpenditures(): Promise<ApiResponse> {
+    this.debug('💰 Fetching expenditures...');
+    const response = await this.request('/api/expenditures');
+    
+    if (response.success) {
+      const expenditures = response.data?.expenditures || response.data || [];
+      return {
+        success: true,
+        data: Array.isArray(expenditures) ? expenditures : []
+      };
+    }
+    
+    this.error('❌ Expenditures fetch failed:', response.error);
+    return {
+      success: false,
+      data: [],
+      error: response.error
+    };
   }
 
-  async deleteSupplier(id: string) {
-    return this.request(`/api/suppliers/${id}`, {
-      method: 'DELETE'
-    });
-  }
-
-  // Inventory methods
-  async getInventory() {
-    return this.request('/api/inventory');
-  }
-
-  // Dashboard methods
-  async getDashboardData() {
-    return this.request('/api/dashboard');
-  }
-
-  // Reports methods
-  async getReports(dateRange?: string) {
-    const params = dateRange ? `?dateRange=${dateRange}` : '';
-    return this.request(`/api/reports${params}`);
-  }
-
-  // Expenditure methods
-  async getExpenditures() {
-    return this.request('/api/expenditures');
-  }
-
-  async createExpenditure(data: any) {
+  async createExpenditure(data: any): Promise<ApiResponse> {
+    this.debug('💰 Creating expenditure:', data);
     return this.request('/api/expenditures', {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
   }
 
-  async updateExpenditure(id: string, data: any) {
-    return this.request(`/api/expenditures/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
+  // Metrics
+  async getMetrics(): Promise<ApiResponse> {
+    this.debug('📈 Fetching metrics...');
+    const response = await this.request('/api/metrics');
+    
+    if (response.success) {
+      return {
+        success: true,
+        data: {
+          revenue: response.data?.revenue || { today: 0, total: 0 },
+          transactions: response.data?.transactions || { pending: 0, completed: 0 },
+          suppliers: response.data?.suppliers || { total: 0, outstanding: 0 }
+        }
+      };
+    }
+    
+    return {
+      success: false,
+      data: null,
+      error: response.error
+    };
   }
 
-  async deleteExpenditure(id: string) {
-    return this.request(`/api/expenditures/${id}`, {
-      method: 'DELETE'
-    });
-  }
-
-  // Bill methods
-  async getBills() {
-    return this.request('/api/bills');
-  }
-
-  async createBill(data: any) {
-    return this.request('/api/bills', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async updateBill(id: string, data: any) {
-    return this.request(`/api/bills/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async deleteBill(id: string) {
-    return this.request(`/api/bills/${id}`, {
-      method: 'DELETE'
-    });
-  }
-
-  // Search methods
-  async search(query: string) {
-    return this.request(`/api/search?q=${encodeURIComponent(query)}`);
-  }
-
-  // SMS methods
-  async sendBillSMS(data: { phone: string; message: string }) {
-    return this.request('/api/sms/send', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  // Statistics methods
-  async getTodayStats() {
-    return this.request('/api/statistics/today');
-  }
-
-  async getWeekStats() {
-    return this.request('/api/statistics/week');
-  }
-
-  async getMonthStats() {
-    return this.request('/api/statistics/month');
-  }
-
-  async getYearStats() {
-    return this.request('/api/statistics/year');
-  }
-
-  // Supplier payment methods
-  async createSupplierPayment(data: any) {
-    return this.request('/api/suppliers/payments', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-
-  async getSupplierExpenditureSummary() {
-    return this.request('/api/suppliers/expenditure-summary');
-  }
-
-  // Utility methods
-  async clearAllData() {
-    return this.request('/api/clear-all-data', {
-      method: 'DELETE'
-    });
-  }
-
-  // Clear cache and offline queue
-  clearLocalData() {
-    this.cache.clear();
-    this.offlineQueue = [];
-    localStorage.removeItem('offlineQueue');
-    console.log('🧹 Local data cleared');
+  // Health Check
+  async healthCheck(): Promise<ApiResponse> {
+    try {
+      const response = await this.request('/api/health');
+      return {
+        success: true,
+        data: {
+          status: response.data?.status || 'online',
+          version: response.data?.version || '1.0.0',
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        data: {
+          status: 'offline',
+          timestamp: new Date().toISOString()
+        },
+        error: error.message
+      };
+    }
   }
 }
 
-export const apiClient = new RobustApiClient();
+export const apiClient = new ApiClient();
 export default apiClient;
-
-// Add version check function
-export async function checkBackendVersion(currentVersion: string, onUpdate: () => void) {
-  try {
-    // Only check version if user is authenticated and token is available
-    const token = localStorage.getItem("callmemobiles_token");
-    if (!token) {
-      console.log('⏭️ Skipping version check - no authentication token');
-      return;
-    }
-    
-    // Add additional delay to ensure authentication is fully established
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Double-check token is still available after delay
-    const currentToken = localStorage.getItem("callmemobiles_token");
-    if (!currentToken) {
-      console.log('⏭️ Skipping version check - token removed during delay');
-      return;
-    }
-    
-    console.log('🔍 Checking backend version...');
-    // Use the API client's backend URL instead of hardcoded localhost
-    const response = await apiClient.request('/api/version');
-    console.log('✅ Version check response:', response);
-    
-    if (response?.version && response.version !== currentVersion) {
-      console.log('🔄 New version available:', response.version);
-      onUpdate();
-    }
-  } catch (error) {
-    console.log('⚠️ Version check failed (this is normal if backend is not ready):', error.message);
-    // Don't throw error to prevent console errors
-  }
-}

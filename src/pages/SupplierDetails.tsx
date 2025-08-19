@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/layout/AppLayout";
 import {
   Card,
   CardContent,
@@ -86,7 +85,8 @@ export default function SupplierDetails() {
     apiClient.getSupplier(id).then(setSupplier).finally(() => setLoading(false));
 
     // Real-time updates
-    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
+    const websocketUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://expensoo-app-gu3wg.ondigitalocean.app";
+    const socket = io(websocketUrl, { transports: ["websocket"] });
     const update = () => {
       const currentToken = localStorage.getItem("callmemobiles_token");
       if (currentToken) {
@@ -112,8 +112,7 @@ export default function SupplierDetails() {
 
   if (!id) {
     return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <h2 className="text-2xl font-bold mb-2">Invalid Supplier ID</h2>
             <p className="text-muted-foreground mb-4">
@@ -127,7 +126,6 @@ export default function SupplierDetails() {
             </Link>
           </div>
         </div>
-      </AppLayout>
     );
   }
 
@@ -200,8 +198,7 @@ export default function SupplierDetails() {
   };
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -638,7 +635,6 @@ export default function SupplierDetails() {
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
   );
 }
 

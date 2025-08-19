@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/layout/AppLayout";
 import {
   Card,
   CardContent,
@@ -91,7 +90,8 @@ export default function Expenditures() {
     apiClient.getExpenditures().then(setExpenditures).finally(() => setLoading(false));
 
     // Real-time updates
-    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
+    const websocketUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://expensoo-app-gu3wg.ondigitalocean.app";
+    const socket = io(websocketUrl, { transports: ["websocket"] });
     const update = () => apiClient.getExpenditures().then(setExpenditures);
     socket.on("expenditureCreated", update);
     socket.on("expenditureUpdated", update);
@@ -223,8 +223,7 @@ export default function Expenditures() {
       }));
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -510,7 +509,6 @@ export default function Expenditures() {
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
   );
 }
 

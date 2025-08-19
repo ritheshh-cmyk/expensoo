@@ -8,7 +8,6 @@ import {
   createColumnHelper,
   flexRender,
 } from "@tanstack/react-table";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Card,
@@ -279,8 +278,12 @@ export default function Transactions() {
         }
         
         console.log('🔄 Fetching transactions data...');
-        const transactions = await apiClient.getTransactions();
-        setData(transactions);
+        const response = await apiClient.getTransactions();
+        if (response.success && response.data) {
+          setData(response.data);
+        } else {
+          setData([]);
+        }
       } catch (error) {
         console.error('❌ Failed to fetch transactions:', error);
         setData([]);
@@ -293,11 +296,15 @@ export default function Transactions() {
     fetchTransactions();
 
     // Real-time updates
-    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
-    const update = () => {
+    const websocketUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://expensoo-app-gu3wg.ondigitalocean.app";
+    const socket = io(websocketUrl, { transports: ["websocket"] });
+    const update = async () => {
       const currentToken = localStorage.getItem("callmemobiles_token");
       if (currentToken) {
-        apiClient.getTransactions().then(setData);
+        const response = await apiClient.getTransactions();
+        if (response.success && response.data) {
+          setData(response.data);
+        }
       }
     };
     socket.on("transactionCreated", update);
@@ -337,8 +344,7 @@ export default function Transactions() {
   const getCustomerTransactions = (customer: string) => data.filter(txn => txn.customer === customer);
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex-1">
@@ -524,6 +530,5 @@ export default function Transactions() {
           </Dialog>
         )}
       </div>
-    </AppLayout>
   );
 }

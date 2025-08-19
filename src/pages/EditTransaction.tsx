@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/layout/AppLayout";
 import { MultiStepTransactionForm } from "@/components/forms/MultiStepTransactionForm";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -42,7 +41,8 @@ export default function EditTransaction() {
 
     fetchTransaction();
 
-    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
+    const websocketUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://expensoo-app-gu3wg.ondigitalocean.app";
+    const socket = io(websocketUrl, { transports: ["websocket"] });
     socket.on("transactionUpdated", (updatedTransaction: any) => {
       if (updatedTransaction.id === id) {
         setTransaction(updatedTransaction);
@@ -84,8 +84,7 @@ export default function EditTransaction() {
   };
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Edit Transaction
@@ -101,6 +100,6 @@ export default function EditTransaction() {
           initialData={transaction}
         />
       </div>
-    </AppLayout>
+    </div>
   );
 }
