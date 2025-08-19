@@ -1,0 +1,344 @@
+/* Professional Design Overrides for CallMeMobiles */
+
+/* Remove any remaining emoji or childish elements */
+*::before,
+*::after {
+  content: none !important;
+}
+
+/* Professional Color Scheme */
+:root {
+  /* Professional Primary Colors */
+  --color-primary: #1e40af; /* Professional blue */
+  --color-secondary: #64748b; /* Professional gray */
+  --color-success: #059669; /* Professional green */
+  --color-warning: #d97706; /* Professional amber */
+  --color-error: #dc2626; /* Professional red */
+  
+  /* Professional Background Colors */
+  --color-background: #ffffff;
+  --color-surface: #f8fafc;
+  --color-border: #e2e8f0;
+  
+  /* Professional Text Colors */
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  
+  /* Professional Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  
+  /* Professional Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+}
+
+/* Professional Typography */
+body {
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+}
+
+/* Professional Button Styles */
+.btn-professional {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-professional:hover {
+  background: #1d4ed8;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Professional Card Styles */
+.card-professional {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.card-professional:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary);
+}
+
+/* Professional Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: #f0f9ff;
+  color: var(--color-primary);
+  border: 1px solid #bfdbfe;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.online {
+  background: #f0fdf4;
+  color: var(--color-success);
+  border-color: #bbf7d0;
+}
+
+.status-badge.offline {
+  background: #fef2f2;
+  color: var(--color-error);
+  border-color: #fecaca;
+}
+
+/* Professional Footer */
+.footer-professional {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: 2rem 0;
+  margin-top: 3rem;
+}
+
+.footer-professional h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 1rem;
+}
+
+.footer-professional p,
+.footer-professional div {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.footer-professional .copyright {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  text-align: center;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Professional System Status */
+.system-status-professional {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.system-status-professional .status-indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 2px #f0fdf4;
+}
+
+.system-status-professional .version-badge {
+  background: var(--color-background);
+  color: var(--color-text-secondary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+}
+
+/* Professional Navigation */
+.nav-professional {
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-professional a {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.nav-professional a:hover,
+.nav-professional a.active {
+  color: var(--color-primary);
+  background: #f0f9ff;
+}
+
+/* Professional Table Styles */
+.table-professional {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-background);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.table-professional th {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+}
+
+.table-professional td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.table-professional tr:hover {
+  background: var(--color-surface);
+}
+
+/* Remove any childish animations or effects */
+.animate-bounce,
+.animate-spin,
+.animate-ping,
+.animate-pulse {
+  animation: none !important;
+}
+
+/* Professional loading spinner */
+.loading-professional {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--color-border);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Professional Form Styles */
+.form-professional input,
+.form-professional select,
+.form-professional textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  background: var(--color-background);
+}
+
+.form-professional input:focus,
+.form-professional select:focus,
+.form-professional textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgb(30 64 175 / 0.1);
+}
+
+.form-professional label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+}
+
+/* Professional Alert Styles */
+.alert-professional {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  border-left: 4px solid;
+}
+
+.alert-professional.success {
+  background: #f0fdf4;
+  border-color: var(--color-success);
+  color: #166534;
+}
+
+.alert-professional.warning {
+  background: #fffbeb;
+  border-color: var(--color-warning);
+  color: #92400e;
+}
+
+.alert-professional.error {
+  background: #fef2f2;
+  border-color: var(--color-error);
+  color: #991b1b;
+}
+
+/* Hide any emoji or childish elements */
+[data-emoji],
+.emoji,
+.childish-element {
+  display: none !important;
+}
+
+/* Professional spacing utilities */
+.space-professional-sm { margin: 0.5rem; }
+.space-professional-md { margin: 1rem; }
+.space-professional-lg { margin: 1.5rem; }
+.space-professional-xl { margin: 2rem; }
+
+/* Professional text utilities */
+.text-professional-primary { color: var(--color-text-primary); }
+.text-professional-secondary { color: var(--color-text-secondary); }
+.text-professional-muted { color: var(--color-text-muted); }
+
+/* Professional background utilities */
+.bg-professional-surface { background: var(--color-surface); }
+.bg-professional-primary { background: var(--color-primary); }
+.bg-professional-success { background: var(--color-success); }
+
+/* Ensure professional look on all screen sizes */
+@media (max-width: 768px) {
+  .footer-professional {
+    padding: 1.5rem 1rem;
+  }
+  
+  .card-professional {
+    padding: 1rem;
+  }
+  
+  .table-professional th,
+  .table-professional td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}

@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/layout/AppLayout";
 import {
   Card,
   CardContent,
@@ -26,8 +25,7 @@ export default function NotFound() {
 
   // Fallback UI (should not be visible)
   return (
-    <AppLayout showBreadcrumbs={false}>
-      <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="flex items-center justify-center min-h-[60vh]">
         <Card className="max-w-md w-full text-center">
           <CardHeader>
             <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
@@ -58,6 +56,5 @@ export default function NotFound() {
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
   );
 }

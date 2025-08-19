@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth, type UserRole } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   CreditCard,
@@ -16,10 +16,12 @@ import {
   LogOut,
 } from "lucide-react";
 
+type UserRole = 'admin' | 'owner' | 'worker';
+
 const navigation = [
   {
     name: "dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard,
     exact: true,
     roles: ["admin", "owner", "worker"] as UserRole[],

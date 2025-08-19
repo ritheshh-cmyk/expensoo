@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -35,6 +35,8 @@ import {
   Plus,
   Trash2,
   Calculator,
+  Store,
+  ShoppingCart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -49,140 +51,94 @@ const transactionSchema = z.object({
   customRepairType: z.string().optional(),
   repairCost: z.number().min(0, "Cost must be positive"),
   paymentMethod: z.enum(["cash", "upi", "card", "bank-transfer"]),
-  amountGiven: z.number().min(0, "Amount must be positive"),
+  amountGiven: z.number().min(0, "Amount given must be positive"),
 
-  // Step 3: Parts & Supplier (optional)
-  requiresParts: z.boolean().default(false),
+  // Step 3: Parts and Supplier Selection - ENHANCED
+  requiresParts: z.boolean().optional(),
   supplier: z.string().optional(),
-  parts: z
-    .array(
-      z.object({
-        name: z.string(),
-        cost: z.number(),
-        quantity: z.number(),
-      }),
-    )
-    .default([]),
-  repairSource: z.string().optional(),
-  repairServiceType: z.enum(["internal", "external"]).default("internal"),
-  partsRemarks: z.string().optional(),
-  internalRepairCost: z.number().optional(),
-  internalRepairRemarks: z.string().optional(),
-  externalItemCost: z.number().optional(),
-  internalCost: z.number().optional(),
-  partsCost: z.number().optional(),
-
-  // Step 4: Additional Details
-  freeGlass: z.boolean().default(false),
-  remarks: z.string().optional(),
   newSupplierName: z.string().optional(),
+  externalPurchase: z.boolean().optional(),
+  partSupplier: z.string().optional(), // New field for part supplier selection
+  
+  // Step 4: Additional Details
+  freeGlass: z.boolean().optional(),
+  remarks: z.string().optional(),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+  estimatedCompletion: z.string().optional(),
 });
 
-type TransactionFormData = z.infer<typeof transactionSchema>;
+export type TransactionFormData = z.infer<typeof transactionSchema>;
 
-const repairTypes = [
-  "screen-replacement",
-  "battery-replacement",
-  "charging-port",
-  "speaker-repair",
-  "camera-repair",
-  "water-damage",
-  "software-issue",
-  "others",
-];
-
-const deviceModels = [
-  "iPhone 15 Pro",
-  "iPhone 15",
-  "iPhone 14 Pro",
-  "iPhone 14",
-  "iPhone 13",
-  "Samsung Galaxy S24",
-  "Samsung Galaxy S23",
-  "Samsung Galaxy A54",
-  "Google Pixel 8",
-  "OnePlus 12",
-  "Xiaomi 14",
-  "Other",
-];
-
-const suppliers = [
-  "Patel Electronics",
-  "Mahalaxmi Components",
-  "Rathod Mobile Parts",
-  "Sri Ramdev Suppliers",
-  "Hub Technologies",
-  "Other",
-];
-
-interface MultiStepTransactionFormProps {
-  onSubmit: (data: TransactionFormData) => void;
-  onCancel: () => void;
-  initialData?: Partial<TransactionFormData>;
+interface Part {
+  name: string;
+  cost: number;
+  quantity: number;
+  supplier?: string; // Enhanced with supplier tracking
 }
 
-export function MultiStepTransactionForm({
-  onSubmit,
-  onCancel,
-  initialData,
-}: MultiStepTransactionFormProps) {
+interface MultiStepTransactionFormProps {
+  onSubmit: (data: any) => void;
+}
+
+export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [parts, setParts] = useState<
-    Array<{ name: string; cost: number; quantity: number }>
-  >([]);
+  const [parts, setParts] = useState<Part[]>([]);
+  const [requiresParts, setRequiresParts] = useState(false);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<string>("");
   const { t } = useLanguage();
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors },
-    trigger,
-  } = useForm<TransactionFormData>({
+  const form = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
+      repairCost: 0,
+      amountGiven: 0,
+      paymentMethod: "cash",
       requiresParts: false,
       freeGlass: false,
-      customRepairType: "",
-      repairSource: "parts",
-      repairServiceType: "internal",
-      partsRemarks: "",
-      internalRepairCost: undefined,
-      internalRepairRemarks: "",
-      externalItemCost: undefined,
-      internalCost: undefined,
-      partsCost: undefined,
-      ...initialData,
+      externalPurchase: false,
+      priority: "medium",
     },
   });
 
-  const watchedValues = watch();
-  const requiresParts = watch("requiresParts");
-  const repairCost = watch("repairCost") || 0;
-  const amountGiven = watch("amountGiven") || 0;
-  const changeReturned = Math.max(0, amountGiven - repairCost);
+  const { register, handleSubmit, watch, setValue, trigger, formState: { errors } } = form;
+
+  // Load suppliers on component mount
+  useEffect(() => {
+    loadSuppliers();
+  }, []);
+
+  const loadSuppliers = async () => {
+    try {
+      const response = await apiClient.getSuppliers();
+      if (response.success && response.suppliers) {
+        setSuppliers(response.suppliers);
+      }
+    } catch (error) {
+      console.error("Failed to load suppliers:", error);
+    }
+  };
 
   const steps = [
     {
       title: t("customer-details"),
       icon: User,
-      description: "Enter customer and device information",
+      description: "Customer information and contact details",
     },
     {
-      title: t("repair-info"),
+      title: t("repair-details"),
       icon: Wrench,
-      description: "Repair details and payment information",
+      description: "Repair type, cost and payment information",
     },
     {
-      title: t("parts-supplier"),
+      title: t("parts-suppliers"),
       icon: Package,
-      description: "Parts required and supplier details",
+      description: "Parts required and supplier selection", // Updated description
     },
     {
       title: t("additional-details"),
       icon: Smartphone,
-      description: "Final details and remarks",
+      description: "Final details and completion",
     },
   ];
 
@@ -202,10 +158,20 @@ export function MultiStepTransactionForm({
         ];
         break;
       case 3:
-        // No required fields in step 3
+        // Validate supplier selection if parts are required
+        if (requiresParts && parts.length > 0) {
+          const partsWithoutSupplier = parts.some(part => !part.supplier);
+          if (partsWithoutSupplier) {
+            toast({
+              title: "Supplier Required",
+              description: "Please select a supplier for all parts.",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
         break;
       case 4:
-        // All remaining fields
         break;
     }
 
@@ -222,7 +188,12 @@ export function MultiStepTransactionForm({
   };
 
   const addPart = () => {
-    const newPart = { name: "", cost: 0, quantity: 1 };
+    const newPart = { 
+      name: "", 
+      cost: 0, 
+      quantity: 1, 
+      supplier: selectedSupplier || suppliers[0]?.id || ""
+    };
     setParts([...parts, newPart]);
   };
 
@@ -230,54 +201,117 @@ export function MultiStepTransactionForm({
     setParts(parts.filter((_, i) => i !== index));
   };
 
-  const updatePart = (index: number, field: string, value: string | number) => {
-    const updatedParts = parts.map((part, i) => {
-      if (i === index) {
-        return { ...part, [field]: value };
-      }
-      return part;
-    });
+  const updatePart = (index: number, field: keyof Part, value: string | number) => {
+    const updatedParts = parts.map((part, i) => 
+      i === index ? { ...part, [field]: value } : part
+    );
     setParts(updatedParts);
-    setValue("parts", updatedParts);
+  };
+
+  const calculatePartsCost = () => {
+    return parts.reduce((total, part) => total + (part.cost * part.quantity), 0);
+  };
+
+  const extractBrandFromModel = (model: string) => {
+    const brands = ["Apple", "Samsung", "Google", "OnePlus", "Xiaomi", "Oppo", "Vivo", "Realme", "Nokia", "Motorola"];
+    const foundBrand = brands.find(brand => 
+      model.toLowerCase().includes(brand.toLowerCase())
+    );
+    return foundBrand || "Other";
   };
 
   const onFormSubmit = async (data: TransactionFormData) => {
     try {
-      // If "Other" supplier is selected and a new supplier name is provided, create the supplier first
-      if (data.supplier === "Other" && data.newSupplierName && data.newSupplierName.trim()) {
+      // Create suppliers first if needed
+      const createdSuppliers = [];
+      
+      if (data.supplier === "Other" && data.newSupplierName?.trim()) {
         const newSupplier = {
           name: data.newSupplierName.trim(),
-          contact_number: "", // Default empty, can be updated later
-          address: "", // Default empty, can be updated later
+          contact_number: "",
+          address: "",
         };
         
         try {
-          await apiClient.createSupplier(newSupplier);
-          toast({
-             title: "Supplier Added",
-             description: `${data.newSupplierName} has been added to your suppliers list.`,
-           });
+          const supplierResponse = await apiClient.createSupplier(newSupplier);
+          if (supplierResponse.success) {
+            createdSuppliers.push(supplierResponse.supplier);
+            toast({
+              title: "Supplier Added",
+              description: `${data.newSupplierName} has been added to your suppliers list.`,
+            });
+          }
         } catch (error) {
           console.error("Failed to create supplier:", error);
-          toast({
-            title: "Warning",
-            description: "Transaction created but supplier could not be saved to database.",
-            variant: "destructive",
-          });
         }
       }
-      
-      const finalData = {
-        ...data,
-        parts: requiresParts ? parts : [],
+
+      // Always send all required fields for backend validation
+      const validationData = {
+        customerName: String(data.customerName || "").trim(),
+        mobileNumber: String(data.phoneNumber || "").replace(/\D/g, ""),
+        deviceModel: String(data.deviceModel || "").trim(),
+        repairType: String(data.repairType === "others" ? data.customRepairType : data.repairType),
+        paymentMethod: String(data.paymentMethod || "cash"),
+        repairCost: Number(data.repairCost) || 0,
+        amountGiven: Number(data.amountGiven) || 0,
+        changeReturned: Math.max(0, (Number(data.amountGiven) || 0) - (Number(data.repairCost) || 0)),
+        status: "Completed",
+        remarks: data.remarks || "",
+        partsCost: parts.length > 0 ? parts.map(part => ({
+          supplier: part.supplier || "",
+          cost: part.cost,
+          item: part.name
+        })) : []
       };
-      onSubmit(finalData);
-      toast({
-        title: "Transaction Created",
-        description: "New repair transaction has been added successfully.",
-      });
+
+      console.log("🔧 Sending transaction with validation format (camelCase):", validationData);
+
+      // Submit transaction
+      const response = await apiClient.createTransaction(validationData);
+
+      if (response.success) {
+        // Update supplier expenditures if parts were purchased
+        if (parts.length > 0) {
+          for (const part of parts) {
+            if (part.supplier) {
+              try {
+                await apiClient.request(`/api/suppliers/${part.supplier}/add-expenditure`, {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    amount: part.cost * part.quantity,
+                    description: `Parts for ${data.customerName} - ${part.name}`,
+                    transaction_id: response.transaction?.id
+                  })
+                });
+              } catch (error) {
+                console.error("Failed to update supplier expenditure:", error);
+              }
+            }
+          }
+        }
+
+        toast({
+          title: "Success!",
+          description: "Transaction created successfully with all supplier information.",
+        });
+
+        // Reset form
+        form.reset();
+        setParts([]);
+        setRequiresParts(false);
+        setSelectedSupplier("");
+        setCurrentStep(1);
+
+        // Force transaction list refresh (if parent provides onSubmit)
+        if (typeof onSubmit === 'function') {
+          onSubmit(response.transaction);
+        }
+      } else {
+        throw new Error(response.error || "Failed to create transaction");
+      }
     } catch (error) {
-      console.error("Error in form submission:", error);
+      console.error("Transaction creation error:", error);
       toast({
         title: "Error",
         description: "Failed to create transaction. Please try again.",
@@ -287,619 +321,445 @@ export function MultiStepTransactionForm({
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Progress Steps */}
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Enhanced Progress Steps */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           {steps.map((step, index) => {
             const stepNumber = index + 1;
-            const isActive = stepNumber === currentStep;
-            const isCompleted = stepNumber < currentStep;
+            const isActive = currentStep === stepNumber;
+            const isCompleted = currentStep > stepNumber;
+            const StepIcon = step.icon;
 
             return (
-              <div key={stepNumber} className="flex items-center">
-                <div
-                  className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all",
-                    isActive && "step-active border-primary",
-                    isCompleted && "step-completed border-success",
-                    !isActive && !isCompleted && "step-inactive border-muted",
-                  )}
-                >
-                  {isCompleted ? (
-                    <span className="text-success-foreground">✓</span>
-                  ) : (
-                    <step.icon className="h-5 w-5" />
-                  )}
-                </div>
-                {index < steps.length - 1 && (
-                  <div
-                    className={cn(
-                      "h-0.5 w-16 mx-2 transition-colors",
-                      isCompleted ? "bg-success" : "bg-muted",
-                    )}
-                  />
+              <div
+                key={stepNumber}
+                className={cn(
+                  "flex items-center space-x-2 px-4 py-2 rounded-lg transition-all",
+                  isActive && "bg-primary text-primary-foreground shadow-md",
+                  isCompleted && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+                  !isActive && !isCompleted && "bg-muted text-muted-foreground"
                 )}
+              >
+                <StepIcon className="w-5 h-5" />
+                <div>
+                  <div className="font-medium text-sm">{step.title}</div>
+                  <div className="text-xs opacity-80">{step.description}</div>
+                </div>
+                {isCompleted && <div className="w-2 h-2 bg-green-500 rounded-full" />}
               </div>
             );
           })}
         </div>
-        <div className="text-center">
-          <h2 className="text-xl font-semibold">
-            {steps[currentStep - 1].title}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {steps[currentStep - 1].description}
-          </p>
+        
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+          <div 
+            className="bg-primary h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(currentStep / steps.length) * 100}%` }}
+          />
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onFormSubmit)}>
-        <Card>
-          <CardContent className="p-6">
-            {/* Step 1: Customer Details */}
-            {currentStep === 1 && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="customerName">{t("customer-name")} *</Label>
-                    <Input
-                      id="customerName"
-                      placeholder="John Smith"
-                      {...register("customerName")}
-                      className="h-12"
-                    />
-                    {errors.customerName && (
-                      <p className="text-sm text-destructive">
-                        {errors.customerName.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">{t("phone-number")} *</Label>
-                    <Input
-                      id="phoneNumber"
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      {...register("phoneNumber")}
-                      className="h-12"
-                    />
-                    {errors.phoneNumber && (
-                      <p className="text-sm text-destructive">
-                        {errors.phoneNumber.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
+      <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
+        {/* Step 1: Customer Details */}
+        {currentStep === 1 && (
+          <Card className="border-2">
+            <CardHeader className="bg-primary/5">
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Customer Information
+              </CardTitle>
+              <CardDescription>
+                Enter customer details and device information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="deviceModel">{t("device-model")} *</Label>
+                  <Label htmlFor="customerName">Customer Name *</Label>
                   <Input
-                    id="deviceModel"
-                    type="text"
-                    placeholder="Enter device model (e.g. iPhone 15 Pro, Samsung Galaxy S24)"
-                    {...register("deviceModel", {
-                      setValueAs: (value: string) => {
-                        // Normalize device model input - remove extra spaces, fix common typos
-                        return value
-                          .trim()
-                          .replace(/\s+/g, " ")
-                          .replace(/iphone/i, "iPhone")
-                          .replace(/samsung/i, "Samsung")
-                          .replace(/galaxy/i, "Galaxy")
-                          .replace(/plus/i, "Plus")
-                          .replace(/pro/i, "Pro")
-                          .replace(/max/i, "Max")
-                          .replace(/mini/i, "Mini");
-                      },
-                    })}
-                    className="h-12"
+                    id="customerName"
+                    {...register("customerName")}
+                    placeholder="Enter customer name"
+                    className="border-2"
                   />
-                  {errors.deviceModel && (
-                    <p className="text-sm text-destructive">
-                      {errors.deviceModel.message}
-                    </p>
+                  {errors.customerName && (
+                    <p className="text-red-500 text-sm">{errors.customerName.message}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Phone Number *</Label>
+                  <Input
+                    id="phoneNumber"
+                    {...register("phoneNumber")}
+                    placeholder="Enter phone number"
+                    className="border-2"
+                  />
+                  {errors.phoneNumber && (
+                    <p className="text-red-500 text-sm">{errors.phoneNumber.message}</p>
                   )}
                 </div>
               </div>
-            )}
 
-            {/* Step 2: Repair Info */}
-            {currentStep === 2 && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="repairType">{t("repair-type")} *</Label>
-                    <Select
-                      onValueChange={(value) => setValue("repairType", value)}
-                      defaultValue={watchedValues.repairType}
-                    >
-                      <SelectTrigger className="h-12">
-                        <SelectValue placeholder="Select repair type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {repairTypes.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type === "others" ? "Others" : t(type)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {watchedValues.repairType === "others" && (
-                      <Input
-                        className="mt-2 h-12"
-                        placeholder="Enter custom repair type"
-                        value={watchedValues.customRepairType || ""}
-                        onChange={e => setValue("customRepairType", e.target.value)}
-                      />
-                    )}
-                    {errors.repairType && (
-                      <p className="text-sm text-destructive">
-                        {errors.repairType.message}
-                      </p>
-                    )}
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="deviceModel">Device Model *</Label>
+                <Input
+                  id="deviceModel"
+                  {...register("deviceModel")}
+                  placeholder="e.g., iPhone 15 Pro, Samsung Galaxy S24"
+                  className="border-2"
+                />
+                {errors.deviceModel && (
+                  <p className="text-red-500 text-sm">{errors.deviceModel.message}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-                  <div className="space-y-2">
-                    <Label>Repair Service Type *</Label>
-                    <RadioGroup
-                      onValueChange={(value) => setValue("repairServiceType", value as any)}
-                      defaultValue={watchedValues.repairServiceType || "internal"}
-                      className="flex gap-6"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="internal" id="internal-service" />
-                        <Label htmlFor="internal-service">Internal Repair</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="external" id="external-service" />
-                        <Label htmlFor="external-service">External Repair</Label>
-                      </div>
-                    </RadioGroup>
-                    <p className="text-xs text-muted-foreground">
-                      {watchedValues.repairServiceType === "internal" 
-                        ? "Repair performed in-house by your team" 
-                        : "Repair outsourced to external service provider"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="repairCost">{t("repair-cost")} *</Label>
-                    <Input
-                      id="repairCost"
-                      type="text"
-                      inputMode="decimal"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...register("repairCost", { valueAsNumber: true })}
-                      className="h-12"
-                    />
-                    {errors.repairCost && (
-                      <p className="text-sm text-destructive">
-                        {errors.repairCost.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Conditional cost field based on repair service type */}
-                  {watchedValues.repairServiceType === "external" && (
-                    <div className="space-y-2">
-                      <Label>External Service Cost</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={watchedValues.externalItemCost || ""}
-                        onChange={e => setValue("externalItemCost", parseFloat(e.target.value) || 0)}
-                        className="h-12"
-                      />
-                      <p className="text-xs text-muted-foreground">Cost paid to external repair service</p>
-                    </div>
+        {/* Step 2: Repair Details */}
+        {currentStep === 2 && (
+          <Card className="border-2">
+            <CardHeader className="bg-primary/5">
+              <CardTitle className="flex items-center gap-2">
+                <Wrench className="w-5 h-5" />
+                Repair Information
+              </CardTitle>
+              <CardDescription>
+                Specify repair type, cost and payment details
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="repairType">Repair Type *</Label>
+                  <Select onValueChange={(value) => setValue("repairType", value)}>
+                    <SelectTrigger className="border-2">
+                      <SelectValue placeholder="Select repair type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="screen-replacement">Screen Replacement</SelectItem>
+                      <SelectItem value="battery-replacement">Battery Replacement</SelectItem>
+                      <SelectItem value="charging-port">Charging Port Repair</SelectItem>
+                      <SelectItem value="speaker-repair">Speaker Repair</SelectItem>
+                      <SelectItem value="camera-repair">Camera Repair</SelectItem>
+                      <SelectItem value="water-damage">Water Damage Repair</SelectItem>
+                      <SelectItem value="software-issue">Software Issue</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.repairType && (
+                    <p className="text-red-500 text-sm">{errors.repairType.message}</p>
                   )}
-
-                  {watchedValues.repairServiceType === "internal" && (
-                    <div className="space-y-2">
-                      <Label>Internal Service Cost</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={watchedValues.internalCost || ""}
-                        onChange={e => setValue("internalCost", parseFloat(e.target.value) || 0)}
-                        className="h-12"
-                      />
-                      <p className="text-xs text-muted-foreground">Internal operational costs for this repair</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Profit Preview */}
-                <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950/20">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-green-700 dark:text-green-300">Estimated Profit</Label>
-                      <p className="text-xs text-muted-foreground">Customer Payment - Repair Costs</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-lg font-semibold text-green-600 dark:text-green-400">
-                        ₹{(() => {
-                          const customerPayment = watchedValues.amountGiven || 0;
-                          const repairCost = watchedValues.repairCost || 0;
-                          const serviceCost = watchedValues.repairServiceType === "external" 
-                            ? (watchedValues.externalItemCost || 0)
-                            : (watchedValues.internalCost || 0);
-                          const profit = customerPayment - repairCost - serviceCost;
-                          return profit.toFixed(2);
-                        })()}
-                      </span>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{t("payment-method")} *</Label>
-                  <RadioGroup
-                    onValueChange={(value) => setValue("paymentMethod", value as any)}
-                    defaultValue={watchedValues.paymentMethod}
-                    className="grid grid-cols-2 gap-4 w-full"
-                  >
-                    {["cash", "upi"].map((method) => (
-                      <div
-                        key={method}
-                        className="flex items-center space-x-2 p-4 border rounded-lg bg-accent/30 w-full justify-center"
-                      >
-                        <RadioGroupItem value={method} id={method} />
-                        <Label htmlFor={method} className="flex-1 cursor-pointer text-lg">
-                          {t(method)}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                  <Label htmlFor="repairCost">Repair Cost (₹) *</Label>
+                  <Input
+                    id="repairCost"
+                    type="number"
+                    {...register("repairCost", { valueAsNumber: true })}
+                    placeholder="0"
+                    className="border-2"
+                  />
+                  {errors.repairCost && (
+                    <p className="text-red-500 text-sm">{errors.repairCost.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="paymentMethod">Payment Method *</Label>
+                  <Select onValueChange={(value) => setValue("paymentMethod", value as any)}>
+                    <SelectTrigger className="border-2">
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="upi">UPI</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                      <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
                   {errors.paymentMethod && (
-                    <p className="text-sm text-destructive">
-                      {errors.paymentMethod.message}
-                    </p>
+                    <p className="text-red-500 text-sm">{errors.paymentMethod.message}</p>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="amountGiven">{t("amount-given")} *</Label>
-                    <Input
-                      id="amountGiven"
-                      type="text"
-                      inputMode="decimal"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...register("amountGiven", { valueAsNumber: true })}
-                      className="h-12"
-                    />
-                    {errors.amountGiven && (
-                      <p className="text-sm text-destructive">
-                        {errors.amountGiven.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>{t("change-returned")}</Label>
-                    <div className="h-12 flex items-center px-3 border rounded-lg bg-muted">
-                      <Calculator className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <span className="font-semibold">
-                        ₹{changeReturned.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="amountGiven">Amount Given (₹) *</Label>
+                  <Input
+                    id="amountGiven"
+                    type="number"
+                    {...register("amountGiven", { valueAsNumber: true })}
+                    placeholder="0"
+                    className="border-2"
+                  />
+                  {errors.amountGiven && (
+                    <p className="text-red-500 text-sm">{errors.amountGiven.message}</p>
+                  )}
                 </div>
               </div>
-            )}
+            </CardContent>
+          </Card>
+        )}
 
-            {/* Step 3: Parts & Supplier */}
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-6">
-                  <RadioGroup
-                    onValueChange={value => setValue("repairSource", value)}
-                    defaultValue={watchedValues.repairSource || "parts"}
-                    className="flex gap-6"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="parts" id="parts" />
-                      <Label htmlFor="parts">Requires Parts Purchase</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="internal" id="internal" />
-                      <Label htmlFor="internal">Internal Repair</Label>
-                  </div>
-                  </RadioGroup>
+        {/* Step 3: Enhanced Parts and Supplier Selection */}
+        {currentStep === 3 && (
+          <Card className="border-2">
+            <CardHeader className="bg-primary/5">
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                <Store className="w-5 h-5" />
+                Parts & Supplier Selection
+              </CardTitle>
+              <CardDescription>
+                Manage parts requirements and select suppliers
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              {/* Supplier Selection */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="externalPurchase"
+                    checked={watch("externalPurchase")}
+                    onCheckedChange={(checked) => setValue("externalPurchase", !!checked)}
+                  />
+                  <Label htmlFor="externalPurchase" className="flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4" />
+                    External Purchase (parts bought from supplier)
+                  </Label>
                 </div>
 
-                {/* If parts purchase */}
-                {watchedValues.repairSource !== "internal" && (
-                  <>
+                {watch("externalPurchase") && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
                     <div className="space-y-2">
-                      <Label htmlFor="supplier">Supplier</Label>
-                      <Select
-                        onValueChange={(value) => setValue("supplier", value)}
-                        defaultValue={watchedValues.supplier}
+                      <Label htmlFor="supplier">Select Supplier</Label>
+                      <Select 
+                        onValueChange={(value) => {
+                          setSelectedSupplier(value);
+                          setValue("supplier", value);
+                        }}
                       >
-                        <SelectTrigger className="h-12">
-                          <SelectValue placeholder="Select supplier" />
+                        <SelectTrigger className="border-2">
+                          <SelectValue placeholder="Choose supplier for parts" />
                         </SelectTrigger>
                         <SelectContent>
                           {suppliers.map((supplier) => (
-                            <SelectItem key={supplier} value={supplier}>
-                              {supplier}
+                            <SelectItem key={supplier.id} value={supplier.id}>
+                              {supplier.name} - {supplier.contact_number}
                             </SelectItem>
                           ))}
+                          <SelectItem value="Other">+ Add New Supplier</SelectItem>
                         </SelectContent>
                       </Select>
-                      {watchedValues.supplier === "Other" && (
+                    </div>
+
+                    {watch("supplier") === "Other" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="newSupplierName">New Supplier Name</Label>
                         <Input
+                          id="newSupplierName"
+                          {...register("newSupplierName")}
                           placeholder="Enter new supplier name"
-                          value={watchedValues.newSupplierName || ""}
-                          onChange={e => setValue("newSupplierName", e.target.value)}
-                          className="h-10 mt-2"
+                          className="border-2"
                         />
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label>Parts List</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={addPart}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Part
-                        </Button>
                       </div>
-
-                      {parts.map((part, index) => (
-                        <Card key={index} className="p-4">
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="md:col-span-2">
-                              <Label>Part Name</Label>
-                              <Input
-                                placeholder="Screen Assembly"
-                                value={part.name}
-                                onChange={(e) =>
-                                  updatePart(index, "name", e.target.value)
-                                }
-                                className="h-10"
-                              />
-                            </div>
-                            <div>
-                              <Label>Quantity</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                value={part.quantity}
-                                onChange={(e) =>
-                                  updatePart(
-                                    index,
-                                    "quantity",
-                                    parseInt(e.target.value) || 1,
-                                  )
-                                }
-                                className="h-10"
-                              />
-                            </div>
-                            <div className="flex items-end gap-2">
-                              <div className="flex-1">
-                                <Label>Cost</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="0.00"
-                                  value={part.cost}
-                                  onChange={(e) =>
-                                    updatePart(
-                                      index,
-                                      "cost",
-                                      parseFloat(e.target.value) || 0,
-                                    )
-                                  }
-                                  className="h-10"
-                                />
-                              </div>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={() => removePart(index)}
-                                className="h-10 w-10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </>
+                    )}
+                  </div>
                 )}
-
-                {/* If internal repair */}
-                {watchedValues.repairSource === "internal" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Internal Repair Cost</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={watchedValues.internalRepairCost || ""}
-                        onChange={e => setValue("internalRepairCost", parseFloat(e.target.value) || 0)}
-                        className="h-12"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Remarks</Label>
-                      <Textarea
-                        placeholder="Any notes about the internal repair..."
-                        value={watchedValues.internalRepairRemarks || ""}
-                        onChange={e => setValue("internalRepairRemarks", e.target.value)}
-                        rows={2}
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* Additional Cost Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/50">
-                  <div className="space-y-2">
-                    <Label>External Purchase Cost</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={watchedValues.externalItemCost || ""}
-                      onChange={e => setValue("externalItemCost", parseFloat(e.target.value) || 0)}
-                      className="h-10"
-                    />
-                    <p className="text-xs text-muted-foreground">Cost of parts from external suppliers</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Internal Cost</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={watchedValues.internalCost || ""}
-                      onChange={e => setValue("internalCost", parseFloat(e.target.value) || 0)}
-                      className="h-10"
-                    />
-                    <p className="text-xs text-muted-foreground">Internal operational costs</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Parts Cost</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={watchedValues.partsCost || ""}
-                      onChange={e => setValue("partsCost", parseFloat(e.target.value) || 0)}
-                      className="h-10"
-                    />
-                    <p className="text-xs text-muted-foreground">Additional parts expenses</p>
-                  </div>
-                </div>
               </div>
-            )}
 
-            {/* Step 4: Additional Details */}
-            {currentStep === 4 && (
-              <div className="space-y-6">
+              {/* Parts Management */}
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label htmlFor="freeGlass">Free Glass Installation</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Complimentary screen protector installation
-                    </p>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="requiresParts"
+                      checked={requiresParts}
+                      onCheckedChange={(checked) => {
+                        setRequiresParts(!!checked);
+                        setValue("requiresParts", !!checked);
+                      }}
+                    />
+                    <Label htmlFor="requiresParts">This repair requires parts</Label>
                   </div>
-                  <Switch
-                    id="freeGlass"
-                    checked={watchedValues.freeGlass}
-                    onCheckedChange={(checked) =>
-                      setValue("freeGlass", checked)
-                    }
-                  />
+                  
+                  {requiresParts && (
+                    <Button type="button" onClick={addPart} size="sm">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Part
+                    </Button>
+                  )}
                 </div>
 
+                {requiresParts && parts.length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Parts List</h4>
+                    {parts.map((part, index) => (
+                      <div key={index} className="grid grid-cols-12 gap-2 items-center p-3 border rounded-lg">
+                        <div className="col-span-4">
+                          <Input
+                            placeholder="Part name"
+                            value={part.name}
+                            onChange={(e) => updatePart(index, "name", e.target.value)}
+                            className="border-2"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="number"
+                            placeholder="Cost"
+                            value={part.cost}
+                            onChange={(e) => updatePart(index, "cost", Number(e.target.value))}
+                            className="border-2"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="number"
+                            placeholder="Qty"
+                            value={part.quantity}
+                            onChange={(e) => updatePart(index, "quantity", Number(e.target.value))}
+                            className="border-2"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <Select 
+                            value={part.supplier} 
+                            onValueChange={(value) => updatePart(index, "supplier", value)}
+                          >
+                            <SelectTrigger className="border-2">
+                              <SelectValue placeholder="Supplier" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {suppliers.map((supplier) => (
+                                <SelectItem key={supplier.id} value={supplier.id}>
+                                  {supplier.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-1">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removePart(index)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="flex justify-end">
+                      <div className="text-lg font-semibold">
+                        Total Parts Cost: ₹{calculatePartsCost()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
+        {/* Step 4: Additional Details */}
+        {currentStep === 4 && (
+          <Card className="border-2">
+            <CardHeader className="bg-primary/5">
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="w-5 h-5" />
+                Additional Details
+              </CardTitle>
+              <CardDescription>
+                Final information and special requirements
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Priority Level</Label>
+                  <Select onValueChange={(value) => setValue("priority", value as any)}>
+                    <SelectTrigger className="border-2">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="remarks">Special Remarks</Label>
-                  <Textarea
-                    id="remarks"
-                    placeholder="Any special notes about this repair..."
-                    {...register("remarks")}
-                    rows={4}
+                  <Label htmlFor="estimatedCompletion">Estimated Completion</Label>
+                  <Input
+                    id="estimatedCompletion"
+                    type="date"
+                    {...register("estimatedCompletion")}
+                    className="border-2"
                   />
                 </div>
-
-                {/* Summary */}
-                <Card className="bg-muted/50">
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      Transaction Summary
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Customer</p>
-                        <p className="font-medium">
-                          {watchedValues.customerName}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Device</p>
-                        <p className="font-medium">
-                          {watchedValues.deviceModel}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Repair</p>
-                        <p className="font-medium">
-                          {t(watchedValues.repairType || "")}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Cost</p>
-                        <p className="font-medium">₹{repairCost.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Payment</p>
-                        <p className="font-medium">
-                          {t(watchedValues.paymentMethod || "")}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Change</p>
-                        <p className="font-medium">
-                          ₹{changeReturned.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                    
-
-                  </CardContent>
-                </Card>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="freeGlass"
+                    {...register("freeGlass")}
+                  />
+                  <Label htmlFor="freeGlass">Free tempered glass installation</Label>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="remarks">Remarks / Special Instructions</Label>
+                <Textarea
+                  id="remarks"
+                  {...register("remarks")}
+                  placeholder="Any additional notes or special instructions..."
+                  className="border-2 min-h-[100px]"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-6">
-          <div className="flex gap-2">
-            {currentStep > 1 && (
-              <Button type="button" variant="outline" onClick={prevStep}>
-                {t("back")}
-              </Button>
-            )}
-            <Button type="button" variant="outline" onClick={onCancel}>
-              {t("cancel")}
-            </Button>
-          </div>
+        <div className="flex justify-between pt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={prevStep}
+            disabled={currentStep === 1}
+            className="min-w-[120px]"
+          >
+            Previous
+          </Button>
 
-          <div>
-            {currentStep < 4 ? (
-              <Button type="button" onClick={nextStep}>
-                {t("next")}
-              </Button>
-            ) : (
-              <Button type="submit">{t("finish")}</Button>
-            )}
-          </div>
+          {currentStep < 4 ? (
+            <Button
+              type="button"
+              onClick={nextStep}
+              className="min-w-[120px]"
+            >
+              Next
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              className="min-w-[120px] bg-green-600 hover:bg-green-700"
+            >
+              Create Transaction
+            </Button>
+          )}
         </div>
       </form>
     </div>

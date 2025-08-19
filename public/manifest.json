@@ -1,14 +1,18 @@
 {
-  "name": "Expensoo - Mobile Repair Tracker",
-  "short_name": "Expensoo",
+  "name": "CallMeMobiles - Professional Mobile Repair Management",
+  "short_name": "CallMeMobiles Pro",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#3B82F6",
-  "description": "Complete mobile repair business management PWA with offline support",
-  "categories": ["business", "productivity", "finance"],
+  "description": "Professional mobile repair business management system for efficient operations and growth",
+  "categories": [
+    "business",
+    "productivity",
+    "finance"
+  ],
   "lang": "en",
   "dir": "ltr",
   "prefer_related_applications": false,

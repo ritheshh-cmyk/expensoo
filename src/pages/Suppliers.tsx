@@ -1,336 +1,216 @@
-import { AppLayout } from "@/components/layout/AppLayout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { defaultSuppliers } from "@/data/suppliers";
-import { apiClient } from "@/lib/api";
-import { io } from "socket.io-client";
-import {
-  Users,
-  Plus,
-  DollarSign,
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { apiClient } from '@/lib/api';
+import { 
+  Building2, 
+  Plus, 
+  Search, 
   Phone,
-  MessageCircle,
-  Download,
-  Search,
-  Filter,
-  Edit,
-  Eye,
+  Mail,
   MapPin,
-  Calendar,
+  Edit,
+  Trash2,
+  Star,
   TrendingUp,
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+  Users
+} from 'lucide-react';
 
-// Define a PaymentRecord type
-type PaymentRecord = {
-  date: string;
-  amount: number;
-  mode: string;
-  remarks: string;
-  supplierId: string;
-  supplierName: string;
-};
-
-// Define a Supplier type with paymentHistory
-type Supplier = {
+interface Supplier {
   id: string;
   name: string;
-  contactPerson: string;
+  contact_person: string;
+  email: string;
   phone: string;
-  whatsapp: string;
   address: string;
-  outstandingAmount: number;
-  totalPurchases: number;
-  lastOrderDate: string;
-  status: string;
-  paymentTerms: string;
-  category: string;
-  paymentHistory: PaymentRecord[];
-};
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  status: 'active' | 'inactive';
+  rating: number;
+  total_orders: number;
+  total_amount: number;
+  created_at: string;
+}
 
 export default function Suppliers() {
-  const { t } = useLanguage();
-  const { toast } = useToast();
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [payDialogOpen, setPayDialogOpen] = useState<{ open: boolean; supplierId: string | null }>({ open: false, supplierId: null });
-  const [historyDialogOpen, setHistoryDialogOpen] = useState<{ open: boolean; supplierId: string | null }>({ open: false, supplierId: null });
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMode, setPaymentMode] = useState("cash");
-  const [paymentRemarks, setPaymentRemarks] = useState("");
+  const [suppliers, setSuppliers] = useState<Supplier[]>([
+    {
+      id: '1',
+      name: 'Global Electronics Distributors',
+      contact_person: 'Rajesh Kumar',
+      email: 'rajesh@globalelectronics.com',
+      phone: '+91-9876543210',
+      address: '123 Electronics Street',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      postal_code: '400001',
+      country: 'India',
+      status: 'active',
+      rating: 4.8,
+      total_orders: 45,
+      total_amount: 2850000,
+      created_at: '2023-06-15'
+    },
+    {
+      id: '2',
+      name: 'TechSource India Pvt Ltd',
+      contact_person: 'Priya Sharma',
+      email: 'priya@techsource.in',
+      phone: '+91-9988776655',
+      address: '456 Tech Park',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      postal_code: '560001',
+      country: 'India',
+      status: 'active',
+      rating: 4.5,
+      total_orders: 32,
+      total_amount: 1975000,
+      created_at: '2023-08-22'
+    },
+    {
+      id: '3',
+      name: 'Digital Devices Co',
+      contact_person: 'Amit Patel',
+      email: 'amit@digitaldevices.co.in',
+      phone: '+91-9123456789',
+      address: '789 Digital Avenue',
+      city: 'Delhi',
+      state: 'Delhi',
+      postal_code: '110001',
+      country: 'India',
+      status: 'inactive',
+      rating: 4.2,
+      total_orders: 18,
+      total_amount: 925000,
+      created_at: '2023-04-10'
+    }
+  ]);
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Initial fetch with proper error handling
-    const fetchSuppliers = async () => {
-      try {
-        console.log('🔄 Fetching suppliers data...');
-        const suppliersData = await apiClient.getSuppliers();
-        console.log('✅ Suppliers data received:', suppliersData);
-        console.log('📊 Suppliers count:', Array.isArray(suppliersData) ? suppliersData.length : 'Not an array');
-        
-        if (Array.isArray(suppliersData)) {
-          setSuppliers(suppliersData);
-        } else {
-          console.warn('⚠️ Suppliers data is not an array:', typeof suppliersData);
-          setSuppliers([]);
-          toast({
-            title: "Data Format Error",
-            description: "Received invalid suppliers data format",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch suppliers:', error);
-        setSuppliers([]);
-        toast({
-          title: "Error Loading Suppliers",
-          description: "Failed to load suppliers data. Please check your connection.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchSuppliers();
-
-    // Real-time updates
-    const socket = io("https://positive-kodiak-friendly.ngrok-free.app", { transports: ["websocket"] });
-    const update = async () => {
-      try {
-        const suppliersData = await apiClient.getSuppliers();
-        if (Array.isArray(suppliersData)) {
-          setSuppliers(suppliersData);
-        }
-      } catch (error) {
-        console.error('❌ Failed to update suppliers:', error);
-      }
-    };
-    socket.on("supplierCreated", update);
-    socket.on("supplierUpdated", update);
-    socket.on("supplierDeleted", update);
-    return () => {
-      socket.off("supplierCreated", update);
-      socket.off("supplierUpdated", update);
-      socket.off("supplierDeleted", update);
-      socket.disconnect();
-    };
-  }, [toast]);
-
-  // Filter suppliers based on search and status
-  const filteredSuppliers = suppliers.filter((supplier) => {
-    const matchesSearch = supplier.name
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || supplier.status === statusFilter;
+  const filteredSuppliers = suppliers.filter(supplier => {
+    const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         supplier.city.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || supplier.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  // Calculate totals with null checks
-  const totalSuppliers = suppliers?.length || 0;
-  const activeSuppliers = suppliers?.filter((s) => s?.status === "active")?.length || 0;
-  const totalOutstanding = suppliers?.reduce(
-    (sum, supplier) => sum + (supplier?.outstandingAmount || 0),
-    0,
-  ) || 0;
-  const totalPurchases = suppliers?.reduce(
-    (sum, supplier) => sum + (supplier?.totalPurchases || 0),
-    0,
-  ) || 0;
-
-  // Add, update, delete handlers
-  const handleAddSupplier = async (formData: any) => {
-    await apiClient.createSupplier(formData);
-  };
-  const handleUpdateSupplier = async (id: string, formData: any) => {
-    await apiClient.updateSupplier(id, formData);
-  };
-  const handleDeleteSupplier = async (id: string) => {
-    await apiClient.deleteSupplier(id);
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
-  const openWhatsApp = (phone: string, name: string) => {
-    const message = encodeURIComponent(
-      `Hello ${name}, I hope you're doing well. I wanted to check on our recent orders and discuss any pending items.`,
-    );
-    window.open(
-      `https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${message}`,
-    );
+  const getStatusBadge = (status: string) => {
+    return status === 'active'
+      ? 'bg-green-100 text-green-800 border-green-200'
+      : 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  // Helper to get supplier by ID
-  const getSupplierById = (id: string) => suppliers.find(s => s.id === id);
-
-  // Handle payment
-  const handlePaySupplier = (supplierId: string, amount: number, mode: string, remarks: string) => {
-    setSuppliers(prev => prev.map(s => {
-      if (s.id === supplierId) {
-        const newOutstanding = Math.max(0, (s.outstandingAmount || 0) - amount);
-        const paymentRecord = {
-          date: new Date().toISOString(),
-          amount,
-          mode,
-          remarks,
-          supplierId: s.id,
-          supplierName: s.name,
-        };
-        return {
-          ...s,
-          outstandingAmount: newOutstanding,
-          paymentHistory: [...(s.paymentHistory || []), paymentRecord],
-        };
-      }
-      return s;
-    }));
-    setPayDialogOpen({ open: false, supplierId: null });
-    setPaymentAmount("");
-    setPaymentMode("cash");
-    setPaymentRemarks("");
-    toast({ title: "Payment Recorded", description: `Payment of ₹${amount} recorded.` });
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }).map((_, index) => (
+      <Star
+        key={index}
+        className={`h-4 w-4 ${
+          index < Math.floor(rating) 
+            ? 'text-yellow-400 fill-yellow-400' 
+            : 'text-gray-300'
+        }`}
+      />
+    ));
   };
+
+  const getTotalStats = () => {
+    const activeSuppliers = suppliers.filter(s => s.status === 'active').length;
+    const totalOrders = suppliers.reduce((sum, s) => sum + s.total_orders, 0);
+    const totalAmount = suppliers.reduce((sum, s) => sum + s.total_amount, 0);
+    const avgRating = suppliers.reduce((sum, s) => sum + s.rating, 0) / suppliers.length;
+    
+    return { activeSuppliers, totalOrders, totalAmount, avgRating };
+  };
+
+  const stats = getTotalStats();
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-              {t("suppliers")}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Manage your supplier relationships and track purchases
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Supplier
-                </Button>
-              </DialogTrigger>
-              <AddSupplierDialog onAdd={handleAddSupplier} />
-            </Dialog>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Suppliers Management</h1>
+          <p className="text-gray-600 mt-1">Manage your supplier network and relationships</p>
         </div>
+        <Button className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Add New Supplier
+        </Button>
+      </div>
 
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Suppliers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalSuppliers}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {activeSuppliers} active
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Outstanding Amount
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹{typeof totalOutstanding === 'number' ? totalOutstanding.toLocaleString() : '0'}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Pending payments
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Purchases
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹{typeof totalPurchases === 'number' ? totalPurchases.toLocaleString() : '0'}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">This year</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Average Terms
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">30 days</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Payment period
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Suppliers Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Suppliers</CardTitle>
-            <CardDescription>
-              Manage your supplier database and track payments
-            </CardDescription>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-800">Active Suppliers</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <div className="text-2xl font-bold text-blue-900">{stats.activeSuppliers}</div>
+            <p className="text-xs text-blue-700">Currently active</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-green-800">Total Orders</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-900">{stats.totalOrders}</div>
+            <p className="text-xs text-green-700">All time orders</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-purple-800">Total Value</CardTitle>
+            <Building2 className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-900">{formatCurrency(stats.totalAmount)}</div>
+            <p className="text-xs text-purple-700">Total business value</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-yellow-800">Avg Rating</CardTitle>
+            <Star className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-900">{stats.avgRating.toFixed(1)}</div>
+            <p className="text-xs text-yellow-700">Supplier ratings</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Search suppliers..."
                   value={searchTerm}
@@ -338,365 +218,108 @@ export default function Suppliers() {
                   className="pl-10"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredSuppliers.map((supplier) => (
+              <Card key={supplier.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Building2 className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{supplier.name}</h3>
+                        <p className="text-sm text-gray-600">{supplier.contact_person}</p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={getStatusBadge(supplier.status)}
+                    >
+                      {supplier.status}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {/* Contact Info */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Mail className="h-4 w-4" />
+                        {supplier.email}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Phone className="h-4 w-4" />
+                        {supplier.phone}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <MapPin className="h-4 w-4" />
+                        {supplier.city}, {supplier.state}
+                      </div>
+                    </div>
 
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Outstanding</TableHead>
-                    <TableHead>Total Purchases</TableHead>
-                    <TableHead>Last Order</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <div className="flex items-center justify-center space-x-2">
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          <span>Loading suppliers...</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredSuppliers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12">
-                        <div className="flex flex-col items-center space-y-4">
-                          <Users className="h-12 w-12 text-muted-foreground" />
-                          <div className="text-center">
-                            <h3 className="text-lg font-medium">No suppliers found</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {suppliers.length === 0 
-                                ? "Get started by adding your first supplier"
-                                : "Try adjusting your search or filter criteria"
-                              }
-                            </p>
-                          </div>
-                          {suppliers.length === 0 && (
-                            <Button onClick={() => setShowAddDialog(true)} size="sm">
-                              <Plus className="mr-2 h-4 w-4" />
-                              Add Your First Supplier
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredSuppliers.map((supplier) => (
-                      <TableRow key={supplier.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{supplier.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {supplier.contactPerson}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            ₹{typeof supplier.outstandingAmount === 'number' ? supplier.outstandingAmount.toLocaleString() : '0'}
-                          </div>
-                          {supplier.outstandingAmount > 0 && (
-                            <Badge
-                              variant="destructive"
-                              className="text-xs mt-1"
-                            >
-                              <AlertCircle className="mr-1 h-3 w-3" />
-                              Due
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            ₹{typeof supplier.totalPurchases === 'number' ? supplier.totalPurchases.toLocaleString() : '0'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {supplier.category}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center text-sm">
-                            <Calendar className="mr-1 h-3 w-3" />
-                            {new Date(supplier.lastOrderDate).toLocaleDateString()}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {supplier.paymentTerms}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              supplier.status === "active"
-                                ? "default"
-                                : "secondary"
-                            }
-                          >
-                            {supplier.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => {
-                              setPayDialogOpen({ open: true, supplierId: supplier.id });
-                              setPaymentMode("cash");
-                              setPaymentRemarks("");
-                            }} disabled={supplier.outstandingAmount <= 0}>Pay</Button>
-                            <Button variant="outline" size="sm" onClick={() => setHistoryDialogOpen({ open: true, supplierId: supplier.id })}>History</Button>
-                            <Link to={`/suppliers/${supplier.id}`}>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      {payDialogOpen.open && (
-        <PaySupplierDialog
-          open={payDialogOpen.open}
-          onOpenChange={(open) => setPayDialogOpen({ open, supplierId: open ? payDialogOpen.supplierId : null })}
-          supplier={getSupplierById(payDialogOpen.supplierId)}
-          paymentAmount={paymentAmount}
-          setPaymentAmount={setPaymentAmount}
-          onPay={(amount, mode, remarks) => handlePaySupplier(payDialogOpen.supplierId, amount, mode, remarks)}
-        />
-      )}
-      {historyDialogOpen.open && (
-        <SupplierHistoryDialog
-          open={historyDialogOpen.open}
-          onOpenChange={(open) => setHistoryDialogOpen({ open, supplierId: open ? historyDialogOpen.supplierId : null })}
-          suppliers={suppliers}
-        />
-      )}
-    </AppLayout>
-  );
-}
+                    {/* Rating */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center">
+                        {renderStars(supplier.rating)}
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">
+                        {supplier.rating}/5.0
+                      </span>
+                    </div>
 
-// Add Supplier Dialog Component
-function AddSupplierDialog({ onAdd }: { onAdd: (data: any) => void }) {
-  const [formData, setFormData] = useState({
-    name: "",
-    contactPerson: "",
-    phone: "",
-    whatsapp: "",
-    address: "",
-    paymentTerms: "30 days",
-    category: "Electronics",
-  });
+                    {/* Business Metrics */}
+                    <div className="grid grid-cols-2 gap-4 pt-3 border-t">
+                      <div>
+                        <p className="text-xs text-gray-500">Total Orders</p>
+                        <p className="font-semibold text-gray-900">{supplier.total_orders}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Total Value</p>
+                        <p className="font-semibold text-gray-900">
+                          {formatCurrency(supplier.total_amount)}
+                        </p>
+                      </div>
+                    </div>
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onAdd(formData);
-    setFormData({
-      name: "",
-      contactPerson: "",
-      phone: "",
-      whatsapp: "",
-      address: "",
-      paymentTerms: "30 days",
-      category: "Electronics",
-    });
-  };
-
-  return (
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>Add New Supplier</DialogTitle>
-        <DialogDescription>
-          Add a new supplier to your database
-        </DialogDescription>
-      </DialogHeader>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="name">Supplier Name</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Company name"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="contactPerson">Contact Person</Label>
-          <Input
-            id="contactPerson"
-            value={formData.contactPerson}
-            onChange={(e) =>
-              setFormData({ ...formData, contactPerson: e.target.value })
-            }
-            placeholder="Primary contact name"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="phone">Phone</Label>
-          <Input
-            id="phone"
-            value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-            placeholder="+91 98765 43210"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="whatsapp">WhatsApp</Label>
-          <Input
-            id="whatsapp"
-            value={formData.whatsapp}
-            onChange={(e) =>
-              setFormData({ ...formData, whatsapp: e.target.value })
-            }
-            placeholder="+91 98765 43210"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="address">Address</Label>
-          <Input
-            id="address"
-            value={formData.address}
-            onChange={(e) =>
-              setFormData({ ...formData, address: e.target.value })
-            }
-            placeholder="Business address"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="category">Category</Label>
-          <Select
-            value={formData.category}
-            onValueChange={(value) =>
-              setFormData({ ...formData, category: value })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Electronics">Electronics</SelectItem>
-              <SelectItem value="Parts">Parts</SelectItem>
-              <SelectItem value="Screen & Display">Screen & Display</SelectItem>
-              <SelectItem value="Batteries & Charging">
-                Batteries & Charging
-              </SelectItem>
-              <SelectItem value="Tools & Equipment">
-                Tools & Equipment
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <DialogFooter>
-          <Button type="submit">Add Supplier</Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  );
-}
-
-// PaySupplierDialog component
-function PaySupplierDialog({ open, onOpenChange, supplier, paymentAmount, setPaymentAmount, onPay }) {
-  const [mode, setMode] = useState("cash");
-  const [remarks, setRemarks] = useState("");
-  if (!supplier) return null;
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
-        </DialogHeader>
-        <div>Supplier: <b>{supplier.name}</b></div>
-        <div>Outstanding: ₹{typeof supplier.outstandingAmount === 'number' ? supplier.outstandingAmount.toLocaleString() : '0'}</div>
-        <Input
-          type="number"
-          min={1}
-          max={supplier.outstandingAmount}
-          value={paymentAmount}
-          onChange={e => setPaymentAmount(e.target.value)}
-          placeholder="Enter payment amount"
-        />
-        <div className="flex gap-2 mt-2">
-          <Label>Mode:</Label>
-          <select value={mode} onChange={e => setMode(e.target.value)} className="border rounded px-2 py-1">
-            <option value="cash">Cash</option>
-            <option value="online">Online</option>
-          </select>
-        </div>
-        <div className="mt-2">
-          <Label>Remarks:</Label>
-          <Input
-            value={remarks}
-            onChange={e => setRemarks(e.target.value)}
-            placeholder="Remarks (optional)"
-          />
-        </div>
-        <DialogFooter>
-          <Button onClick={() => onPay(Number(paymentAmount), mode, remarks)} disabled={!paymentAmount || Number(paymentAmount) <= 0 || Number(paymentAmount) > supplier.outstandingAmount}>Pay</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// SupplierHistoryDialog component
-function SupplierHistoryDialog({ open, onOpenChange, suppliers }: { open: boolean; onOpenChange: (open: boolean) => void; suppliers: Supplier[] }) {
-  // Gather all payments from all suppliers
-  const allPayments = suppliers.flatMap(s => (s.paymentHistory || []).map(p => ({ ...p, supplierName: s.name })));
-  // Sort by date descending
-  allPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>All Supplier Payments</DialogTitle>
-        </DialogHeader>
-        {allPayments.length > 0 ? (
-          <ul className="space-y-2">
-            {allPayments.map((p, idx) => (
-              <li key={idx} className="flex flex-col border-b pb-2">
-                <div className="flex justify-between">
-                  <span><b>{p.supplierName}</b></span>
-                  <span>{new Date(p.date).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>₹{p.amount} ({p.mode})</span>
-                  <span>{p.remarks}</span>
-                </div>
-              </li>
+                    {/* Actions */}
+                    <div className="flex justify-end gap-2 pt-3">
+                      <Button variant="outline" size="sm" className="flex items-center gap-1">
+                        <Edit className="h-3 w-3" />
+                        Edit
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        Contact
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
-          </ul>
-        ) : (
-          <div>No payments recorded.</div>
-        )}
-      </DialogContent>
-    </Dialog>
+          </div>
+          
+          {filteredSuppliers.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No suppliers found matching your criteria</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

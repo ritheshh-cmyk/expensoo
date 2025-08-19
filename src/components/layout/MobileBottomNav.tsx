@@ -7,13 +7,15 @@ import {
   CreditCard,
   Users,
   Receipt,
+  TrendingUp,
+  FileText,
   Settings,
 } from "lucide-react";
 
 const mobileNavigation = [
   {
     name: "dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard,
     exact: true,
     roles: ["admin", "owner", "worker"] as UserRole[],
@@ -31,10 +33,22 @@ const mobileNavigation = [
     roles: ["admin", "owner"] as UserRole[],
   },
   {
+    name: "expenditures",
+    href: "/expenditures",
+    icon: TrendingUp,
+    roles: ["admin", "owner"] as UserRole[],
+  },
+  {
     name: "bills",
     href: "/bills",
     icon: Receipt,
     roles: ["admin", "owner", "worker"] as UserRole[],
+  },
+  {
+    name: "reports",
+    href: "/reports",
+    icon: FileText,
+    roles: ["admin", "owner"] as UserRole[],
   },
   {
     name: "settings",

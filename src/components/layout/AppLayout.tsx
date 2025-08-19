@@ -21,7 +21,7 @@ export function AppLayout({
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/80 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

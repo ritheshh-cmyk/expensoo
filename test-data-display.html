@@ -137,7 +137,7 @@
 
         async function runAllTests() {
             clearResults();
-            log('🚀 Starting comprehensive data display tests...', 'info');
+            log(' Starting comprehensive data display tests...', 'info');
             
             // Test login
             const loginSuccess = await testLogin();
@@ -161,7 +161,7 @@
             log(`Dashboard: ${dashboard ? '✅ PASS' : '❌ FAIL'}`);
             
             if (suppliers && transactions && dashboard) {
-                log('\n🎉 All tests passed! The backend is working correctly.', 'success');
+                log('\n All tests passed! The backend is working correctly.', 'success');
                 log('If data is not showing in the frontend, the issue is likely in the React components or API client.', 'info');
             } else {
                 log('\n⚠️ Some tests failed. Check the backend server and database connection.', 'error');

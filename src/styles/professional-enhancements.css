@@ -1,0 +1,324 @@
+/**
+ * 🎨 PROFESSIONAL LAYOUT ENHANCEMENT
+ * Comprehensive CSS and component improvements for CallMeMobiles
+ */
+
+/* Professional Corporate Spacing System */
+.professional-container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.professional-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6;
+}
+
+.professional-card {
+  @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700;
+  @apply p-6 hover:shadow-md transition-all duration-200;
+}
+
+.professional-header {
+  @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6;
+}
+
+.professional-title {
+  @apply text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white;
+}
+
+.professional-subtitle {
+  @apply text-sm text-gray-600 dark:text-gray-400 mt-1;
+}
+
+.professional-button-group {
+  @apply flex flex-wrap items-center gap-2 sm:gap-3;
+}
+
+.professional-stat-card {
+  @apply bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-900;
+  @apply rounded-xl p-6 border border-gray-200 dark:border-gray-700;
+  @apply hover:shadow-lg transition-all duration-300;
+}
+
+.professional-metric-display {
+  @apply flex items-center justify-between mb-2;
+}
+
+.professional-metric-value {
+  @apply text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white;
+}
+
+.professional-metric-label {
+  @apply text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide;
+}
+
+.professional-trend-indicator {
+  @apply flex items-center gap-1 text-xs font-medium;
+}
+
+.professional-data-table {
+  @apply w-full border-collapse border-spacing-0;
+}
+
+.professional-table-header {
+  @apply bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700;
+}
+
+.professional-table-cell {
+  @apply px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-white;
+  @apply border-b border-gray-200 dark:border-gray-700;
+}
+
+.professional-form-group {
+  @apply space-y-2;
+}
+
+.professional-form-label {
+  @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+}
+
+.professional-form-input {
+  @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600;
+  @apply rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-white;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 640px) {
+  .professional-grid {
+    @apply grid-cols-1 gap-4;
+  }
+  
+  .professional-header {
+    @apply flex-col items-stretch gap-3;
+  }
+  
+  .professional-button-group {
+    @apply flex-col;
+  }
+  
+  .professional-metric-value {
+    @apply text-xl;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .professional-grid {
+    @apply grid-cols-2 gap-5;
+  }
+}
+
+@media (min-width: 1025px) {
+  .professional-grid {
+    @apply grid-cols-3 gap-6;
+  }
+}
+
+@media (min-width: 1280px) {
+  .professional-grid {
+    @apply grid-cols-4 gap-6;
+  }
+}
+
+/* Loading States */
+.professional-loading {
+  @apply animate-pulse bg-gray-200 dark:bg-gray-700 rounded;
+}
+
+.professional-skeleton-text {
+  @apply h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4;
+}
+
+.professional-skeleton-title {
+  @apply h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2;
+}
+
+/* Error States */
+.professional-error {
+  @apply bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800;
+  @apply text-red-800 dark:text-red-200 p-4 rounded-lg;
+}
+
+/* Success States */
+.professional-success {
+  @apply bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800;
+  @apply text-green-800 dark:text-green-200 p-4 rounded-lg;
+}
+
+/* Professional Color Palette */
+:root {
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  
+  --color-success-50: #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  
+  --color-error-50: #fef2f2;
+  --color-error-100: #fee2e2;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary-500: #60a5fa;
+    --color-primary-600: #3b82f6;
+    --color-success-500: #34d399;
+    --color-warning-500: #fbbf24;
+    --color-error-500: #f87171;
+  }
+}
+
+/* Professional Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-10px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.professional-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.professional-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Focus States for Accessibility */
+.professional-focus:focus {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-800;
+}
+
+/* Mobile-first responsive typography */
+.professional-text-responsive {
+  @apply text-sm sm:text-base lg:text-lg;
+}
+
+.professional-heading-responsive {
+  @apply text-lg sm:text-xl lg:text-2xl xl:text-3xl;
+}
+
+/* Professional spacing system */
+.professional-spacing-xs { @apply space-y-1 sm:space-y-2; }
+.professional-spacing-sm { @apply space-y-2 sm:space-y-3; }
+.professional-spacing-md { @apply space-y-3 sm:space-y-4; }
+.professional-spacing-lg { @apply space-y-4 sm:space-y-6; }
+.professional-spacing-xl { @apply space-y-6 sm:space-y-8; }
+
+/* Professional margin system */
+.professional-margin-xs { @apply m-1 sm:m-2; }
+.professional-margin-sm { @apply m-2 sm:m-3; }
+.professional-margin-md { @apply m-3 sm:m-4; }
+.professional-margin-lg { @apply m-4 sm:m-6; }
+.professional-margin-xl { @apply m-6 sm:m-8; }
+
+/* Professional padding system */
+.professional-padding-xs { @apply p-1 sm:p-2; }
+.professional-padding-sm { @apply p-2 sm:p-3; }
+.professional-padding-md { @apply p-3 sm:p-4; }
+.professional-padding-lg { @apply p-4 sm:p-6; }
+.professional-padding-xl { @apply p-6 sm:p-8; }
+
+/* Professional borders */
+.professional-border-light { @apply border border-gray-200 dark:border-gray-700; }
+.professional-border-medium { @apply border border-gray-300 dark:border-gray-600; }
+.professional-border-strong { @apply border border-gray-400 dark:border-gray-500; }
+
+/* Component-specific improvements */
+.dashboard-metric-card {
+  @apply professional-stat-card;
+  @apply hover:scale-105 transform transition-transform duration-200;
+}
+
+.dashboard-activity-item {
+  @apply flex items-start gap-3 p-3 rounded-lg;
+  @apply hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
+  @apply border-l-2 border-blue-500;
+}
+
+.suppliers-card {
+  @apply professional-card;
+  @apply hover:border-blue-300 dark:hover:border-blue-600 transition-colors;
+}
+
+.billing-form {
+  @apply space-y-4 sm:space-y-6;
+}
+
+.billing-table-row {
+  @apply hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
+}
+
+/* Print styles for billing */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .professional-card {
+    @apply shadow-none border border-gray-300;
+  }
+  
+  .professional-container {
+    @apply max-w-none px-0;
+  }
+}
+
+/* Utility classes for consistent spacing */
+.content-spacing {
+  @apply space-y-6 sm:space-y-8;
+}
+
+.section-spacing {
+  @apply mb-8 sm:mb-12;
+}
+
+.element-spacing {
+  @apply mb-4 sm:mb-6;
+}
+
+/* Professional status indicators */
+.status-online {
+  @apply inline-flex items-center gap-1 text-green-600 dark:text-green-400;
+}
+
+.status-offline {
+  @apply inline-flex items-center gap-1 text-red-600 dark:text-red-400;
+}
+
+.status-pending {
+  @apply inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400;
+}
+
+.status-processing {
+  @apply inline-flex items-center gap-1 text-blue-600 dark:text-blue-400;
+}
+
+/* Professional navigation */
+.nav-professional {
+  @apply flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4;
+}
+
+.nav-item-professional {
+  @apply px-3 py-2 rounded-lg text-sm font-medium;
+  @apply hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors;
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.nav-item-active {
+  @apply bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300;
+}

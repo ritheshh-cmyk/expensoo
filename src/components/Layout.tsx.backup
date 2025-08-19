@@ -1,0 +1,259 @@
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
+  LayoutDashboard,
+  CreditCard,
+  Building2,
+  Receipt,
+  Menu,
+  LogOut,
+  Settings,
+  User,
+  Bell,
+  Search,
+  TrendingDown,
+  BarChart3,
+  Cog
+} from 'lucide-react';
+
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+export default function Layout({ children }: LayoutProps) {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Transactions', href: '/transactions', icon: CreditCard },
+    { name: 'Suppliers', href: '/suppliers', icon: Building2 },
+    { name: 'Expenditures', href: '/expenditures', icon: TrendingDown },
+    { name: 'Billing', href: '/billing', icon: Receipt },
+    { name: 'Reports', href: '/reports', icon: BarChart3 },
+    { name: 'Settings', href: '/settings', icon: Cog },
+  ];
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const isCurrentPage = (href: string) => location.pathname === href;
+
+  const getUserInitials = () => {
+    if (user?.full_name) {
+      return user.full_name
+        .split(' ')
+        .map((name) => name[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return user?.email?.[0]?.toUpperCase() || 'U';
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4 shadow-soft border-r border-gray-200">
+          {/* Logo */}
+          <div className="flex h-16 shrink-0 items-center">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary-600 rounded-xl">
+                <LayoutDashboard className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">CallMeMobiles</h1>
+                <p className="text-xs text-gray-500">Business Management</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Navigation */}
+          <nav className="flex flex-1 flex-col">
+            <ul role="list" className="flex flex-1 flex-col gap-y-7">
+              <li>
+                <ul role="list" className="-mx-2 space-y-1">
+                  {navigation.map((item) => {
+                    const Icon = item.icon;
+                    const current = isCurrentPage(item.href);
+                    return (
+                      <li key={item.name}>
+                        <Link
+                          to={item.href}
+                          className={`group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-all duration-200 ${
+                            current
+                              ? 'bg-primary-50 text-primary-600 border border-primary-200 shadow-sm'
+                              : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Icon className={`h-6 w-6 shrink-0 ${current ? 'text-primary-600' : 'text-gray-400 group-hover:text-primary-600'}`} />
+                          {item.name}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+
+      {/* Mobile Header */}
+      <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white px-4 py-4 shadow-sm sm:px-6 lg:hidden">
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="-m-2.5 p-2.5">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-72">
+            {/* Mobile Logo */}
+            <div className="flex h-16 shrink-0 items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary-600 rounded-xl">
+                  <LayoutDashboard className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">CallMeMobiles</h1>
+                  <p className="text-xs text-gray-500">Business Management</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Mobile Navigation */}
+            <nav className="flex flex-1 flex-col mt-8">
+              <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                <li>
+                  <ul role="list" className="-mx-2 space-y-1">
+                    {navigation.map((item) => {
+                      const Icon = item.icon;
+                      const current = isCurrentPage(item.href);
+                      return (
+                        <li key={item.name}>
+                          <Link
+                            to={item.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-all duration-200 ${
+                              current
+                                ? 'bg-primary-50 text-primary-600 border border-primary-200 shadow-sm'
+                                : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon className={`h-6 w-6 shrink-0 ${current ? 'text-primary-600' : 'text-gray-400 group-hover:text-primary-600'}`} />
+                            {item.name}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              </ul>
+            </nav>
+          </SheetContent>
+        </Sheet>
+        
+        {/* Mobile Header Content */}
+        <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-600 rounded-lg">
+              <LayoutDashboard className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-lg font-bold text-gray-900">CallMeMobiles</h1>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="lg:pl-72">
+        {/* Desktop Header */}
+        <div className="sticky top-0 z-40 hidden lg:flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6">
+          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+            <div className="relative flex flex-1">
+              {/* You can add search functionality here if needed */}
+            </div>
+            <div className="flex items-center gap-x-4 lg:gap-x-6">
+              {/* Notifications */}
+              <Button variant="ghost" size="sm" className="p-2.5">
+                <Bell className="h-5 w-5" />
+              </Button>
+
+              {/* Profile dropdown */}
+              <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.avatar_url} alt={user?.full_name || ''} />
+                      <AvatarFallback className="bg-primary-600 text-white text-xs">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      {user?.full_name && (
+                        <p className="font-medium">{user.full_name}</p>
+                      )}
+                      {user?.email && (
+                        <p className="w-[200px] truncate text-sm text-muted-foreground">
+                          {user.email}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="cursor-pointer text-red-600 focus:text-red-600" 
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <main className="py-6 lg:py-8">
+          <div className="px-4 sm:px-6 lg:px-8">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

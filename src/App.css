@@ -1,42 +1,27 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+.loading-spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.page-transition {
+  @apply transition-all duration-300 ease-in-out;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.card-hover {
+  @apply transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary-200;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.button-hover {
+  @apply transition-all duration-200 ease-in-out hover:scale-105;
 }
 
-.card {
-  padding: 2em;
+.form-input-focus {
+  @apply focus:ring-2 focus:ring-primary-500 focus:border-transparent;
 }
 
-.read-the-docs {
-  color: #888;
+.nav-link-active {
+  @apply bg-primary-50 text-primary-600 border border-primary-200 shadow-sm;
+}
+
+.nav-link-hover {
+  @apply hover:text-primary-600 hover:bg-gray-50;
 }

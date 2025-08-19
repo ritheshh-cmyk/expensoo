@@ -1,0 +1,130 @@
+
+import React from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { CorporateHeader } from './CorporateHeader';
+import { ProfessionalSidebar } from './ProfessionalSidebar';
+import { ResponsiveLayout, useDeviceInfo } from './ResponsiveLayout';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEnhancedRBAC } from '@/contexts/EnhancedRBACContext';
+import { Toaster } from '@/components/ui/toaster';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, Shield, Lock } from 'lucide-react';
+
+export function ProfessionalAppLayout() {
+  const { user, isLoading } = useAuth();
+  const { hasPageAccess, loading: rbacLoading, isAdmin } = useEnhancedRBAC();
+  const location = useLocation();
+  const deviceInfo = useDeviceInfo();
+
+  // Extract current page from location
+  const currentPage = location.pathname.replace('/', '') || 'dashboard';
+
+  if (isLoading || rbacLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+          <p className="text-sm text-muted-foreground">
+            Loading CallMeMobiles Professional...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if current page requires access control (skip login and public pages)
+  const publicPages = ['login', 'register', 'forgot-password'];
+  const needsAccessCheck = !publicPages.includes(currentPage);
+
+  // If access check is needed and user doesn't have access, show restriction notice
+  if (needsAccessCheck && !hasPageAccess(currentPage) && !isAdmin) {
+    return (
+      <ResponsiveLayout
+        header={<CorporateHeader onMenuClick={() => {}} />}
+        sidebar={<ProfessionalSidebar />}
+        className="min-h-screen"
+      >
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-center space-y-6 max-w-md mx-auto">
+            <div className="mx-auto w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+              <Lock className="h-10 w-10 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                Access Restricted
+              </h2>
+              <p className="text-muted-foreground mb-4">
+                You don't have permission to access the {currentPage} page.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Please contact your administrator if you believe this is an error.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                variant="outline"
+                onClick={() => window.history.back()}
+                className="flex items-center gap-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Go Back
+              </Button>
+              <Button
+                onClick={() => window.location.href = '/dashboard'}
+                className="flex items-center gap-2"
+              >
+                <Shield className="h-4 w-4" />
+                Go to Dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+        <Toaster />
+      </ResponsiveLayout>
+    );
+  }
+
+  return (
+    <ResponsiveLayout
+      header={<CorporateHeader onMenuClick={() => {}} />}
+      sidebar={<ProfessionalSidebar />}
+      sidebarWidth="lg"
+      collapsible={true}
+      mobileBreakpoint="lg"
+      className="min-h-screen"
+    >
+      {/* Breadcrumb Navigation - Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto p-0 font-normal text-muted-foreground hover:text-foreground -ml-2"
+            onClick={() => window.history.back()}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <span className="hidden sm:inline">•</span>
+          <span className="capitalize font-medium text-foreground">
+            {currentPage.replace('-', ' ')}
+          </span>
+        </div>
+        
+        {/* Device info badge for admin users in development */}
+        {isAdmin && process.env.NODE_ENV === 'development' && (
+          <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+            {deviceInfo.screenSize} • {deviceInfo.isMobile ? 'Mobile' : deviceInfo.isTablet ? 'Tablet' : 'Desktop'}
+          </div>
+        )}
+      </div>
+
+      {/* Main Page Content */}
+      <div className="animate-fade-in">
+        <Outlet />
+      </div>
+
+      <Toaster />
+    </ResponsiveLayout>
+  );
+}

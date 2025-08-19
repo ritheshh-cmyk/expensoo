@@ -1,334 +1,104 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+ 
 @layer base {
-  /**
-   * Expenso Mobile Repair Tracker - Professional business design system
-   * Clean blues (#2563eb) with status indicators and bilingual support
-   */
   :root {
-    /* Base Colors */
     --background: 0 0% 100%;
-    --foreground: 215 16% 14%;
-
-    /* Card & Surface Colors */
+    --foreground: 222.2 84% 4.9%;
+ 
     --card: 0 0% 100%;
-    --card-foreground: 215 16% 14%;
-
+    --card-foreground: 222.2 84% 4.9%;
+ 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 16% 14%;
-
-    /* Primary Theme Colors - Blue (#2563eb) */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --primary-50: 217 91% 98%;
-    --primary-100: 217 91% 95%;
-    --primary-200: 217 91% 90%;
-    --primary-300: 217 91% 80%;
-    --primary-400: 217 91% 70%;
-    --primary-500: 217 91% 60%;
-    --primary-600: 217 91% 50%;
-    --primary-700: 217 91% 45%;
-    --primary-800: 217 91% 35%;
-    --primary-900: 217 91% 25%;
-
-    /* Status Colors */
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 100%;
-
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 100%;
-
-    /* Repair Status Colors */
-    --repair-pending: 38 92% 50%;
-    --repair-progress: 199 89% 48%;
-    --repair-completed: 142 76% 36%;
-    --repair-delivered: 262 83% 58%;
-
-    /* Stock Level Colors */
-    --stock-critical: 0 84% 60%;
-    --stock-low: 38 92% 50%;
-    --stock-good: 142 76% 36%;
-
-    /* Neutral Colors */
-    --secondary: 215 20% 98%;
-    --secondary-foreground: 215 16% 14%;
-
-    --muted: 215 20% 96%;
-    --muted-foreground: 215 16% 46%;
-
-    --accent: 215 20% 96%;
-    --accent-foreground: 215 16% 14%;
-
-    /* UI Elements */
-    --border: 215 20% 91%;
-    --input: 215 20% 91%;
-    --ring: 217 91% 60%;
-
-    --radius: 0.75rem;
-
-    /* Sidebar Colors */
-    --sidebar-background: 215 25% 98%;
-    --sidebar-foreground: 215 16% 14%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 20% 96%;
-    --sidebar-accent-foreground: 215 16% 14%;
-    --sidebar-border: 215 20% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+ 
+    --radius: 0.5rem;
   }
-
+ 
   .dark {
-    /* Base Colors - Dark Mode */
-    --background: 215 16% 6%;
-    --foreground: 215 20% 98%;
-
-    /* Card & Surface Colors - Dark Mode */
-    --card: 215 16% 8%;
-    --card-foreground: 215 20% 98%;
-
-    --popover: 215 16% 8%;
-    --popover-foreground: 215 20% 98%;
-
-    /* Primary Theme Colors - Dark Mode */
-    --primary: 217 91% 65%;
-    --primary-foreground: 215 16% 6%;
-    --primary-50: 215 16% 5%;
-    --primary-100: 215 16% 10%;
-    --primary-200: 215 16% 15%;
-    --primary-300: 217 91% 25%;
-    --primary-400: 217 91% 40%;
-    --primary-500: 217 91% 65%;
-    --primary-600: 217 91% 70%;
-    --primary-700: 217 91% 75%;
-    --primary-800: 217 91% 80%;
-    --primary-900: 217 91% 85%;
-
-    /* Status Colors - Dark Mode */
-    --success: 142 76% 45%;
-    --success-foreground: 0 0% 100%;
-
-    --warning: 38 92% 60%;
-    --warning-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 70%;
-    --destructive-foreground: 0 0% 100%;
-
-    --info: 199 89% 58%;
-    --info-foreground: 0 0% 100%;
-
-    /* Repair Status Colors - Dark Mode */
-    --repair-pending: 38 92% 60%;
-    --repair-progress: 199 89% 58%;
-    --repair-completed: 142 76% 45%;
-    --repair-delivered: 262 83% 68%;
-
-    /* Stock Level Colors - Dark Mode */
-    --stock-critical: 0 84% 70%;
-    --stock-low: 38 92% 60%;
-    --stock-good: 142 76% 45%;
-
-    /* Neutral Colors - Dark Mode */
-    --secondary: 215 16% 12%;
-    --secondary-foreground: 215 20% 98%;
-
-    --muted: 215 16% 12%;
-    --muted-foreground: 215 16% 65%;
-
-    --accent: 215 16% 12%;
-    --accent-foreground: 215 20% 98%;
-
-    /* UI Elements - Dark Mode */
-    --border: 215 16% 15%;
-    --input: 215 16% 15%;
-    --ring: 217 91% 65%;
-
-    /* Sidebar Colors - Dark Mode */
-    --sidebar-background: 215 16% 4%;
-    --sidebar-foreground: 215 20% 95%;
-    --sidebar-primary: 217 91% 65%;
-    --sidebar-primary-foreground: 215 16% 6%;
-    --sidebar-accent: 215 16% 10%;
-    --sidebar-accent-foreground: 215 20% 95%;
-    --sidebar-border: 215 16% 15%;
-    --sidebar-ring: 217 91% 65%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
   }
 }
-
+ 
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-feature-settings: "cv11", "ss01";
-    font-variation-settings: "opsz" 32;
-  }
-
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-border/80;
-  }
-
-  /* Focus outline improvements */
-  *:focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
-  }
-
-  /* Telugu font support */
-  .telugu {
-    font-family: "Noto Sans Telugu", "Inter", system-ui, sans-serif;
+    @apply bg-background text-foreground;
   }
 }
 
-@layer components {
-  /* Mobile Repair Shop specific utility classes */
-  .expenso-gradient {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--primary)),
-      hsl(var(--primary-600))
-    );
-  }
+/* Professional Font Settings */
+html {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  .glass-effect {
-    @apply backdrop-blur-md bg-white/20 border border-white/20;
-  }
+/* Professional Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
 
-  .dark .glass-effect {
-    @apply backdrop-blur-md bg-black/20 border border-white/10;
-  }
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 5px;
+}
 
-  .card-hover {
-    @apply transition-all duration-200 hover:shadow-soft hover:-translate-y-1;
-  }
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
 
-  .animate-in {
-    @apply animate-fade-in;
-  }
-
-
-
-  /* Stock Level Indicators */
-  .stock-critical {
-    @apply bg-stock-critical/10 text-stock-critical border-stock-critical/20;
-  }
-
-  .stock-low {
-    @apply bg-stock-low/10 text-stock-low border-stock-low/20;
-  }
-
-  .stock-good {
-    @apply bg-stock-good/10 text-stock-good border-stock-good/20;
-  }
-
-  /* Profit visibility toggle */
-  .profit-hidden {
-    @apply blur-sm select-none cursor-not-allowed opacity-60;
-  }
-
-  .profit-visible {
-    @apply transition-all duration-300;
-  }
-
-  /* Online/Offline status indicator */
-  .status-online {
-    @apply bg-success text-success-foreground;
-  }
-
-  .status-offline {
-    @apply bg-destructive text-destructive-foreground;
-  }
-
-  /* Connection pulse animation */
-  .connection-pulse {
-    @apply animate-pulse-ring;
-  }
-
-  /* Mobile-first responsive design utilities */
-  .mobile-nav {
-    @apply lg:hidden;
-  }
-
-  .desktop-nav {
-    @apply hidden lg:flex;
-  }
-
-  /* Multi-step form progress */
-  .step-active {
-    @apply bg-primary text-primary-foreground;
-  }
-
-  .step-completed {
-    @apply bg-success text-success-foreground;
-  }
-
-  .step-inactive {
-    @apply bg-muted text-muted-foreground;
-  }
-
-  /* Transaction table profit toggle */
-  .profit-toggle:hover {
-    @apply bg-muted/50;
-  }
-
-  /* Loading skeletons */
-  .skeleton {
-    @apply animate-pulse bg-muted rounded-md;
-  }
-
-  /* Export button styles */
-  .export-btn {
-    @apply bg-success hover:bg-success/90 text-success-foreground;
-  }
-
-  /* Language switcher */
-  .lang-switch {
-    @apply transition-all duration-200 hover:bg-accent;
-  }
-
-  /* Cross-platform optimizations */
-  .electron-drag {
-    -webkit-app-region: drag;
-  }
-
-  .electron-no-drag {
-    -webkit-app-region: no-drag;
-  }
-
-  /* Capacitor safe areas */
-  .safe-area-top {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  /* Touch-friendly buttons for mobile */
-  .touch-target {
-    @apply min-h-[44px] min-w-[44px];
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }

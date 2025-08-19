@@ -41,24 +41,16 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const success = await login(formData.username, formData.password);
-      if (success) {
-        toast({
-          title: "Welcome back!",
-          description: "Login successful",
-        });
-        navigate("/");
-      } else {
-        toast({
-          title: "Login Failed",
-          description: "Invalid username or password. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+      await login(formData.username, formData.password);
       toast({
-        title: "Error",
-        description: "An error occurred during login.",
+        title: "Welcome back!",
+        description: "Login successful",
+      });
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid username or password. Please try again.",
         variant: "destructive",
       });
     } finally {

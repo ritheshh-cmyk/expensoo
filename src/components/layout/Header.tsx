@@ -1,189 +1,156 @@
+
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { useDeviceDetection } from "@/components/DeviceDetection";
+import { useTheme } from "@/components/theme-provider";
+import { 
+  Menu, 
+  Bell, 
+  Settings, 
+  User, 
+  Sun, 
+  Moon, 
+  Monitor,
+  Smartphone,
+  Tablet,
+  Laptop,
+  LogOut,
+  Shield
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  Menu,
-  Search,
-  Sun,
-  Moon,
-  LogOut,
-  User,
-  Settings,
-  Globe,
-  Monitor,
-} from "lucide-react";
-import { useTheme } from "@/hooks/use-theme";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { ConnectionIndicator } from "@/contexts/ConnectionContext";
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
+  const { user, logout, hasAccess } = useAuth();
+  const device = useDeviceDetection();
   const { theme, setTheme } = useTheme();
-  const { language, setLanguage, t } = useLanguage();
-  const [searchQuery, setSearchQuery] = useState("");
-  const { logout } = useAuth();
+
+  const getDeviceIcon = () => {
+    if (device.isMobile) return <Smartphone className="h-4 w-4" />;
+    if (device.isTablet) return <Tablet className="h-4 w-4" />;
+    return <Laptop className="h-4 w-4" />;
+  };
+
+  const getThemeIcon = () => {
+    if (theme === 'dark') return <Moon className="h-4 w-4" />;
+    if (theme === 'light') return <Sun className="h-4 w-4" />;
+    return <Monitor className="h-4 w-4" />;
+  };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-x-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6 shadow-sm safe-area-top electron-drag">
-      {/* Left section */}
-      <div className="flex items-center gap-x-4">
-        {/* Mobile menu button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onMenuClick}
-          className="lg:hidden h-10 w-10 electron-no-drag touch-target"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-
-        {/* Search */}
-        <div className="hidden sm:flex flex-1 max-w-md">
-          <form className="relative flex flex-1" action="#" method="GET">
-            <label htmlFor="search-field" className="sr-only">
-              {t("search")}
-            </label>
-            <Search className="pointer-events-none absolute inset-y-0 left-3 h-full w-4 text-muted-foreground" />
-            <Input
-              id="search-field"
-              className="h-10 border bg-muted/50 pl-10 pr-4 focus-visible:ring-1 focus-visible:ring-ring text-sm placeholder:text-muted-foreground"
-              placeholder={`${t("search")}...`}
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
-        </div>
-      </div>
-
-      {/* Right side items */}
-      <div className="flex items-center gap-x-2 lg:gap-x-3">
-        {/* Connection status */}
-        <div className="hidden sm:flex">
-          <ConnectionIndicator />
-        </div>
-
-        {/* Notifications handled by RealtimeNotifications component */}
-
-        {/* Language switcher */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 electron-no-drag touch-target"
-            >
-              <Globe className="h-5 w-5" />
-              <span className="sr-only">Switch language</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => setLanguage("en")}
-              className={language === "en" ? "bg-accent" : ""}
-            >
-              🇺🇸 English
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setLanguage("te")}
-              className={language === "te" ? "bg-accent" : ""}
-            >
-              🇮🇳 తెలుగు
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Theme toggle */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 electron-no-drag touch-target"
-            >
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => setTheme("light")}
-              className={theme === "light" ? "bg-accent" : ""}
-            >
-              <Sun className="mr-2 h-4 w-4" />
-              Light
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("dark")}
-              className={theme === "dark" ? "bg-accent" : ""}
-            >
-              <Moon className="mr-2 h-4 w-4" />
-              Dark
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setTheme("system")}
-              className={theme === "system" ? "bg-accent" : ""}
-            >
-              <Monitor className="mr-2 h-4 w-4" />
-              System
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Profile dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="relative h-10 w-10 rounded-full electron-no-drag touch-target"
-            >
-              <Avatar className="h-9 w-9">
-                <AvatarImage src={`/avatars/admin.png`} alt="Admin" />
-                <AvatarFallback className="bg-primary text-primary-foreground font-medium text-sm">
-                  AD
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <div className="flex items-center justify-start gap-2 p-2">
-              <div className="flex flex-col space-y-1 leading-none">
-                <p className="font-medium">Admin User</p>
-                <p className="w-[200px] truncate text-sm text-muted-foreground">
-                  admin@repairshop.com
-                </p>
-              </div>
+    <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex items-center justify-between px-4 lg:px-6 h-full">
+        {/* Left Section */}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="lg:hidden"
+            onClick={onMenuClick}
+          >
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle menu</span>
+          </Button>
+          
+          <div className="hidden lg:flex items-center gap-4">
+            <div className="flex flex-col">
+              <h1 className="text-lg font-semibold text-foreground">CallMeMobiles</h1>
+              <p className="text-sm text-muted-foreground">Professional Repair Management</p>
             </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2">
-              <User className="h-4 w-4" />
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2">
-              <Settings className="h-4 w-4" />
-              {t("settings")}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 text-destructive" onClick={logout}>
-              <LogOut className="h-4 w-4" />
-              {t("logout")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Center Section - Device & System Status */}
+        <div className="hidden md:flex items-center gap-2">
+          <Badge variant="outline" className="flex items-center gap-1">
+            {getDeviceIcon()}
+            {device.screenSize.toUpperCase()}
+          </Badge>
+          
+          <Badge variant="outline" className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            System Online
+          </Badge>
+        </div>
+
+        {/* Right Section */}
+        <div className="flex items-center gap-2">
+          {/* Theme Switcher */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                {getThemeIcon()}
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setTheme("light")}>
+                <Sun className="mr-2 h-4 w-4" />
+                Light
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>
+                <Moon className="mr-2 h-4 w-4" />
+                Dark
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("system")}>
+                <Monitor className="mr-2 h-4 w-4" />
+                System
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Notifications */}
+          <Button variant="ghost" size="sm">
+            <Bell className="h-4 w-4" />
+            <span className="sr-only">Notifications</span>
+          </Button>
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2 px-3">
+                <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                  <User className="h-3 w-3 text-primary-foreground" />
+                </div>
+                <div className="hidden md:flex flex-col items-start">
+                  <span className="text-sm font-medium">{user?.name}</span>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    {user?.role}
+                  </span>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );

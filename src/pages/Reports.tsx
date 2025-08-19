@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/layout/AppLayout";
 import {
   Card,
   CardContent,
@@ -43,7 +42,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -269,8 +268,7 @@ export default function Reports() {
   // const avgTicketSize = Math.round(totalRevenue / totalRepairs);
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -667,6 +665,5 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
   );
 }
