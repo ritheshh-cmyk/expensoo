@@ -1,70 +1,19 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-
 import { apiClient } from "@/lib/api";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import {
-  Smartphone,
-  TrendingUp,
-  TrendingDown,
-  Users,
-  Package,
-  CreditCard,
-  Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
-  Plus,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Wrench,
   DollarSign,
-  Eye,
-  EyeOff,
-  ShoppingCart,
-  Zap,
-  FileText,
-  Receipt,
+  Clock,
+  TrendingUp,
+  RefreshCw,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-
-// All dashboard data is loaded from backend and updated via socket.io
-
-
-
-const paymentMethodIcons = {
-  cash: DollarSign,
-  upi: Smartphone,
-  card: CreditCard,
-  "bank-transfer": ArrowUpRight,
-};
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const [showProfits, setShowProfits] = useState(
@@ -72,7 +21,8 @@ export default function Dashboard() {
   );
   const { t } = useLanguage();
   const { user, hasAccess } = useAuth();
-  const [recentTransactions, setRecentTransactions] = useState([]);
+  
+  // Enhanced State Management
   const [dashboardData, setDashboardData] = useState({
     totalRevenue: 0,
     todayRevenue: 0,
@@ -81,18 +31,9 @@ export default function Dashboard() {
     totalTransactions: 0,
     pendingTransactions: 0,
   });
-  const [weeklyData, setWeeklyData] = useState([]);
+  
+  const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Generate weekly chart data
-  const generateWeeklyData = () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days.map(day => ({
-      day,
-      revenue: Math.floor(Math.random() * 50000) + 10000,
-      profit: Math.floor(Math.random() * 15000) + 3000,
-    }));
-  };
 
   const toggleProfits = () => {
     const newValue = !showProfits;
@@ -100,128 +41,93 @@ export default function Dashboard() {
     localStorage.setItem("showProfits", newValue.toString());
   };
 
-  // Fetch dashboard data from API
-  useEffect(() => {
-    // Only fetch data if user is authenticated AND token is available
-    if (!user || !localStorage.getItem("callmemobiles_token")) {
-      console.log('⏭️ Skipping dashboard data fetch - user not authenticated or no token');
+  // Enhanced Data Fetching with Real-time Updates
+  const fetchDashboardData = async (showToast = false) => {
+    if (!user) {
+      console.log('⏭️ Skipping dashboard data fetch - user not authenticated');
       setLoading(false);
       return;
     }
 
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        console.log('🔄 Fetching dashboard and transactions data...');
+    try {
+      setLoading(true);
+      console.log('🔄 Fetching dashboard data...');
+      
+      // Parallel API calls for better performance
+      const [dashboardResponse, transactionsResponse] = await Promise.all([
+        apiClient.getDashboardStats(),
+        apiClient.getTransactions()
+      ]);
+      
+      console.log('📊 Dashboard response:', dashboardResponse);
+      console.log('📝 Transactions response:', transactionsResponse);
+      
+      // Update dashboard metrics
+      if (dashboardResponse && dashboardResponse.totals) {
+        const totals = dashboardResponse.totals;
+        const today = dashboardResponse.today || {};
         
-        // Add a much longer delay to ensure authentication is fully established
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Triple-check authentication state after delay
-        const currentToken = localStorage.getItem("callmemobiles_token");
-        const currentUser = localStorage.getItem("callmemobiles_user");
-        if (!currentToken || !currentUser || !user) {
-          console.log('⏭️ Authentication state changed during delay, aborting fetch');
-          setLoading(false);
-          return;
-        }
-        
-        // Additional backend readiness check
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const [dashboardResponse, transactionsResponse] = await Promise.all([
-          apiClient.getDashboardData(),
-          apiClient.getTransactions()
-        ]);
-        
-        console.log('📊 Dashboard API Response:', dashboardResponse);
-        console.log('📊 Dashboard API Response Type:', typeof dashboardResponse);
-        console.log('📊 Dashboard API Response Keys:', Object.keys(dashboardResponse || {}));
-        
-        console.log('📋 Transactions API Response:', transactionsResponse);
-        console.log('📋 Transactions API Response Type:', typeof transactionsResponse);
-        console.log('📋 Transactions Count:', Array.isArray(transactionsResponse) ? transactionsResponse.length : 'Not an array');
-        
-        // Test direct API call
-        window.testDashboardAPI = async () => {
-          try {
-            console.log('🔑 Using API client for dashboard data');
-            const data = await apiClient.getDashboardData();
-            console.log('📊 API Client Response Data:', data);
-            return data;
-          } catch (error) {
-            console.error('❌ API Client Error:', error);
-          }
-        };
-        
-        // Handle dashboard data
-        if (dashboardResponse?.totals) {
-          console.log('✅ Setting dashboard data:', dashboardResponse.totals);
-          setDashboardData(dashboardResponse.totals);
-        } else {
-          console.warn('⚠️ No totals found in dashboard response, using fallback');
-          setDashboardData({
-            totalRevenue: 0,
-            todayRevenue: 0,
-            totalProfit: 0,
-            todayProfit: 0,
-            totalTransactions: 0,
-            pendingTransactions: 0,
-          });
-        }
-        
-        // Handle transactions data
-        if (Array.isArray(transactionsResponse)) {
-          console.log('✅ Setting recent transactions:', transactionsResponse.slice(0, 5));
-          setRecentTransactions(transactionsResponse.slice(0, 5));
-        } else {
-          console.warn('⚠️ Transactions response is not an array:', typeof transactionsResponse);
-          setRecentTransactions([]);
-          toast({
-            title: "Data Format Error",
-            description: "Received invalid transactions data format",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch dashboard data:', error);
-        console.error('❌ Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
-        
-        // Set fallback data
         setDashboardData({
-          totalRevenue: 0,
-          todayRevenue: 0,
-          totalProfit: 0,
-          todayProfit: 0,
-          totalTransactions: 0,
-          pendingTransactions: 0,
+          totalRevenue: totals.totalRevenue || 0,
+          todayRevenue: today.totalRevenue || 0,
+          totalProfit: totals.totalProfit || 0,
+          todayProfit: today.totalProfit || 0,
+          totalTransactions: totals.totalTransactions || 0,
+          pendingTransactions: totals.pendingTransactions || 0,
         });
-        setRecentTransactions([]);
         
-        // Only show error toast if it's not a 'No backend available' error
-        if (!error.message?.includes('No backend available')) {
-          toast({
-            title: "Error Loading Dashboard",
-            description: "Failed to load dashboard data. Please check your connection.",
-            variant: "destructive",
-          });
-        } else {
-          console.log('ℹ️ Backend unavailable, using fallback data');
-        }
-      } finally {
-        setLoading(false);
+        console.log('✅ Dashboard data updated:', {
+          totalRevenue: totals.totalRevenue,
+          todayRevenue: today.totalRevenue,
+          totalTransactions: totals.totalTransactions
+        });
+      } else {
+        console.log('⚠️ Dashboard response missing totals:', dashboardResponse);
       }
-    };
+      
+      // Update recent transactions
+      if (Array.isArray(transactionsResponse)) {
+        setRecentTransactions(transactionsResponse.slice(0, 5));
+        console.log('✅ Recent transactions updated:', transactionsResponse.length, 'total');
+      } else if (transactionsResponse && Array.isArray(transactionsResponse.data)) {
+        setRecentTransactions(transactionsResponse.data.slice(0, 5));
+        console.log('✅ Recent transactions updated from data array:', transactionsResponse.data.length, 'total');
+      } else {
+        console.log('⚠️ Transactions response not an array:', transactionsResponse);
+      }
+      
+      if (showToast) {
+        toast({
+          title: "Data Refreshed",
+          description: "Dashboard data has been updated successfully.",
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Dashboard data fetch error:', error);
+      
+      if (showToast) {
+        toast({
+          title: "Refresh Failed",
+          description: "Failed to refresh dashboard data.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Manual refresh function
+  const handleRefresh = () => {
+    fetchDashboardData(true);
+  };
+
+  // Initial data load
+  useEffect(() => {
+    console.log('🚀 Dashboard mounted, user:', user?.username);
     fetchDashboardData();
-    setWeeklyData(generateWeeklyData());
   }, [user]);
-
-  // All dashboard data is loaded from backend and updated via socket.io
 
   return (
     <AppLayout showBreadcrumbs={false}>
@@ -233,17 +139,25 @@ export default function Dashboard() {
               {t("dashboard")}
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Welcome back, {user?.name}!{" "}
+              Welcome back, {user?.name}! 
               {user?.role === "worker"
-                ? "Here are your daily tasks."
-                : "Here's your repair shop overview for today."}
+                ? " Here are your daily tasks."
+                : " Here's your repair shop overview for today."}
             </p>
           </div>
+          
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" size="sm" className="h-10 sm:h-9">
-              <Calendar className="mr-2 h-4 w-4" />
-              Today: {new Date().toLocaleDateString()}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="h-10 sm:h-9"
+            >
+              <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
+              {loading ? 'Loading...' : 'Refresh'}
             </Button>
+            
             {hasAccess(["admin", "owner"]) && (
               <Button
                 variant="outline"
@@ -251,11 +165,6 @@ export default function Dashboard() {
                 onClick={toggleProfits}
                 className="h-10 sm:h-9"
               >
-                {showProfits ? (
-                  <EyeOff className="mr-2 h-4 w-4" />
-                ) : (
-                  <Eye className="mr-2 h-4 w-4" />
-                )}
                 {showProfits ? "Hide Profits" : "Show Profits"}
               </Button>
             )}
@@ -263,26 +172,25 @@ export default function Dashboard() {
         </div>
 
         {/* Key Metrics Cards */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           <Card className="card-hover">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {t("today-revenue")}
+                {t("today-revenue") || "Today's Revenue"}
               </CardTitle>
               <DollarSign className="h-4 w-4 text-success" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-success">
-                ₹{loading ? '...' : dashboardData.todayRevenue?.toLocaleString() || 0}
+                ₹{dashboardData.todayRevenue.toLocaleString()}
               </div>
-              {hasAccess(["admin", "owner"]) && showProfits && (
+              {hasAccess(["admin", "owner"]) && showProfits && dashboardData.todayProfit > 0 && (
                 <div className="text-sm text-muted-foreground">
-                  Profit: ₹{loading ? '...' : dashboardData.todayProfit?.toLocaleString() || 0}
+                  Profit: ₹{dashboardData.todayProfit.toLocaleString()}
                 </div>
               )}
-              <div className="flex items-center text-xs text-success">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +0% from yesterday
+              <div className="text-xs text-muted-foreground mt-1">
+                Today's earnings
               </div>
             </CardContent>
           </Card>
@@ -290,16 +198,16 @@ export default function Dashboard() {
           <Card className="card-hover">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {t("pending-repairs")}
+                {t("pending-repairs") || "Pending Repairs"}
               </CardTitle>
               <Clock className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-warning">
-                {loading ? '...' : dashboardData.pendingTransactions || 0}
+                {dashboardData.pendingTransactions}
               </div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                {loading ? '...' : dashboardData.pendingTransactions || 0} pending repairs
+              <div className="text-xs text-muted-foreground mt-1">
+                Awaiting completion
               </div>
             </CardContent>
           </Card>
@@ -307,167 +215,25 @@ export default function Dashboard() {
           <Card className="card-hover">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Weekly Total
+                Total Revenue
               </CardTitle>
               <TrendingUp className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{loading ? '...' : dashboardData.totalRevenue?.toLocaleString() || 0}
+                ₹{dashboardData.totalRevenue.toLocaleString()}
               </div>
-              {hasAccess(["admin", "owner"]) && showProfits && (
+              {hasAccess(["admin", "owner"]) && showProfits && dashboardData.totalProfit > 0 && (
                 <div className="text-sm text-muted-foreground">
-                  Profit: ₹{loading ? '...' : dashboardData.totalProfit?.toLocaleString() || 0}
+                  Profit: ₹{dashboardData.totalProfit.toLocaleString()}
                 </div>
               )}
-              <div className="flex items-center text-xs text-success">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +0% from last week
+              <div className="text-xs text-muted-foreground mt-1">
+                Total: {dashboardData.totalTransactions} transactions
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg sm:text-xl">
-              {t("quick-actions")}
-            </CardTitle>
-            <CardDescription className="text-sm">
-              Frequently used repair shop operations
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <Link to="/transactions/new">
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col gap-2 w-full"
-              >
-                <Plus className="h-6 w-6" />
-                <span className="text-xs">{t("new-transaction")}</span>
-              </Button>
-            </Link>
-            {hasAccess(["admin", "owner"]) && (
-              <>
-                <Link to="/suppliers">
-                  <Button
-                    variant="outline"
-                    className="h-20 flex flex-col gap-2 w-full"
-                  >
-                    <Users className="h-6 w-6" />
-                    <span className="text-xs">Add Supplier</span>
-                  </Button>
-                </Link>
-                <Link to="/reports">
-                  <Button
-                    variant="outline"
-                    className="h-20 flex flex-col gap-2 w-full"
-                  >
-                    <FileText className="h-6 w-6" />
-                    <span className="text-xs">View Reports</span>
-                  </Button>
-                </Link>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Charts - Only for Admin and Owner */}
-        {hasAccess(["admin", "owner"]) && (
-          <div className="grid gap-4 lg:grid-cols-1">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg sm:text-xl">
-                  Weekly Revenue & Profit
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Revenue, repairs, and profit trends for this week
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="px-2 sm:px-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={weeklyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip
-                      formatter={(value, name) => [
-                        `₹${value.toLocaleString()}`,
-                        name === "revenue" ? "Revenue" : "Profit",
-                      ]}
-                    />
-                    <Bar
-                      dataKey="revenue"
-                      fill="hsl(var(--primary))"
-                      name="revenue"
-                    />
-                    {hasAccess(["admin", "owner"]) && showProfits && (
-                      <Bar
-                        dataKey="profit"
-                        fill="hsl(var(--success))"
-                        name="profit"
-                      />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Repair Types Analysis - Only for Admin and Owner */}
-        {hasAccess(["admin", "owner"]) && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg sm:text-xl">
-                  Repair Type Distribution
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Most common repairs this month
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={[]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="count"
-                    >
-                      {[]}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="grid grid-cols-2 gap-2 mt-4">
-                  {[]}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg sm:text-xl">
-                  Repair Performance
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Count and revenue by repair type
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[]}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* Recent Transactions */}
         <Card>
@@ -475,11 +241,11 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-lg sm:text-xl">
-                  {t("recent-transactions")}
+                  {t("recent-transactions") || "Recent Transactions"}
                 </CardTitle>
-                <CardDescription className="text-sm">
-                  Latest repair transactions and their status
-                </CardDescription>
+                <div className="text-sm text-muted-foreground">
+                  Latest repair transactions and their status ({recentTransactions.length} loaded)
+                </div>
               </div>
               <Link to="/transactions">
                 <Button variant="outline" size="sm">
@@ -489,91 +255,68 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent className="px-3 sm:px-6">
-            <div className="space-y-3 sm:space-y-4">
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  <span className="ml-2 text-muted-foreground">Loading transactions...</span>
-                </div>
-              ) : recentTransactions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No recent transactions</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Transactions will appear here once you start processing repairs
-                  </p>
-                  <Link to="/transactions">
-                    <Button size="sm">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Transaction
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                recentTransactions.slice(0, 5).map((transaction) => {
-                const StatusIcon = Clock;
-                const paymentInfo = paymentMethodIcons[transaction.paymentMethod as keyof typeof paymentMethodIcons];
-                const PaymentIcon = paymentInfo || DollarSign;
-
-                return (
-                  <div
-                    key={transaction.id}
-                    className="flex items-center justify-between p-3 sm:p-4 rounded-lg border hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-start gap-4 flex-1 min-w-0">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Smartphone className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            {recentTransactions.length > 0 ? (
+              <div className="space-y-3 sm:space-y-4">
+                {recentTransactions.map((transaction, index) => (
+                  <div key={transaction.id || index} className="flex items-center justify-between border-b pb-3 last:border-b-0">
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        {transaction.customer_name || transaction.name || `Customer #${transaction.id}`}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-medium text-sm sm:text-base">
-                                {transaction.customer}
-                              </p>
-                              <Badge
-                                className="text-xs flex-shrink-0"
-                              >
-                                <StatusIcon className="h-3 w-3 mr-1" />
-                                Transaction
-                              </Badge>
-                            </div>
-                            <div className="text-xs sm:text-sm text-muted-foreground">
-                              <span className="font-medium">
-                                {transaction.device}
-                              </span>
-                              {" • "}
-                              <span>{transaction.repair}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>
-                                {String(transaction.date || '')} at {String(transaction.time || '')}
-                              </span>
-                              <PaymentIcon className="h-3 w-3" />
-                              <span>{t(transaction.paymentMethod)}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between sm:justify-end gap-4">
-                            <div className="text-right">
-                              <div className="font-semibold text-sm sm:text-base">
-                                ₹{typeof transaction.amount === 'number' ? transaction.amount.toLocaleString() : '0'}
-                              </div>
-                              {hasAccess(["admin", "owner"]) && showProfits && (
-                                <div className="text-xs text-success">
-                                  Profit: ₹{typeof transaction.profit === 'number' ? transaction.profit.toLocaleString() : '0'}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                      <div className="text-sm text-muted-foreground">
+                        {transaction.device_type || transaction.device} - {transaction.repair_type || transaction.repair}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(transaction.created_at).toLocaleDateString()} - 
+                        Status: {transaction.status || 'pending'}
                       </div>
                     </div>
+                    <div className="text-right">
+                      <div className="font-semibold">
+                        ₹{(transaction.repair_cost || transaction.amount_given || transaction.repairCost || transaction.amountGiven || 0).toLocaleString()}
+                      </div>
+                      {hasAccess(["admin", "owner"]) && showProfits && (transaction.profit || transaction.actual_cost) && (
+                        <div className="text-xs text-success">
+                          +₹{((transaction.profit || (transaction.repair_cost - transaction.actual_cost)) || 0).toLocaleString()} profit
+                        </div>
+                      )}
+                    </div>
                   </div>
-                );
-              }))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-muted-foreground">
+                  {loading ? 'Loading transactions...' : 'No recent transactions found'}
+                </div>
+                {!loading && (
+                  <Link to="/transactions/new" className="mt-4 inline-block">
+                    <Button>
+                      Add First Transaction
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Debug Info - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Debug Info</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-xs">
+                <div>User: {user?.username} ({user?.role})</div>
+                <div>Loading: {loading ? 'Yes' : 'No'}</div>
+                <div>Dashboard Data: {JSON.stringify(dashboardData, null, 2)}</div>
+                <div>Recent Transactions: {recentTransactions.length} items</div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppLayout>
   );
