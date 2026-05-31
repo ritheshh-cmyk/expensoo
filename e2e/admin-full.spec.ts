@@ -1,7 +1,7 @@
 import { test, expect, chromium } from '@playwright/test';
 
-const SITE      = 'https://expensoo-eight.vercel.app';
-const API       = 'https://backendmobile-4swg.onrender.com';
+const SITE      = process.env.FRONTEND_URL || 'https://expensoo-eight.vercel.app';
+const API       = process.env.VITE_BACKEND_URL || 'https://backendmobile.onrender.com';
 const ADMIN_U   = 'admin';
 const ADMIN_P   = 'admin123';
 const TEST_USER = `testuser_${Date.now()}`;
@@ -269,7 +269,7 @@ test.describe('🖥 Admin Page UI — browser tests', () => {
     // Should be redirected away from admin or show access denied
     const url = page.url();
     const isDenied = !url.includes('/admin') ||
-      await page.locator('text=/access denied|not authorized|forbidden/i').isVisible({ timeout: 3_000 }).catch(() => false);
+      await page.locator('text=/access denied|not authorized|forbidden|admin access required/i').isVisible({ timeout: 3_000 }).catch(() => false);
     expect(isDenied).toBe(true);
     console.log('✅ Worker correctly blocked from admin. URL:', url);
     await page.screenshot({ path: 'pw-worker-blocked.png' });
