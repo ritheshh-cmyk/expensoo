@@ -29,7 +29,7 @@ export function AppLayout({
       position:sticky children in Chromium (crbug.com/1251018), causing Radix
       floating-ui to misplace portals at (0,0).
     */
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-background">
       {/* Mobile sidebar backdrop — z-40 */}
       {sidebarOpen && (
         <div
@@ -41,8 +41,8 @@ export function AppLayout({
       {/* Desktop sidebar z-30, mobile z-50 */}
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main content — no stacking context on this div */}
-      <div className="lg:pl-64">
+      {/* Main content — clips horizontal overflow without breaking scroll */}
+      <div className="lg:pl-64 overflow-x-clip">
         {/* Header — sticky z-50, NO backdrop-blur (prevents GPU layer conflict) */}
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
