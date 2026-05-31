@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Clock, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AuditLog {
   id: number;
@@ -63,6 +64,7 @@ function actionVariant(action: string): { label: string; className: string } {
 }
 
 export function AuditLogPanel() {
+  const { t } = useLanguage();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -84,7 +86,7 @@ export function AuditLogPanel() {
     try {
       const res = await apiClient.request(`/api/auth/audit/logs?limit=${targetLimit}`);
       if (!res.success) {
-        throw new Error(res.error || 'Failed to load audit logs');
+        throw new Error(res.error || t('error-loading'));
       }
       
       const data = res.data?.data ?? res.data ?? [];
@@ -99,12 +101,12 @@ export function AuditLogPanel() {
       
       setLastRefreshed(new Date());
     } catch (err: any) {
-      setError(err.message ?? 'Failed to load audit logs');
+      setError(err.message ?? t('error-loading'));
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [t]);
 
   // Handle resetting and initial fetch
   const handleRefresh = () => {
@@ -115,7 +117,7 @@ export function AuditLogPanel() {
 
   useEffect(() => {
     fetchLogs(limit, false);
-  }, [fetchLogs]);
+  }, [fetchLogs, limit]);
 
   // Infinite Scroll Trigger
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -136,12 +138,12 @@ export function AuditLogPanel() {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <CardTitle className="flex items-center gap-2 text-foreground">
             <Clock className="h-5 w-5 text-brand-orange" />
-            Audit Log
+            {t('audit-log-title')}
           </CardTitle>
           <div className="flex items-center gap-3">
             {lastRefreshed && (
               <span className="text-xs text-muted-foreground">
-                Last updated: {lastRefreshed.toLocaleTimeString()}
+                {t('last-updated')}: {lastRefreshed.toLocaleTimeString()}
               </span>
             )}
             <Button
@@ -152,12 +154,12 @@ export function AuditLogPanel() {
               className="flex items-center gap-1.5 h-9"
             >
               <RefreshCw className={`h-4 w-4 ${loading && !loadingMore ? 'animate-spin' : ''}`} />
-              Refresh
+              {t('refresh')}
             </Button>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
-          Real-time security events — login attempts, password changes, role updates, and user deletions
+          {t('audit-log-desc')}
         </p>
       </CardHeader>
 
@@ -170,7 +172,7 @@ export function AuditLogPanel() {
 
         {!error && logs.length === 0 && !loading && (
           <p className="text-sm text-muted-foreground text-center py-8">
-            No audit events recorded yet.
+            {t('no-logs')}
           </p>
         )}
 
@@ -183,13 +185,13 @@ export function AuditLogPanel() {
             <table className="w-full text-sm border-collapse">
               <thead className="sticky top-0 bg-background/95 backdrop-blur-md border-b border-border z-10">
                 <tr className="text-muted-foreground">
-                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">Timestamp</th>
-                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">Action</th>
-                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">Actor</th>
-                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">Target</th>
-                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">IP Address</th>
-                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">Status</th>
-                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">Details</th>
+                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('timestamp')}</th>
+                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('action')}</th>
+                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('actor')}</th>
+                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('target')}</th>
+                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('ip-address')}</th>
+                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('status')}</th>
+                  <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('details')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -241,7 +243,7 @@ export function AuditLogPanel() {
                               log.success ? 'bg-green-500' : 'bg-red-500'
                             }`}
                           />
-                          {log.success ? 'Success' : 'Failed'}
+                          {log.success ? t('success') : t('failed')}
                         </span>
                       </td>
 
@@ -259,14 +261,14 @@ export function AuditLogPanel() {
             {loadingMore && (
               <div className="flex items-center justify-center gap-2 py-4 border-t border-border bg-muted/10">
                 <Loader2 className="h-4 w-4 animate-spin text-brand-orange" />
-                <span className="text-xs text-muted-foreground">Loading more log entries...</span>
+                <span className="text-xs text-muted-foreground">{t('loading')}</span>
               </div>
             )}
             
             {/* No More Logs message */}
             {!hasMore && logs.length > 0 && (
               <div className="text-center py-4 text-xs text-muted-foreground border-t border-border bg-muted/5 font-mono">
-                • End of audit trail reached •
+                {t('end-reached')}
               </div>
             )}
           </div>

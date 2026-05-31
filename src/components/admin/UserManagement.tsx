@@ -10,6 +10,7 @@ import {
   Calendar, Clock, User, ShieldCheck, Pencil,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const getApiUrl = () => {
   const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
@@ -62,13 +63,14 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
   const [showPw, setShowPw]     = useState(false);
   const [busy, setBusy]         = useState(false);
   const [err, setErr]           = useState('');
+  const { t } = useLanguage();
 
   const submit = async () => {
     setErr('');
-    if (!username.trim() || !password.trim()) { setErr('Username and password are required'); return; }
-    if (password.length < 8)                  { setErr('Password must be at least 8 characters'); return; }
-    if (!/[0-9]/.test(password))              { setErr('Password must contain at least one number'); return; }
-    if (!/[^A-Za-z0-9]/.test(password))       { setErr('Password must contain at least one special character'); return; }
+    if (!username.trim() || !password.trim()) { setErr(t("user-mgmt-err-req")); return; }
+    if (password.length < 8)                  { setErr(t("user-mgmt-err-len")); return; }
+    if (!/[0-9]/.test(password))              { setErr(t("user-mgmt-err-num")); return; }
+    if (!/[^A-Za-z0-9]/.test(password))       { setErr(t("user-mgmt-err-spec")); return; }
     setBusy(true);
     try {
       const res = await fetch(`${BASE}/api/auth/users`, {
@@ -78,7 +80,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create user');
-      toast({ title: '✅ User created', description: `${username} (${role}) added` });
+      toast({ title: t("user-mgmt-created-title"), description: `${username} (${role}) ${t("user-mgmt-created-desc")}` });
       setOpen(false); setUsername(''); setPassword(''); setRole('worker');
       onCreated();
     } catch (e: any) { setErr(e.message); }
@@ -88,7 +90,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
   if (!open) {
     return (
       <Button size="sm" onClick={() => setOpen(true)} className="shrink-0">
-        <UserPlus className="h-4 w-4 mr-1.5" /> Create User
+        <UserPlus className="h-4 w-4 mr-1.5" /> {t("create-user")}
       </Button>
     );
   }
@@ -96,15 +98,15 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
   return (
     <div className="border rounded-xl p-4 bg-muted/30 space-y-3 mt-2">
       <p className="font-semibold text-sm flex items-center gap-2">
-        <UserPlus className="h-4 w-4" /> New User
+        <UserPlus className="h-4 w-4" /> {t("create-user")}
       </p>
       {err && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">{err}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} autoFocus />
+        <Input placeholder={t("user-mgmt-username")} value={username} onChange={e => setUsername(e.target.value)} autoFocus />
         <div className="relative">
           <Input
             type={showPw ? 'text' : 'password'}
-            placeholder="Password (8+ chars, num, #)"
+            placeholder={t("user-mgmt-pw-placeholder")}
             value={password}
             onChange={e => setPassword(e.target.value)}
             className="pr-9"
@@ -115,17 +117,17 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
         </div>
         <select value={role} onChange={e => setRole(e.target.value as any)}
           className="h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="worker">Worker</option>
-          <option value="owner">Owner</option>
-          <option value="admin">Admin</option>
+          <option value="worker">{t("role-worker")}</option>
+          <option value="owner">{t("role-owner")}</option>
+          <option value="admin">{t("role-admin")}</option>
         </select>
       </div>
       <div className="flex gap-2">
         <Button size="sm" onClick={submit} disabled={busy}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />} Create
+          {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />} {t("create")}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => { setOpen(false); setErr(''); }}>
-          <X className="h-4 w-4 mr-1" /> Cancel
+          <X className="h-4 w-4 mr-1" /> {t("cancel")}
         </Button>
       </div>
     </div>
@@ -138,12 +140,13 @@ function ResetPasswordForm({ userId, username, onDone }: { userId: number; usern
   const [showPw, setShow] = useState(false);
   const [busy, setBusy]   = useState(false);
   const [err, setErr]     = useState('');
+  const { t } = useLanguage();
 
   const submit = async () => {
     setErr('');
-    if (pw.length < 8)             { setErr('Min 8 characters'); return; }
-    if (!/[0-9]/.test(pw))         { setErr('Must contain a number'); return; }
-    if (!/[^A-Za-z0-9]/.test(pw))  { setErr('Must contain a special character'); return; }
+    if (pw.length < 8)             { setErr(t("user-mgmt-err-len")); return; }
+    if (!/[0-9]/.test(pw))         { setErr(t("user-mgmt-err-num")); return; }
+    if (!/[^A-Za-z0-9]/.test(pw))  { setErr(t("user-mgmt-err-spec")); return; }
     setBusy(true);
     try {
       const res = await fetch(`${BASE}/api/auth/users/${userId}/reset-password`, {
@@ -153,7 +156,7 @@ function ResetPasswordForm({ userId, username, onDone }: { userId: number; usern
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
-      toast({ title: '🔑 Password reset', description: `${username}'s password has been updated` });
+      toast({ title: t("user-mgmt-pw-reset-title"), description: `${username}'s ${t("user-mgmt-pw-reset-desc")}` });
       onDone();
     } catch (e: any) { setErr(e.message); }
     finally { setBusy(false); }
@@ -162,14 +165,14 @@ function ResetPasswordForm({ userId, username, onDone }: { userId: number; usern
   return (
     <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg space-y-2">
       <p className="text-xs font-semibold text-yellow-800 flex items-center gap-1.5">
-        <KeyRound className="h-3.5 w-3.5" /> Force-reset password for <strong>{username}</strong>
+        <KeyRound className="h-3.5 w-3.5" /> {t("user-mgmt-force-reset")} <strong>{username}</strong>
       </p>
       {err && <p className="text-xs text-red-500">{err}</p>}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Input
             type={showPw ? 'text' : 'password'}
-            placeholder="New password (8+ chars, num, #)"
+            placeholder={t("user-mgmt-new-pw-placeholder")}
             value={pw}
             onChange={e => setPw(e.target.value)}
             className="pr-9 h-9 text-sm"
@@ -195,14 +198,15 @@ function EditUsernameForm({
   const [value, setValue]   = useState(currentUsername);
   const [busy, setBusy]     = useState(false);
   const [err, setErr]       = useState('');
+  const { t } = useLanguage();
 
   const submit = async () => {
     setErr('');
     const trimmed = value.trim();
-    if (!trimmed)                  { setErr('Username cannot be empty'); return; }
+    if (!trimmed)                  { setErr(t("user-mgmt-err-empty-username")); return; }
     if (trimmed === currentUsername) { onDone(currentUsername); return; }
-    if (trimmed.length < 3)        { setErr('Min 3 characters'); return; }
-    if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) { setErr('Only letters, numbers, underscores'); return; }
+    if (trimmed.length < 3)        { setErr(t("user-mgmt-err-min3")); return; }
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) { setErr(t("user-mgmt-err-invalid-username")); return; }
     setBusy(true);
     try {
       const res = await fetch(`${BASE}/api/auth/users/${userId}`, {
@@ -212,7 +216,7 @@ function EditUsernameForm({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Failed to update username');
-      toast({ title: '✅ Username updated', description: `Renamed to "${trimmed}"` });
+      toast({ title: t("user-mgmt-username-updated"), description: `${t("user-mgmt-username-updated-desc")} "${trimmed}"` });
       onDone(trimmed);
     } catch (e: any) {
       setErr(e.message);
@@ -224,7 +228,7 @@ function EditUsernameForm({
   return (
     <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
       <p className="text-xs font-semibold text-blue-800 flex items-center gap-1.5">
-        <Pencil className="h-3.5 w-3.5" /> Edit username
+        <Pencil className="h-3.5 w-3.5" /> {t("user-mgmt-edit-username")}
       </p>
       {err && <p className="text-xs text-red-500">{err}</p>}
       <div className="flex gap-2">
@@ -233,7 +237,7 @@ function EditUsernameForm({
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onDone(currentUsername); }}
           className="h-9 text-sm flex-1"
-          placeholder="New username"
+          placeholder={t("new-username-placeholder")}
           autoFocus
         />
         <Button size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-white" onClick={submit} disabled={busy}>
@@ -251,6 +255,7 @@ function EditUsernameForm({
 // ── Main component ─────────────────────────────────────────────────────────────
 export function UserManagement() {
   const { user: me } = useAuth();
+  const { t } = useLanguage();
   const [users, setUsers]               = useState<any[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState<string | null>(null);
@@ -282,7 +287,7 @@ export function UserManagement() {
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const handleDelete = async (id: number, username: string) => {
-    if (!confirm(`Permanently delete "${username}"? This cannot be undone.`)) return;
+    if (!confirm(`${t("user-mgmt-permanently-delete")} "${username}"? ${t("user-mgmt-cannot-be-undone")}`)) return;
     try {
       const res = await fetch(`${BASE}/api/auth/users/${id}`, {
         method: 'DELETE',
@@ -290,7 +295,7 @@ export function UserManagement() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Failed to delete');
-      toast({ title: '🗑 Deleted', description: `${username} removed` });
+      toast({ title: t("user-mgmt-deleted-title"), description: `${username} ${t("user-mgmt-deleted-desc")}` });
       setUsers(prev => prev.filter(u => u.id !== id));
     } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
   };
@@ -305,7 +310,7 @@ export function UserManagement() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Failed to update role');
-      toast({ title: 'Role updated', description: `${newRole} role set` });
+      toast({ title: t("user-mgmt-role-updated-title"), description: `${newRole} ${t("user-mgmt-role-set-desc")}` });
       setUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
       setEditRoleId(null);
     } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
@@ -321,15 +326,15 @@ export function UserManagement() {
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4 flex-wrap pb-4">
         <div>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-foreground">
             <Shield className="h-5 w-5 text-blue-500" />
-            User Management
+            {t("user-mgmt-title")}
           </CardTitle>
-          <CardDescription>Full control — create, roles, passwords, delete</CardDescription>
+          <CardDescription>{t("user-mgmt-desc")}</CardDescription>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> {t("refresh")}
           </Button>
         </div>
       </CardHeader>
@@ -342,7 +347,7 @@ export function UserManagement() {
             <p className="font-semibold">Connection Error</p>
             <p>{error}</p>
             <Button size="sm" variant="outline" className="mt-2 h-8 text-xs" onClick={fetchUsers}>
-              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Retry
+              <RefreshCw className="h-3.5 w-3.5 mr-1" /> {t("refresh")}
             </Button>
           </div>
         )}
@@ -350,10 +355,10 @@ export function UserManagement() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full" />
-            <p className="text-sm text-muted-foreground">Loading users…</p>
+            <p className="text-sm text-muted-foreground">{t("user-mgmt-loading")}</p>
           </div>
         ) : users.length === 0 && !error ? (
-          <p className="text-center text-muted-foreground text-sm py-8">No users found.</p>
+          <p className="text-center text-muted-foreground text-sm py-8">{t("user-mgmt-no-users")}</p>
         ) : (
           <div className="space-y-2">
             {users.map(user => {
@@ -379,9 +384,9 @@ export function UserManagement() {
                       <div className="min-w-0">
                         <div className="font-semibold text-sm flex items-center gap-1.5 truncate">
                           {user.username}
-                          {isSelf && <span className="text-xs text-muted-foreground font-normal">(you)</span>}
+                          {isSelf && <span className="text-xs text-muted-foreground font-normal">({t("user-mgmt-you")})</span>}
                         </div>
-                        <div className="text-xs text-muted-foreground">ID #{user.id}</div>
+                        <div className="text-xs text-muted-foreground">{t("user-mgmt-id")} #{user.id}</div>
                       </div>
                     </div>
 
@@ -389,7 +394,7 @@ export function UserManagement() {
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="outline" className={`text-xs font-semibold ${meta.cls}`}>
                         <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${meta.dotCls}`} />
-                        {meta.label}
+                        {t(`role-${meta.label.toLowerCase()}`)}
                       </Badge>
                       <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
@@ -401,14 +406,14 @@ export function UserManagement() {
                       {/* Info grid */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                         <div className="space-y-0.5">
-                          <p className="text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" /> Username</p>
+                          <p className="text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" /> {t("user-mgmt-username")}</p>
                           <div className="flex items-center gap-1.5">
                             <p className="font-medium">{user.username}</p>
                             {!isSelf && (
                               <button
                                 type="button"
                                 className="text-muted-foreground hover:text-primary transition-colors"
-                                title="Edit username"
+                                title={t("user-mgmt-edit-username")}
                                 onClick={e => { e.stopPropagation(); setEditUsernameId(isEditingName ? null : user.id); setEditRoleId(null); setResetPwId(null); }}
                               >
                                 <Pencil className="h-3 w-3" />
@@ -417,23 +422,23 @@ export function UserManagement() {
                           </div>
                         </div>
                         <div className="space-y-0.5">
-                          <p className="text-muted-foreground flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Role</p>
-                          <p className="font-medium capitalize">{user.role}</p>
+                          <p className="text-muted-foreground flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> {t("user-mgmt-role")}</p>
+                          <p className="font-medium capitalize">{t(`role-${user.role}`)}</p>
                         </div>
                         <div className="space-y-0.5">
-                          <p className="text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> Created</p>
+                          <p className="text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> {t("user-mgmt-created")}</p>
                           <p className="font-medium">{fmt(user.createdAt)}</p>
                         </div>
                         <div className="space-y-0.5">
-                          <p className="text-muted-foreground flex items-center gap-1"><KeyRound className="h-3 w-3" /> Password last changed</p>
-                          <p className="font-medium">{user.passwordChangedAt ? timeAgo(user.passwordChangedAt) : 'Never changed'}</p>
+                          <p className="text-muted-foreground flex items-center gap-1"><KeyRound className="h-3 w-3" /> {t("user-mgmt-pw-last-changed")}</p>
+                          <p className="font-medium">{user.passwordChangedAt ? timeAgo(user.passwordChangedAt) : t("user-mgmt-never-changed")}</p>
                         </div>
                         <div className="space-y-0.5">
-                          <p className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Last seen</p>
+                          <p className="text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {t("user-mgmt-last-seen")}</p>
                           <p className="font-medium">{timeAgo(user.lastSeen)}</p>
                         </div>
                         <div className="space-y-0.5">
-                          <p className="text-muted-foreground">Shop ID</p>
+                          <p className="text-muted-foreground">{t("user-mgmt-shop-id")}</p>
                           <p className="font-medium">{user.shop_id ?? '—'}</p>
                         </div>
                       </div>
@@ -448,9 +453,9 @@ export function UserManagement() {
                               id={`role-sel-${user.id}`}
                               className="h-8 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                             >
-                              <option value="worker">Worker</option>
-                              <option value="owner">Owner</option>
-                              <option value="admin">Admin</option>
+                              <option value="worker">{t("role-worker")}</option>
+                              <option value="owner">{t("role-owner")}</option>
+                              <option value="admin">{t("role-admin")}</option>
                             </select>
                             <Button size="sm" className="h-8 px-2" disabled={savingRole === user.id} onClick={() => {
                               const sel = document.getElementById(`role-sel-${user.id}`) as HTMLSelectElement;
@@ -464,7 +469,7 @@ export function UserManagement() {
                           </div>
                         ) : (
                           <Button size="sm" variant="outline" className="h-8 text-xs" onClick={e => { e.stopPropagation(); setEditRoleId(user.id); setResetPwId(null); }}>
-                            <Shield className="h-3.5 w-3.5 mr-1" /> Change Role
+                            <Shield className="h-3.5 w-3.5 mr-1" /> {t("user-mgmt-change-role")}
                           </Button>
                         )}
 
@@ -475,7 +480,7 @@ export function UserManagement() {
                             className="h-8 text-xs border-yellow-400 text-yellow-700 hover:bg-yellow-50"
                             onClick={e => { e.stopPropagation(); setResetPwId(isReset ? null : user.id); setEditRoleId(null); }}
                           >
-                            <KeyRound className="h-3.5 w-3.5 mr-1" /> Reset Password
+                            <KeyRound className="h-3.5 w-3.5 mr-1" /> {t("user-mgmt-reset-pw")}
                           </Button>
                         )}
 
@@ -486,7 +491,7 @@ export function UserManagement() {
                             className="h-8 text-xs text-destructive hover:bg-destructive/10 ml-auto"
                             onClick={e => { e.stopPropagation(); handleDelete(user.id, user.username); }}
                           >
-                            <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete User
+                            <Trash2 className="h-3.5 w-3.5 mr-1" /> {t("user-mgmt-delete-user")}
                           </Button>
                         )}
                       </div>
@@ -518,7 +523,7 @@ export function UserManagement() {
 
         {users.length > 0 && (
           <p className="text-xs text-muted-foreground text-center pt-2 border-t">
-            {users.length} user{users.length !== 1 ? 's' : ''} total
+            {users.length} {users.length !== 1 ? t("user-mgmt-users-total") : t("user-mgmt-user-total")}
           </p>
         )}
       </CardContent>

@@ -3,8 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Monitor, Smartphone, RefreshCw, X, Clock, Globe, Tablet, ShieldAlert } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Session {
   id: string;
@@ -39,6 +39,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export function SessionsPanel() {
+  const { t } = useLanguage();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,14 +51,14 @@ export function SessionsPanel() {
     try {
       const res = await apiClient.request('/api/auth/admin/sessions');
       if (!res.success) {
-        throw new Error(res.error || 'Failed to load sessions');
+        throw new Error(res.error || t('error-loading-sessions'));
       }
       const data = res.data?.data ?? res.data ?? [];
       // Sort: current sessions first, then most recently active
       const sorted = [...data].sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
       setSessions(sorted);
     } catch (err: any) {
-      setError(err.message ?? 'Failed to load sessions');
+      setError(err.message ?? t('error-loading-sessions'));
     } finally {
       setLoading(false);
     }
@@ -68,22 +69,22 @@ export function SessionsPanel() {
   }, [fetchSessions]);
 
   const revokeSession = async (id: string) => {
-    if (!confirm('Revoke this session? The user will be logged out on that device.')) return;
+    if (!confirm(t('revoke-session-confirm'))) return;
     setRevoking(id);
     try {
       const res = await apiClient.request(`/api/auth/sessions/${id}`, {
         method: 'DELETE',
       });
-      if (!res.success) throw new Error(res.error || 'Failed to revoke');
+      if (!res.success) throw new Error(res.error || t('error-revoking-session'));
       toast({ 
-        title: 'Session revoked', 
-        description: 'The session has been terminated successfully.' 
+        title: t('session-revoked-title'), 
+        description: t('session-revoked-desc') 
       });
       setSessions(prev => prev.filter(s => s.id !== id));
     } catch (err: any) {
       toast({ 
         title: 'Error', 
-        description: err.message || 'Could not revoke session.', 
+        description: err.message || t('error-revoking-session'), 
         variant: 'destructive' 
       });
     } finally {
@@ -97,10 +98,10 @@ export function SessionsPanel() {
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2 text-foreground">
             <Monitor className="h-5 w-5 text-brand-orange" />
-            Active Sessions
+            {t('sessions-title')}
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            All currently authenticated devices connected to the application
+            {t('sessions-desc')}
           </CardDescription>
         </div>
         <Button 
@@ -111,7 +112,7 @@ export function SessionsPanel() {
           className="h-9 flex items-center gap-1.5"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('refresh')}
         </Button>
       </CardHeader>
 
@@ -125,14 +126,14 @@ export function SessionsPanel() {
         {!error && !loading && sessions.length === 0 && (
           <div className="text-center py-10 flex flex-col items-center justify-center gap-2">
             <ShieldAlert className="h-10 w-10 text-muted-foreground/50" />
-            <p className="text-muted-foreground text-sm">No active sessions found.</p>
+            <p className="text-muted-foreground text-sm">{t('no-sessions-found')}</p>
           </div>
         )}
 
         {loading && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-brand-orange" />
-            <span className="text-xs text-muted-foreground">Retrieving active sessions...</span>
+            <span className="text-xs text-muted-foreground">{t('retrieving-sessions')}</span>
           </div>
         )}
 
@@ -160,7 +161,7 @@ export function SessionsPanel() {
                       </span>
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3.5 w-3.5 text-muted-foreground/75" />
-                        Active {timeAgo(s.lastSeen)}
+                        {t('active')} {timeAgo(s.lastSeen)}
                       </span>
                     </div>
                   </div>
@@ -170,7 +171,7 @@ export function SessionsPanel() {
                 <div className="flex items-center gap-3.5 shrink-0 self-end sm:self-auto">
                   <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 font-medium text-xs px-2.5 py-0.5 shadow-none rounded-full flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                    Active
+                    {t('active')}
                   </Badge>
                   <Button
                     variant="ghost"
@@ -194,7 +195,7 @@ export function SessionsPanel() {
 
         {sessions.length > 0 && (
           <p className="text-xs text-muted-foreground text-center mt-5 font-mono">
-            {sessions.length} active session{sessions.length !== 1 ? 's' : ''} • Checked in real-time
+            {sessions.length} {sessions.length !== 1 ? t('session-count-plural') : t('session-count-suffix')}
           </p>
         )}
       </CardContent>

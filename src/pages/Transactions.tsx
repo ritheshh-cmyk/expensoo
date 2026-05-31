@@ -125,7 +125,7 @@ export default function Transactions() {
       // S.No — sequential row number, independent of DB id
       columnHelper.display({
         id: "sno",
-        header: "S.No",
+        header: t("sno"),
         cell: ({ row }) => (
           <div className="text-sm font-medium text-muted-foreground w-10 text-center">
             {row.index + 1}
@@ -139,7 +139,7 @@ export default function Transactions() {
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="h-8 p-0 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
           >
-            Txn ID
+            {t("txn-id")}
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         ),
@@ -161,7 +161,7 @@ export default function Transactions() {
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="h-8 p-0 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
           >
-            Date
+            {t("date-col")}
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         ),
@@ -177,7 +177,7 @@ export default function Transactions() {
         ),
       }),
       columnHelper.accessor("customer", {
-        header: "Customer",
+        header: t("customer-col"),
         cell: ({ row }) => (
           <div>
             <div className="font-medium text-foreground">{row.getValue("customer")}</div>
@@ -189,7 +189,7 @@ export default function Transactions() {
         ),
       }),
       columnHelper.accessor("device", {
-        header: "Device",
+        header: t("device-col"),
         cell: ({ row }) => (
           <div>
             <div className="font-medium text-foreground">{row.getValue("device")}</div>
@@ -206,7 +206,7 @@ export default function Transactions() {
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="h-8 p-0 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
           >
-            Cost
+            {t("cost-col")}
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         ),
@@ -220,7 +220,7 @@ export default function Transactions() {
       }),
 
       columnHelper.accessor("paymentMethod", {
-        header: "Payment",
+        header: t("payment-method"),
         cell: ({ row }) => (
           <div className="text-sm text-foreground">
             {t(row.getValue("paymentMethod"))}
@@ -233,7 +233,7 @@ export default function Transactions() {
 
       columnHelper.display({
         id: "history",
-        header: "History",
+        header: t("view-details"),
         cell: ({ row }) => (
           <Button
             variant="ghost"
@@ -248,7 +248,7 @@ export default function Transactions() {
       }),
       columnHelper.display({
         id: "actions",
-        header: "Actions",
+        header: t("actions-col"),
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -262,17 +262,17 @@ export default function Transactions() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="bottom" align="end" avoidCollisions={false} sideOffset={4}>
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuLabel>{t("actions-col")}</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() => navigator.clipboard.writeText(row.original.id)}
               >
-                Copy transaction ID
+                {t("copy-txn-id")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to={`/transactions/${row.original.id}/edit`}>
                   <Edit className="mr-2 h-4 w-4" />
-                  Edit transaction
+                  {t("edit-txn")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -280,14 +280,14 @@ export default function Transactions() {
                 onClick={() => handleDelete(row.original.id)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete transaction
+                {t("delete-txn")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ),
       }),
     ],
-    [],
+    [t],
   );
 
   const filteredData = useMemo(() => {
@@ -413,7 +413,7 @@ export default function Transactions() {
     }
   };
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) return;
+    if (!window.confirm(t("delete-confirm"))) return;
     // Optimistic UI: remove from local state immediately
     setData(prev => prev.filter(t => t.id !== id));
     try {
@@ -456,7 +456,7 @@ export default function Transactions() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("transactions")}</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Manage all repair transactions</p>
+          <p className="text-muted-foreground text-sm mt-0.5">{t("manage-repairs-desc")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
@@ -487,7 +487,7 @@ export default function Transactions() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <input
               type="text"
-              placeholder={`${t("search")} transactions...`}
+              placeholder={t("search-placeholder")}
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-lg text-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all duration-150 text-sm"
@@ -496,10 +496,10 @@ export default function Transactions() {
           <div className="flex flex-col sm:flex-row gap-2 lg:flex-shrink-0">
             <Select value={paymentFilter} onValueChange={setPaymentFilter}>
               <SelectTrigger className="w-full sm:w-40 h-10 bg-background border-border text-foreground cursor-pointer">
-                <SelectValue placeholder="All Payments" />
+                <SelectValue placeholder={t("all-payments")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Payments</SelectItem>
+                <SelectItem value="all">{t("all-payments")}</SelectItem>
                 <SelectItem value="cash">{t("cash")}</SelectItem>
                 <SelectItem value="upi">UPI</SelectItem>
                 <SelectItem value="card">Card</SelectItem>
@@ -514,9 +514,9 @@ export default function Transactions() {
       <div className="rounded-xl border border-border bg-background backdrop-blur-sm overflow-hidden">
         {/* Table header row: count */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-border">
-          <span className="text-sm font-semibold text-foreground">Transaction List</span>
+          <span className="text-sm font-semibold text-foreground">{t("transaction-list")}</span>
           <span className="text-xs text-muted-foreground">
-            {table.getFilteredRowModel().rows.length} transactions found
+            {table.getFilteredRowModel().rows.length} {t("txns-found")}
           </span>
         </div>
 
@@ -561,11 +561,11 @@ export default function Transactions() {
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="bottom" align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>{t("actions-col")}</DropdownMenuLabel>
                         <DropdownMenuItem asChild>
                           <Link to={`/transactions/${tx.id}/edit`}>
                             <Edit className="mr-2 h-4 w-4" />
-                            Edit
+                            {t("edit")}
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -573,7 +573,7 @@ export default function Transactions() {
                           onClick={() => handleDelete(tx.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          {t("delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -584,8 +584,8 @@ export default function Transactions() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Receipt className="w-8 h-8 text-muted-foreground mb-3" />
-              <p className="text-muted-foreground font-medium text-sm">No transactions yet</p>
-              <p className="text-muted-foreground text-xs mt-1">Create your first transaction to get started</p>
+              <p className="text-muted-foreground font-medium text-sm">{t("no-transactions-yet")}</p>
+              <p className="text-muted-foreground text-xs mt-1">{t("add-first-transaction")}</p>
             </div>
           )}
         </div>
@@ -637,8 +637,8 @@ export default function Transactions() {
                       <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center mb-4">
                         <Receipt className="w-8 h-8 text-muted-foreground" />
                       </div>
-                      <h3 className="text-foreground font-medium mb-1">No transactions yet</h3>
-                      <p className="text-muted-foreground text-sm">Create your first transaction to get started</p>
+                      <h3 className="text-foreground font-medium mb-1">{t("no-transactions-yet")}</h3>
+                      <p className="text-muted-foreground text-sm">{t("add-first-transaction")}</p>
                     </div>
                   </td>
                 </tr>
@@ -650,8 +650,8 @@ export default function Transactions() {
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-5 py-4 border-t border-border bg-muted/20">
           <div className="text-sm text-muted-foreground text-center sm:text-left">
-            Showing {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()} pages
+            {t("showing-pages")} {table.getState().pagination.pageIndex + 1} {t("of-pages")}{" "}
+            {table.getPageCount()} {t("pages-label")}
           </div>
           <div className="flex items-center justify-center sm:justify-end space-x-2">
             <button
@@ -681,7 +681,7 @@ export default function Transactions() {
         <Dialog open={historyDialog.open} onOpenChange={open => setHistoryDialog({ open, customer: open ? historyDialog.customer : null })}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Customer History: {historyDialog.customer}</DialogTitle>
+              <DialogTitle>{t("customer-history")}: {historyDialog.customer}</DialogTitle>
             </DialogHeader>
             {(() => {
               const txns = getCustomerTransactions(historyDialog.customer!);
@@ -692,8 +692,8 @@ export default function Transactions() {
                 <div>
                   {/* If you have parts/supplier info, map and show here */}
                   <div className="mt-2">
-                    <div className="font-medium mb-1">Parts Purchased from Suppliers:</div>
-                    <div className="text-muted-foreground text-sm">(No parts data available in mock. Integrate with parts/supplier info if present in your data model.)</div>
+                    <div className="font-medium mb-1">{t("parts-purchased")}</div>
+                    <div className="text-muted-foreground text-sm">{t("no-parts-data")}</div>
                   </div>
                 </div>
               );

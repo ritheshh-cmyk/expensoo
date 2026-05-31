@@ -105,7 +105,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   CallMeMobiles
                 </h1>
                 <p className="text-xs text-white/50">
-                  Mobile Repair Tracker
+                  {t("mobile-tracker")}
                 </p>
               </div>
             </div>
@@ -138,7 +138,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <li className="mt-auto pt-4 border-t border-white/8">
                 <div className="px-4 py-2 mb-2">
                   <div className="text-xs text-white/40 uppercase tracking-wider font-heading">
-                    Logged in as
+                    {t("logged-in-as")}
                   </div>
                   <div className="text-sm font-medium text-white/90 capitalize">
                     {user?.role}
@@ -150,7 +150,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   className="w-full justify-start gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 text-white/70 hover:bg-white/5 hover:text-white cursor-pointer min-h-[44px] transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange"
                 >
                   <LogOut className="h-5 w-5 shrink-0" />
-                  Sign out
+                  {t("sign-out")}
                 </Button>
               </li>
             </ul>
@@ -176,7 +176,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   CallMeMobiles
                 </h1>
                 <p className="text-xs text-white/50">
-                  Mobile Repair Tracker
+                  {t("mobile-tracker")}
                 </p>
               </div>
             </div>
@@ -219,7 +219,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               <li className="mt-auto pt-4 border-t border-white/8">
                 <div className="px-4 py-2 mb-2">
                   <div className="text-xs text-white/40 uppercase tracking-wider font-heading">
-                    Logged in as
+                    {t("logged-in-as")}
                   </div>
                   <div className="text-sm font-medium text-white/90 capitalize">
                     {user?.role}
@@ -234,7 +234,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   className="w-full justify-start gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 text-white/70 hover:bg-white/5 hover:text-white cursor-pointer min-h-[44px] transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange"
                 >
                   <LogOut className="h-5 w-5 shrink-0" />
-                  Sign out
+                  {t("sign-out")}
                 </Button>
               </li>
             </ul>

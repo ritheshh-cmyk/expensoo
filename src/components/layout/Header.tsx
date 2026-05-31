@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/components/theme-provider";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -110,6 +111,7 @@ function NativeMenu({
 
 // ── Header ────────────────────────────────────────────────────────────────────
 export function Header({ onMenuClick }: HeaderProps) {
+  const { t } = useLanguage();
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
@@ -140,15 +142,15 @@ export function Header({ onMenuClick }: HeaderProps) {
     <Monitor className="h-4 w-4" />;
 
   const themeItems: MenuItemProps[] = [
-    { icon: <Sun className="h-4 w-4" />,     label: "Light",  onClick: () => setTheme("light")  },
-    { icon: <Moon className="h-4 w-4" />,    label: "Dark",   onClick: () => setTheme("dark")   },
-    { icon: <Monitor className="h-4 w-4" />, label: "System", onClick: () => setTheme("system") },
+    { icon: <Sun className="h-4 w-4" />,     label: t("light-mode"),  onClick: () => setTheme("light")  },
+    { icon: <Moon className="h-4 w-4" />,    label: t("dark-mode"),   onClick: () => setTheme("dark")   },
+    { icon: <Monitor className="h-4 w-4" />, label: t("system-mode"), onClick: () => setTheme("system") },
   ];
 
   const userItems: MenuItemProps[] = [
-    { icon: <User className="h-4 w-4" />,     label: "Profile",  onClick: () => navigate("/profile")  },
-    { icon: <Settings className="h-4 w-4" />, label: "Settings", onClick: () => navigate("/settings") },
-    { icon: <LogOut className="h-4 w-4" />,   label: "Log out",  onClick: handleLogout, danger: true  },
+    { icon: <User className="h-4 w-4" />,     label: t("profile"),  onClick: () => navigate("/profile")  },
+    { icon: <Settings className="h-4 w-4" />, label: t("settings"), onClick: () => navigate("/settings") },
+    { icon: <LogOut className="h-4 w-4" />,   label: t("sign-out"),  onClick: handleLogout, danger: true  },
   ];
 
   return (
@@ -171,7 +173,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           <div className="hidden lg:flex flex-col">
             <h1 className="text-base sm:text-lg font-semibold text-foreground truncate max-w-[160px] sm:max-w-none">CallMeMobiles</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">Professional Repair Management</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t("professional-management")}</p>
           </div>
         </div>
 
@@ -179,7 +181,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="hidden md:flex items-center">
           <Badge variant="outline" className="flex items-center gap-1.5">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            System Online
+            {t("system-online")}
           </Badge>
         </div>
 

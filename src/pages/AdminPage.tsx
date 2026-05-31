@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Badge } from '@/components/ui/badge';
 import {
   Shield, Users, Activity, Download, Monitor,
@@ -16,12 +17,12 @@ const SystemStatsPanel = lazy(() => import('@/components/admin/SystemStatsPanel'
 
 // ── Tab definitions ────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'overview',     label: 'Overview',    shortLabel: 'Stats',   icon: BarChart3, color: 'text-purple-500' },
-  { id: 'users',        label: 'Users',       shortLabel: 'Users',   icon: Users,     color: 'text-blue-500'   },
-  { id: 'permissions',  label: 'Permissions', shortLabel: 'Perms',   icon: Zap,       color: 'text-yellow-500' },
-  { id: 'audit',        label: 'Audit Log',   shortLabel: 'Audit',   icon: Activity,  color: 'text-indigo-500' },
-  { id: 'export',       label: 'Export',      shortLabel: 'Export',  icon: Download,  color: 'text-green-500'  },
-  { id: 'sessions',     label: 'Sessions',    shortLabel: 'Sessions',icon: Monitor,   color: 'text-cyan-500'   },
+  { id: 'overview',     labelKey: 'overview',    shortLabelKey: 'stats',   icon: BarChart3, color: 'text-purple-500' },
+  { id: 'users',        labelKey: 'users',       shortLabelKey: 'users',   icon: Users,     color: 'text-blue-500'   },
+  { id: 'permissions',  labelKey: 'permissions', shortLabelKey: 'perms',   icon: Zap,       color: 'text-yellow-500' },
+  { id: 'audit',        labelKey: 'audit-log',   shortLabelKey: 'audit',   icon: Activity,  color: 'text-indigo-500' },
+  { id: 'export',       labelKey: 'export',      shortLabelKey: 'export',  icon: Download,  color: 'text-green-500'  },
+  { id: 'sessions',     labelKey: 'sessions',    shortLabelKey: 'sessions',icon: Monitor,   color: 'text-cyan-500'   },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -41,6 +42,7 @@ function PanelSkeleton() {
 // ── Tab bar — horizontal scroll on mobile, wraps on desktop ───────────────────
 function TabBar({ active, onChange }: { active: TabId; onChange: (id: TabId) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   // Auto-scroll active tab into view on mobile
   useEffect(() => {
@@ -74,8 +76,8 @@ function TabBar({ active, onChange }: { active: TabId; onChange: (id: TabId) => 
           >
             <Icon className={`h-4 w-4 shrink-0 ${isActive ? '' : tab.color}`} />
             {/* Short label on small screens, full label on sm+ */}
-            <span className="sm:hidden">{tab.shortLabel}</span>
-            <span className="hidden sm:inline">{tab.label}</span>
+            <span className="sm:hidden">{t(tab.shortLabelKey)}</span>
+            <span className="hidden sm:inline">{t(tab.labelKey)}</span>
           </button>
         );
       })}
@@ -86,6 +88,7 @@ function TabBar({ active, onChange }: { active: TabId; onChange: (id: TabId) => 
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
   // ── Loading state ──────────────────────────────────────────────────────────
@@ -106,14 +109,14 @@ export default function AdminPage() {
             <Shield className="h-10 w-10 text-red-500" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold">Admin Access Required</h2>
+            <h2 className="text-2xl font-bold">{t("admin-access-required")}</h2>
             <p className="text-muted-foreground mt-2 text-sm">
-              Only administrators can access this page.
+              {t("admin-only-message")}
             </p>
           </div>
           <Badge variant="outline" className="gap-1.5">
             <span className="h-2 w-2 rounded-full bg-orange-400 inline-block" />
-            Logged in as: <strong>{user?.username}</strong> · {user?.role}
+            {t("logged-in-as-status")} <strong>{user?.username}</strong> · {user?.role}
           </Badge>
         </div>
       </div>
@@ -128,7 +131,7 @@ export default function AdminPage() {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
-              Administration
+              {t("administration")}
             </h1>
             <Badge variant="outline" className="shrink-0 hidden sm:flex gap-1.5 text-xs">
               <Shield className="h-3 w-3 text-red-500" />
@@ -137,13 +140,13 @@ export default function AdminPage() {
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5 flex items-center gap-1">
             <ChevronRight className="h-3 w-3" />
-            Full system control
+            {t("full-system-control")}
           </p>
         </div>
         {/* Mobile admin badge */}
         <Badge variant="outline" className="sm:hidden shrink-0 gap-1 text-xs py-1 px-2">
           <Shield className="h-3 w-3 text-red-500" />
-          Admin
+          {t("admin")}
         </Badge>
       </div>
 

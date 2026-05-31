@@ -138,17 +138,17 @@ export default function Dashboard() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground font-heading">
-            Dashboard
+            {t("dashboard")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Welcome back,{" "}
+            {t("welcome-back")},{" "}
             <span className="font-medium text-foreground">
               {user?.name || user?.username || "—"}
             </span>
             !{" "}
             {user?.role === "worker"
-              ? "Here are your daily tasks."
-              : "Here's your repair shop overview."}
+              ? t("worker-tasks")
+              : t("shop-overview")}
           </p>
         </div>
 
@@ -162,7 +162,7 @@ export default function Dashboard() {
             style={{ touchAction: "manipulation" }}
           >
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
-            {loading ? "Loading…" : "Refresh"}
+            {loading ? t("loading") : t("refresh")}
           </Button>
 
           {isOwnerOrAdmin && (
@@ -173,7 +173,7 @@ export default function Dashboard() {
               className="min-h-[44px] px-4"
               style={{ touchAction: "manipulation" }}
             >
-              {showProfits ? "Hide Profits" : "Show Profits"}
+              {showProfits ? t("hide-profits") : t("show-profits")}
             </Button>
           )}
         </div>
@@ -185,7 +185,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Today's Revenue
+              {t("today-revenue")}
             </CardTitle>
             <div className="rounded-full bg-brand-green-50 dark:bg-brand-green/15 p-2">
               <DollarSign className="h-4 w-4 text-brand-green dark:text-brand-green" />
@@ -197,10 +197,10 @@ export default function Dashboard() {
             </div>
             {isOwnerOrAdmin && showProfits && dashboardData.todayProfit > 0 && (
               <p className="text-xs text-muted-foreground mt-0.5">
-                Profit: ₹{formatCurrency(dashboardData.todayProfit)}
+                {t("profit")}: ₹{formatCurrency(dashboardData.todayProfit)}
               </p>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Today's earnings</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("today-earnings")}</p>
           </CardContent>
         </Card>
 
@@ -208,7 +208,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pending Repairs
+              {t("pending-repairs")}
             </CardTitle>
             <div className="rounded-full bg-brand-orange-50 dark:bg-brand-orange/15 p-2">
               <Clock className="h-4 w-4 text-brand-orange dark:text-brand-orange" />
@@ -218,7 +218,7 @@ export default function Dashboard() {
             <div className="text-2xl font-bold text-brand-orange font-heading">
               {dashboardData.pendingTransactions}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting completion</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("awaiting-completion")}</p>
           </CardContent>
         </Card>
 
@@ -226,7 +226,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Revenue
+              {t("total-revenue")}
             </CardTitle>
             <div className="rounded-full bg-brand-blue-50 dark:bg-brand-blue/15 p-2">
               <TrendingUp className="h-4 w-4 text-brand-blue dark:text-brand-blue" />
@@ -238,11 +238,11 @@ export default function Dashboard() {
             </div>
             {isOwnerOrAdmin && showProfits && dashboardData.totalProfit > 0 && (
               <p className="text-xs text-muted-foreground mt-0.5">
-                Profit: ₹{formatCurrency(dashboardData.totalProfit)}
+                {t("profit")}: ₹{formatCurrency(dashboardData.totalProfit)}
               </p>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              {dashboardData.totalTransactions} total transactions
+              {dashboardData.totalTransactions} {t("total-transactions-label")}
             </p>
           </CardContent>
         </Card>
@@ -253,14 +253,14 @@ export default function Dashboard() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg">Recent Transactions</CardTitle>
+              <CardTitle className="text-lg">{t("recent-transactions")}</CardTitle>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Latest repair jobs
+                {t("latest-repair-jobs")}
               </p>
             </div>
             <Link to="/transactions">
               <Button variant="outline" size="sm" className="gap-1">
-                View All <ArrowRight className="h-3 w-3" />
+                {t("view-all")} <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
           </div>
@@ -323,7 +323,7 @@ export default function Dashboard() {
                         ) : (
                           <AlertCircle className="mr-0.5 h-2.5 w-2.5" />
                         )}
-                        {status}
+                        {t(status.toLowerCase())}
                       </span>
                     </div>
                   </div>
@@ -335,12 +335,12 @@ export default function Dashboard() {
               <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
                 <Smartphone className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="font-medium text-foreground">No transactions yet</p>
+              <p className="font-medium text-foreground">{t("no-transactions-yet")}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Add your first repair transaction to get started
+                {t("add-first-transaction")}
               </p>
               <Link to="/transactions/new" className="mt-4">
-                <Button size="sm">Add Transaction</Button>
+                <Button size="sm">{t("add-transaction")}</Button>
               </Link>
             </div>
           )}
