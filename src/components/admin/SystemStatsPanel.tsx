@@ -6,7 +6,14 @@ import {
   RefreshCw, IndianRupee, Activity, Clock, AlertCircle
 } from 'lucide-react';
 
-const BASE = 'https://backendmobile-4swg.onrender.com';
+const getApiUrl = () => {
+  const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
+  const prodUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
+  return envBaseUrl !== undefined && envBaseUrl !== ''
+    ? envBaseUrl
+    : (import.meta.env.PROD ? prodUrl : '');
+};
+const BASE = getApiUrl();
 
 interface Stats {
   users: { total: number; admins: number; owners: number; workers: number };

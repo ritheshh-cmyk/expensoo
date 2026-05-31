@@ -11,7 +11,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-const BASE = 'https://backendmobile-4swg.onrender.com';
+const getApiUrl = () => {
+  const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
+  const prodUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
+  return envBaseUrl !== undefined && envBaseUrl !== ''
+    ? envBaseUrl
+    : (import.meta.env.PROD ? prodUrl : '');
+};
+const BASE = getApiUrl();
 
 const getToken = () =>
   localStorage.getItem('auth_token') ??

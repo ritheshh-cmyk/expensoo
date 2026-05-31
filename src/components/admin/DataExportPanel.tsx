@@ -4,7 +4,14 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { Download, Users, DollarSign, Package, Loader2 } from 'lucide-react';
 
-const BACKEND = 'https://backendmobile-4swg.onrender.com';
+const getApiUrl = () => {
+  const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
+  const prodUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
+  return envBaseUrl !== undefined && envBaseUrl !== ''
+    ? envBaseUrl
+    : (import.meta.env.PROD ? prodUrl : '');
+};
+const BACKEND = getApiUrl();
 
 interface ExportOption {
   id: string;

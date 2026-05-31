@@ -4,7 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Clock } from 'lucide-react';
 
-const BASE_URL = 'https://backendmobile-4swg.onrender.com';
+const getApiUrl = () => {
+  const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
+  const prodUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
+  return envBaseUrl !== undefined && envBaseUrl !== ''
+    ? envBaseUrl
+    : (import.meta.env.PROD ? prodUrl : '');
+};
+const BASE_URL = getApiUrl();
 
 interface AuditLog {
   id: number;
