@@ -24,10 +24,22 @@ import {
 
 export default function AdminPage() {
   const { user } = useAuth();
-  const { isAdmin, permissions } = useEnhancedRBAC();
+  const { isAdmin, permissions, loading } = useEnhancedRBAC();
+
+  // Derive admin status directly from user.role as a reliable fallback
+  const isAdminUser = isAdmin || user?.role?.toLowerCase() === 'admin';
+
+  // Show spinner while RBAC is still loading — prevents flash of "Access Required"
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   // Admin-only access check
-  if (!isAdmin) {
+  if (!isAdminUser) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center space-y-4">
