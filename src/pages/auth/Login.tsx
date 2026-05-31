@@ -204,17 +204,6 @@ export default function Login() {
       {/* ── RIGHT PANEL: Login Form ─────────────────────────────── */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-12 bg-background">
         <div className="w-full max-w-md">
-          {/* Mobile brand header (hidden on desktop since left panel shows it) */}
-          <div className="text-center mb-8 lg:hidden">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/15 border border-primary/30 mb-4">
-              <Wrench className="w-7 h-7 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
-              CallMeMobiles
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">Repair Shop Management</p>
-          </div>
-
           {/* Form header */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
