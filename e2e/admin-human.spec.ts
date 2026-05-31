@@ -370,6 +370,8 @@ test.describe('🧑 Human E2E — Admin Full Journey', () => {
 
   // ── TEST 13: Scroll works (page scrolls via trackpad simulation) ───────────
   test('13 · Page scrolls correctly — no overflow bug', async ({ page }) => {
+    // Set smaller viewport height to guarantee content overflows even if we have only 3 users
+    await page.setViewportSize({ width: 1280, height: 400 });
     await loginAs(page, ADMIN_U, ADMIN_P);
     await goToAdminTab(page, 'Users');
     await page.waitForTimeout(8000);
