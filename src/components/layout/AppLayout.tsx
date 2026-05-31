@@ -41,8 +41,8 @@ export function AppLayout({
       {/* Desktop sidebar z-30, mobile z-50 */}
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main content — clips horizontal overflow without breaking scroll */}
-      <div className="lg:pl-64 overflow-x-clip">
+      {/* Main content — padding-left offsets desktop sidebar */}
+      <div className="lg:pl-64">
         {/* Header — sticky z-50, NO backdrop-blur (prevents GPU layer conflict) */}
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
@@ -54,7 +54,15 @@ export function AppLayout({
           </div>
         )}
 
-        <main className="flex-1 p-4 lg:p-6 pb-20 lg:pb-6 min-h-[calc(100vh-4rem)]">
+        {/* pb accounts for mobile bottom-nav (64px) + safe-area on notched phones */}
+        <main
+          className="flex-1 p-4 lg:p-6 lg:pb-6"
+          style={{
+            minHeight: 'calc(100vh - 4rem)',
+            paddingBottom: 'max(5rem, calc(4rem + env(safe-area-inset-bottom)))',
+            WebkitOverflowScrolling: 'touch' as any,
+          }}
+        >
           <div className="mx-auto max-w-7xl w-full">
             {children}
           </div>
