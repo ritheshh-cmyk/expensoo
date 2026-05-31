@@ -501,7 +501,16 @@ export default function Transactions() {
               <SelectContent>
                 <SelectItem value="all">All Payments</SelectItem>
                 <SelectItem value="cash">{t("cash")}</SelectItem>
-                <SelectItem value      {/* ── Table (md+) / Card list (mobile) ──────────────────────────── */}
+                <SelectItem value="upi">UPI</SelectItem>
+                <SelectItem value="card">Card</SelectItem>
+                <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Table (md+) / Card list (mobile) ──────────────────────────── */}
       <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
         {/* Table header row: count */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-white/10">
@@ -660,13 +669,6 @@ export default function Transactions() {
               aria-label="Next page"
               className="flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
               style={{ touchAction: "manipulation" }}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>ria-label="Next page"
-              className="flex items-center justify-center h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
