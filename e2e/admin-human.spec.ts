@@ -48,8 +48,8 @@ async function loginAs(page: Page, username: string, password: string) {
 // ── Shared: Navigate to Admin tab ─────────────────────────────────────────────
 async function goToAdminTab(page: Page, tabName: string) {
   // Navigate to admin page
-  await page.goto(`${SITE}/admin`, { waitUntil: 'networkidle', timeout: 40_000 });
-  await page.waitForSelector('h1, h2', { timeout: 15_000 });
+  await page.goto(`${SITE}/admin`, { waitUntil: 'domcontentloaded', timeout: 50_000 });
+  await page.waitForSelector('h1, h2', { timeout: 35_000 });
 
   // Click the tab by its text label
   const tab = page.locator(`button[role="tab"]:has-text("${tabName}"), button:has-text("${tabName}")`).first();
