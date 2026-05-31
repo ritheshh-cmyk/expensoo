@@ -377,17 +377,19 @@ test.describe('🧑 Human E2E — Admin Full Journey', () => {
     // Get initial scroll position
     const scrollBefore = await page.evaluate(() => window.scrollY);
 
-    // Simulate trackpad scroll
+    // Simulate trackpad scroll (multiple wheels for reliability)
     await page.mouse.move(640, 400);
-    await page.mouse.wheel(0, 500);
+    await page.mouse.wheel(0, 300);
+    await page.waitForTimeout(300);
+    await page.mouse.wheel(0, 300);
     await page.waitForTimeout(600);
 
     const scrollAfter = await page.evaluate(() => window.scrollY);
     await page.screenshot({ path: 'screenshots/scroll-test.png' });
 
-    // Scroll position should change (not locked at 0)
-    expect(scrollAfter).toBeGreaterThanOrEqual(scrollBefore);
-    console.log(`✅ Scroll works — before: ${scrollBefore}px, after: ${scrollAfter}px`);
+    // scrollAfter must be > 0 — if still 0, overflow-x:hidden is blocking scroll
+    expect(scrollAfter).toBeGreaterThan(0);
+    console.log(`✅ Scroll works — before: 0px, after: ${scrollAfter}px`);
   });
 
   // ── TEST 14: Delete test user ─────────────────────────────────────────────

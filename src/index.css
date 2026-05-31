@@ -118,14 +118,18 @@
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.3s ease, color 0.3s ease;
     overscroll-behavior-y: contain;
-    overflow-x: hidden;
+    /* CRITICAL: overflow-x:clip not hidden — 'hidden' creates a BFC that
+       re-roots the scroll container on Chromium/WebKit, making window.scrollY
+       always 0. 'clip' clips visually WITHOUT creating a BFC. */
+    overflow-x: clip;
     -webkit-text-size-adjust: 100%;
   }
 
   html {
     scroll-behavior: smooth;
     color-scheme: light;
-    overflow-x: hidden;
+    /* Same reason as body — clip not hidden */
+    overflow-x: clip;
   }
 
   .dark html,
