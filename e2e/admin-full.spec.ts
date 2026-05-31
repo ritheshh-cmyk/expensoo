@@ -1,6 +1,6 @@
 import { test, expect, chromium } from '@playwright/test';
 
-const SITE      = process.env.FRONTEND_URL || 'https://expensoo-eight.vercel.app';
+const SITE      = process.env.FRONTEND_URL || 'http://localhost:4173';
 const API       = process.env.VITE_BACKEND_URL || 'https://backendmobile-4swg.onrender.com';
 const ADMIN_U   = 'admin';
 const ADMIN_P   = 'admin123';

@@ -278,7 +278,7 @@ export default function Reports() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
               {t("reports")}
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground">
@@ -287,7 +287,7 @@ export default function Reports() {
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-full sm:w-48 bg-white/5 border border-white/10 text-white focus:ring-brand-orange/50 focus:border-brand-orange/50">
+              <SelectTrigger className="w-full sm:w-48 bg-background border border-border text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
                 <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
@@ -302,7 +302,7 @@ export default function Reports() {
               variant="outline"
               size="sm"
               onClick={toggleProfits}
-              className="h-10 sm:h-9 bg-white/5 border border-white/10 text-foreground hover:bg-white/10"
+              className="h-10 sm:h-9 bg-background border border-border text-foreground hover:bg-muted/50"
             >
               {showProfits ? (
                 <EyeOff className="mr-2 h-4 w-4" />
@@ -311,7 +311,7 @@ export default function Reports() {
               )}
               {showProfits ? "Hide Profits" : "Show Profits"}
             </Button>
-            <Button variant="outline" size="sm" className="bg-white/5 border border-white/10 text-foreground hover:bg-white/10">
+            <Button variant="outline" size="sm" className="bg-background border border-border text-foreground hover:bg-muted/50">
               <Download className="mr-2 h-4 w-4" />
               {t("export")}
             </Button>
@@ -320,12 +320,12 @@ export default function Reports() {
 
         {/* Key Performance Indicators */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5">
+          <div className="rounded-xl border border-border bg-background backdrop-blur-md p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-muted-foreground">Total Revenue</span>
               <DollarSign className="h-4 w-4 text-brand-orange" />
             </div>
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-foreground">
               ₹{loading ? '...' : (typeof reportsData.totalRevenue === 'number' ? reportsData.totalRevenue.toLocaleString() : '0')}
             </div>
             <div className="flex items-center text-xs mt-1">
@@ -334,12 +334,12 @@ export default function Reports() {
               <span className="text-muted-foreground ml-1">vs last month</span>
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5">
+          <div className="rounded-xl border border-border bg-background backdrop-blur-md p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-muted-foreground">{showProfits ? 'Total Profit' : 'Total Repairs'}</span>
               {showProfits ? <TrendingUp className="h-4 w-4 text-brand-orange" /> : <Smartphone className="h-4 w-4 text-brand-orange" />}
             </div>
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-foreground">
               {showProfits
                 ? `₹${loading ? '...' : (typeof reportsData.totalProfit === 'number' ? reportsData.totalProfit.toLocaleString() : '0')}`
                 : (loading ? '...' : reportsData.totalRepairs)}
@@ -350,22 +350,22 @@ export default function Reports() {
               <span className="text-muted-foreground ml-1">vs last month</span>
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5">
+          <div className="rounded-xl border border-border bg-background backdrop-blur-md p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-muted-foreground">Avg. Ticket Size</span>
               <Target className="h-4 w-4 text-brand-orange" />
             </div>
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-foreground">
               ₹{loading ? '...' : (typeof reportsData.avgTicketSize === 'number' ? reportsData.avgTicketSize.toLocaleString() : '0')}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Per repair</p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5">
+          <div className="rounded-xl border border-border bg-background backdrop-blur-md p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-muted-foreground">Customer Base</span>
               <Users className="h-4 w-4 text-brand-orange" />
             </div>
-            <div className="text-2xl font-bold text-white">{loading ? '...' : reportsData.totalCustomers}</div>
+            <div className="text-2xl font-bold text-foreground">{loading ? '...' : reportsData.totalCustomers}</div>
             <p className="text-xs text-muted-foreground mt-1">Total customers</p>
           </div>
         </div>
@@ -373,8 +373,8 @@ export default function Reports() {
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue Trend */}
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <h3 className="text-base font-semibold text-white mb-1">Revenue &amp; Profit Trend</h3>
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-foreground mb-1">Revenue &amp; Profit Trend</h3>
             <p className="text-xs text-muted-foreground mb-4">Monthly performance over time</p>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={monthlyData}>
@@ -412,8 +412,8 @@ export default function Reports() {
           </div>
 
           {/* Repair Types */}
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <h3 className="text-base font-semibold text-white mb-1">Repair Types Distribution</h3>
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-foreground mb-1">Repair Types Distribution</h3>
             <p className="text-xs text-muted-foreground mb-4">Breakdown by repair category</p>
             <ResponsiveContainer width="100%" height={300}>
               <RechartsPieChart>
@@ -439,8 +439,8 @@ export default function Reports() {
           </div>
 
           {/* Device Brands */}
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <h3 className="text-base font-semibold text-white mb-1">Device Brand Performance</h3>
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-foreground mb-1">Device Brand Performance</h3>
             <p className="text-xs text-muted-foreground mb-4">Revenue and repair count by brand</p>
             <ResponsiveContainer width="100%" height={300}>
               <RechartsBarChart data={deviceBrandsData}>
@@ -464,22 +464,22 @@ export default function Reports() {
           </div>
 
           {/* Customer Analytics */}
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <h3 className="text-base font-semibold text-white mb-1">Customer Segments</h3>
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-foreground mb-1">Customer Segments</h3>
             <p className="text-xs text-muted-foreground mb-4">Customer breakdown by visit frequency</p>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-brand-orange"></div>
                   <div>
-                    <div className="font-medium text-white">No Data Available</div>
+                    <div className="font-medium text-foreground">No Data Available</div>
                     <div className="text-sm text-muted-foreground">
                       No customer analytics data found.
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-medium text-white">
+                  <div className="font-medium text-foreground">
                     {showProfits ? `₹${0}` : "0 customers"}
                   </div>
                 </div>
@@ -491,13 +491,13 @@ export default function Reports() {
         {/* Data Tables */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Customers */}
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <h3 className="text-base font-semibold text-white mb-1">Top Customers</h3>
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-foreground mb-1">Top Customers</h3>
             <p className="text-xs text-muted-foreground mb-4">Customers with highest repair count and revenue</p>
-            <div className="overflow-x-auto rounded-md border border-white/10">
+            <div className="overflow-x-auto rounded-md border border-border">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-white/10">
+                  <TableRow className="border-border">
                     <TableHead className="text-muted-foreground">Customer</TableHead>
                     <TableHead className="text-muted-foreground">Repairs</TableHead>
                     <TableHead className="text-muted-foreground">Revenue</TableHead>
@@ -507,8 +507,8 @@ export default function Reports() {
                 <TableBody>
                   {topCustomersData.length > 0 ? (
                     topCustomersData.map((customer, index) => (
-                      <TableRow key={index} className="border-white/10 hover:bg-white/5">
-                        <TableCell className="font-medium text-white">
+                      <TableRow key={index} className="border-border hover:bg-background">
+                        <TableCell className="font-medium text-foreground">
                           {customer.name}
                         </TableCell>
                         <TableCell className="text-foreground">{customer.repairs}</TableCell>
@@ -537,13 +537,13 @@ export default function Reports() {
           </div>
 
           {/* Supplier Spending */}
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-            <h3 className="text-base font-semibold text-white mb-1">Supplier Spending Analysis</h3>
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-foreground mb-1">Supplier Spending Analysis</h3>
             <p className="text-xs text-muted-foreground mb-4">Spending breakdown by supplier</p>
-            <div className="overflow-x-auto rounded-md border border-white/10">
+            <div className="overflow-x-auto rounded-md border border-border">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-white/10">
+                  <TableRow className="border-border">
                     <TableHead className="text-muted-foreground">Supplier</TableHead>
                     <TableHead className="text-muted-foreground">Orders</TableHead>
                     <TableHead className="text-muted-foreground">Total Spent</TableHead>
@@ -563,15 +563,15 @@ export default function Reports() {
         </div>
 
         {/* Report Summary */}
-        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-          <h3 className="text-base font-semibold text-white mb-1">Report Summary</h3>
+        <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
+          <h3 className="text-base font-semibold text-foreground mb-1">Report Summary</h3>
           <p className="text-xs text-muted-foreground mb-4">Key insights and business intelligence</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-4 rounded-lg border border-brand-orange/20 bg-brand-orange/10">
               <div className="text-sm font-medium text-brand-orange-light">
                 Revenue Growth
               </div>
-              <div className="text-lg font-bold text-white">
+              <div className="text-lg font-bold text-foreground">
                 {loading ? '...' : `+${reportsData.revenueGrowth}% MoM`}
               </div>
               <div className="text-xs text-brand-orange/70">
@@ -584,7 +584,7 @@ export default function Reports() {
               <div className="text-sm font-medium text-brand-green">
                 Top Repair Type
               </div>
-              <div className="text-lg font-bold text-white">
+              <div className="text-lg font-bold text-foreground">
                 {loading ? '...' : repairTypesData.length > 0
                   ? repairTypesData[0]?.name
                   : 'No data'}
@@ -599,7 +599,7 @@ export default function Reports() {
               <div className="text-sm font-medium text-orange-400">
                 Top Device Brand
               </div>
-              <div className="text-lg font-bold text-white">
+              <div className="text-lg font-bold text-foreground">
                 {loading ? '...' : deviceBrandsData.length > 0
                   ? deviceBrandsData[0]?.brand
                   : 'No data'}
@@ -614,7 +614,7 @@ export default function Reports() {
               <div className="text-sm font-medium text-violet-400">
                 Customer Retention
               </div>
-              <div className="text-lg font-bold text-white">
+              <div className="text-lg font-bold text-foreground">
                 {loading ? '...' : reportsData.totalCustomers > 0
                   ? `${reportsData.totalCustomers} customers`
                   : 'No data'}

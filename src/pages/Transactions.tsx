@@ -137,7 +137,7 @@ export default function Transactions() {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="h-8 p-0 font-medium text-muted-foreground hover:text-white cursor-pointer"
+            className="h-8 p-0 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
           >
             Txn ID
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -159,7 +159,7 @@ export default function Transactions() {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="h-8 p-0 font-medium text-muted-foreground hover:text-white cursor-pointer"
+            className="h-8 p-0 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
           >
             Date
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -180,7 +180,7 @@ export default function Transactions() {
         header: "Customer",
         cell: ({ row }) => (
           <div>
-            <div className="font-medium text-white">{row.getValue("customer")}</div>
+            <div className="font-medium text-foreground">{row.getValue("customer")}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
               <Phone className="h-3 w-3" />
               {row.original.phone}
@@ -192,7 +192,7 @@ export default function Transactions() {
         header: "Device",
         cell: ({ row }) => (
           <div>
-            <div className="font-medium text-white">{row.getValue("device")}</div>
+            <div className="font-medium text-foreground">{row.getValue("device")}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
               {t(row.original.repairType)}
             </div>
@@ -204,7 +204,7 @@ export default function Transactions() {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="h-8 p-0 font-medium text-muted-foreground hover:text-white cursor-pointer"
+            className="h-8 p-0 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
           >
             Cost
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -239,7 +239,7 @@ export default function Transactions() {
             variant="ghost"
             size="icon"
             aria-label="View customer history"
-            className="cursor-pointer text-muted-foreground hover:text-white hover:bg-white/10 transition-colors duration-150"
+            className="cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-150"
             onClick={() => setHistoryDialog({ open: true, customer: row.original.customer })}
           >
             <Eye className="h-4 w-4" />
@@ -254,7 +254,7 @@ export default function Transactions() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-8 w-8 p-0 cursor-pointer text-muted-foreground hover:text-white hover:bg-white/10 transition-colors duration-150"
+                className="h-8 w-8 p-0 cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-150"
                 aria-label="Open transaction actions"
               >
                 <span className="sr-only">Open menu</span>
@@ -455,13 +455,13 @@ export default function Transactions() {
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">{t("transactions")}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("transactions")}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Manage all repair transactions</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={exportToExcel}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-foreground hover:text-white font-medium rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px] text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-background hover:bg-muted/50 border border-border text-foreground hover:text-foreground font-medium rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px] text-sm"
             aria-label="Export transactions"
             style={{ touchAction: "manipulation" }}
           >
@@ -481,7 +481,7 @@ export default function Transactions() {
       </div>
 
       {/* ── Filters ────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+      <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -490,12 +490,12 @@ export default function Transactions() {
               placeholder={`${t("search")} transactions...`}
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all duration-150 text-sm"
+              className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-lg text-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all duration-150 text-sm"
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-2 lg:flex-shrink-0">
             <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-              <SelectTrigger className="w-full sm:w-40 h-10 bg-white/5 border-white/10 text-foreground cursor-pointer">
+              <SelectTrigger className="w-full sm:w-40 h-10 bg-background border-border text-foreground cursor-pointer">
                 <SelectValue placeholder="All Payments" />
               </SelectTrigger>
               <SelectContent>
@@ -511,10 +511,10 @@ export default function Transactions() {
       </div>
 
       {/* ── Table (md+) / Card list (mobile) ──────────────────────────── */}
-      <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
+      <div className="rounded-xl border border-border bg-background backdrop-blur-sm overflow-hidden">
         {/* Table header row: count */}
-        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-white/10">
-          <span className="text-sm font-semibold text-white">Transaction List</span>
+        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-border">
+          <span className="text-sm font-semibold text-foreground">Transaction List</span>
           <span className="text-xs text-muted-foreground">
             {table.getFilteredRowModel().rows.length} transactions found
           </span>
@@ -523,12 +523,12 @@ export default function Transactions() {
         {/* === Mobile card list (hidden md+) === */}
         <div className="md:hidden">
           {table.getRowModel().rows?.length ? (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-border/50">
               {table.getRowModel().rows.map((row) => {
                 const tx = row.original;
                 const shortId = tx.id.length > 5 ? `TXN-${tx.id.slice(-5).toUpperCase()}` : `TXN-${tx.id}`;
                 return (
-                  <div key={row.id} className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors">
+                  <div key={row.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
                     <div className="shrink-0 w-9 h-9 rounded-full bg-brand-orange/10 flex items-center justify-center mt-0.5">
                       <Phone className="h-4 w-4 text-brand-orange-light" />
                     </div>
@@ -554,7 +554,7 @@ export default function Transactions() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
-                          className="shrink-0 h-8 w-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors"
+                          className="shrink-0 h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
                           aria-label="Actions"
                         >
                           <MoreHorizontal className="h-4 w-4" />
@@ -584,7 +584,7 @@ export default function Transactions() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Receipt className="w-8 h-8 text-muted-foreground mb-3" />
-              <p className="text-white font-medium text-sm">No transactions yet</p>
+              <p className="text-muted-foreground font-medium text-sm">No transactions yet</p>
               <p className="text-muted-foreground text-xs mt-1">Create your first transaction to get started</p>
             </div>
           )}
@@ -595,7 +595,7 @@ export default function Transactions() {
           <table className="w-full">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="border-b border-white/10 bg-white/[0.03]">
+                <tr key={headerGroup.id} className="border-b border-border bg-muted/40">
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
@@ -618,7 +618,7 @@ export default function Transactions() {
                   <tr
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className="border-b border-white/5 hover:bg-white/[0.03] transition-colors duration-150 cursor-pointer"
+                    className="border-b border-border/50 hover:bg-muted/40 transition-colors duration-150 cursor-pointer"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3 text-sm text-foreground">
@@ -634,10 +634,10 @@ export default function Transactions() {
                 <tr>
                   <td colSpan={columns.length}>
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                      <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center mb-4">
                         <Receipt className="w-8 h-8 text-muted-foreground" />
                       </div>
-                      <h3 className="text-white font-medium mb-1">No transactions yet</h3>
+                      <h3 className="text-foreground font-medium mb-1">No transactions yet</h3>
                       <p className="text-muted-foreground text-sm">Create your first transaction to get started</p>
                     </div>
                   </td>
@@ -648,7 +648,7 @@ export default function Transactions() {
         </div>
 
         {/* Pagination */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-5 py-4 border-t border-white/10 bg-white/[0.02]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-5 py-4 border-t border-border bg-muted/20">
           <div className="text-sm text-muted-foreground text-center sm:text-left">
             Showing {table.getState().pagination.pageIndex + 1} of{" "}
             {table.getPageCount()} pages
@@ -658,7 +658,7 @@ export default function Transactions() {
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
               aria-label="Previous page"
-              className="flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
+              className="flex items-center justify-center h-10 w-10 rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
               style={{ touchAction: "manipulation" }}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -667,7 +667,7 @@ export default function Transactions() {
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
               aria-label="Next page"
-              className="flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
+              className="flex items-center justify-center h-10 w-10 rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
               style={{ touchAction: "manipulation" }}
             >
               <ChevronRight className="h-4 w-4" />

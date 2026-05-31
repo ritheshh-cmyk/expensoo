@@ -184,7 +184,7 @@ export default function Suppliers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Suppliers</h1>
+          <h1 className="text-3xl font-bold text-foreground">Suppliers</h1>
           <p className="text-muted-foreground mt-1">Track suppliers and parts purchased</p>
         </div>
         <Button onClick={() => { setAddForm(EMPTY_FORM); setFormError(''); setShowAddDialog(true); }} className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-light text-black font-semibold border-0">
@@ -195,16 +195,16 @@ export default function Suppliers() {
 
       {/* Summary stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
           <div className="flex flex-row items-center justify-between space-y-0 pb-2">
             <p className="text-sm font-medium text-muted-foreground">Active Suppliers</p>
             <Users className="h-4 w-4 text-brand-orange-light" />
           </div>
-          <div className="text-2xl font-bold text-white">{activeCount}</div>
+          <div className="text-2xl font-bold text-foreground">{activeCount}</div>
           <p className="text-xs text-muted-foreground mt-1">{suppliers.length} total</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
           <div className="flex flex-row items-center justify-between space-y-0 pb-2">
             <p className="text-sm font-medium text-muted-foreground">Total Parts Spend</p>
             <IndianRupee className="h-4 w-4 text-brand-orange-light" />
@@ -213,12 +213,12 @@ export default function Suppliers() {
           <p className="text-xs text-muted-foreground mt-1">All time value</p>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
           <div className="flex flex-row items-center justify-between space-y-0 pb-2">
             <p className="text-sm font-medium text-muted-foreground">Parts Transactions</p>
             <ShoppingCart className="h-4 w-4 text-brand-orange-light" />
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-foreground">
             {transactions.filter(t => (t.externalPurchases ?? t.external_purchases ?? []).length > 0).length}
           </div>
           <p className="text-xs text-muted-foreground mt-1">With external parts</p>
@@ -232,7 +232,7 @@ export default function Suppliers() {
           placeholder="Search suppliers..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground focus:border-brand-orange/50"
+          className="pl-10 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-brand-orange/50"
         />
       </div>
 
@@ -240,7 +240,7 @@ export default function Suppliers() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-36 rounded-xl bg-white/5 animate-pulse" />
+            <div key={i} className="h-36 rounded-xl bg-background animate-pulse" />
           ))}
         </div>
       ) : filteredSuppliers.length === 0 ? (
@@ -266,7 +266,7 @@ export default function Suppliers() {
                 onClick={() => setSelectedSupplier(supplier)}
                 className="text-left w-full cursor-pointer min-h-[44px]"
               >
-                <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:border-brand-orange/30 hover:-translate-y-0.5 transition-all duration-200 group">
+                <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-sm hover:border-brand-orange/30 hover:-translate-y-0.5 transition-all duration-200 group">
                   <div className="p-4 pb-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3">
@@ -274,7 +274,7 @@ export default function Suppliers() {
                           <Building2 className="h-5 w-5 text-brand-orange-light" />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-white leading-tight truncate">
+                          <h3 className="font-semibold text-foreground leading-tight truncate">
                             {supplier.name}
                           </h3>
                           {supplier.contact_person && (
@@ -298,7 +298,7 @@ export default function Suppliers() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
+                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
                       <div>
                         <p className="text-xs text-muted-foreground">Parts Bought</p>
                         <p className="font-semibold text-foreground mt-0.5">{parts.length} items</p>
@@ -427,9 +427,9 @@ export default function Suppliers() {
 
               {/* Summary row */}
               <div className="grid grid-cols-3 gap-3 mt-2">
-                <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
+                <div className="rounded-lg bg-background border border-border p-3 text-center">
                   <p className="text-xs text-muted-foreground">Parts Bought</p>
-                  <p className="text-xl font-bold mt-1 text-white">{selectedParts.length}</p>
+                  <p className="text-xl font-bold mt-1 text-foreground">{selectedParts.length}</p>
                 </div>
                 <div className="rounded-lg bg-brand-orange/10 border border-brand-orange/20 p-3 text-center">
                   <p className="text-xs text-muted-foreground">Total Spent</p>
@@ -437,9 +437,9 @@ export default function Suppliers() {
                     {totalSpentOnSelected > 0 ? fmt(totalSpentOnSelected) : '—'}
                   </p>
                 </div>
-                <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
+                <div className="rounded-lg bg-background border border-border p-3 text-center">
                   <p className="text-xs text-muted-foreground">Transactions</p>
-                  <p className="text-xl font-bold mt-1 text-white">
+                  <p className="text-xl font-bold mt-1 text-foreground">
                     {new Set(selectedParts.map(p => p.transactionId)).size}
                   </p>
                 </div>
@@ -453,7 +453,7 @@ export default function Suppliers() {
                 </h3>
 
                 {selectedParts.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground border border-dashed border-white/10 rounded-xl">
+                  <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground border border-dashed border-border rounded-xl">
                     <ShoppingCart className="h-10 w-10 mb-3 opacity-30" />
                     <p className="font-medium text-muted-foreground">No parts recorded yet</p>
                     <p className="text-sm mt-1">
@@ -465,7 +465,7 @@ export default function Suppliers() {
                     {selectedParts.map((part, idx) => (
                       <div
                         key={idx}
-                        className="flex items-start justify-between gap-3 p-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/[0.08] transition-colors"
+                        className="flex items-start justify-between gap-3 p-3 rounded-lg border border-border bg-background hover:bg-white/[0.08] transition-colors"
                       >
                         <div className="flex items-start gap-3 min-w-0">
                           <div className="shrink-0 mt-0.5 p-1.5 bg-brand-orange/10 rounded">

@@ -3,16 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Monitor, Smartphone, RefreshCw, X, Clock, Globe, Tablet } from 'lucide-react';
-
-const getApiUrl = () => {
-  const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
-  const prodUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
-  return envBaseUrl !== undefined && envBaseUrl !== ''
-    ? envBaseUrl
-    : (import.meta.env.PROD ? prodUrl : '');
-};
-const BASE_URL = getApiUrl();
+import { Monitor, Smartphone, RefreshCw, X, Clock, Globe, Tablet, ShieldAlert } from 'lucide-react';
+import { apiClient } from '@/lib/api';
 
 interface Session {
   id: string;
@@ -28,12 +20,12 @@ interface Session {
 
 function DeviceIcon({ device }: { device: string }) {
   if (device.includes('Mobile') || device.includes('Android')) {
-    return <Smartphone className="h-5 w-5 text-blue-500" />;
+    return <Smartphone className="h-5 w-5 text-brand-orange" />;
   }
   if (device.includes('Tablet') || device.includes('iPad')) {
-    return <Tablet className="h-5 w-5 text-purple-500" />;
+    return <Tablet className="h-5 w-5 text-indigo-500" />;
   }
-  return <Monitor className="h-5 w-5 text-gray-500" />;
+  return <Monitor className="h-5 w-5 text-teal-500" />;
 }
 
 function timeAgo(dateStr: string): string {
@@ -56,16 +48,14 @@ export function SessionsPanel() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
-      const res = await fetch(`${BASE_URL}/api/auth/admin/sessions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error ?? `HTTP ${res.status}`);
+      const res = await apiClient.request('/api/auth/admin/sessions');
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to load sessions');
       }
-      const json = await res.json();
-      setSessions(json.data ?? []);
+      const data = res.data?.data ?? res.data ?? [];
+      // Sort: current sessions first, then most recently active
+      const sorted = [...data].sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
+      setSessions(sorted);
     } catch (err: any) {
       setError(err.message ?? 'Failed to load sessions');
     } finally {
@@ -81,98 +71,114 @@ export function SessionsPanel() {
     if (!confirm('Revoke this session? The user will be logged out on that device.')) return;
     setRevoking(id);
     try {
-      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
-      const res = await fetch(`${BASE_URL}/api/auth/sessions/${id}`, {
+      const res = await apiClient.request(`/api/auth/sessions/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed to revoke');
-      toast({ title: 'Session revoked', description: 'The session has been terminated.' });
+      if (!res.success) throw new Error(res.error || 'Failed to revoke');
+      toast({ 
+        title: 'Session revoked', 
+        description: 'The session has been terminated successfully.' 
+      });
       setSessions(prev => prev.filter(s => s.id !== id));
-    } catch {
-      toast({ title: 'Error', description: 'Could not revoke session.', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ 
+        title: 'Error', 
+        description: err.message || 'Could not revoke session.', 
+        variant: 'destructive' 
+      });
     } finally {
       setRevoking(null);
     }
   };
 
   return (
-    <Card className="mt-8">
+    <Card className="border-border/60 shadow-md">
       <CardHeader className="flex flex-row items-start justify-between gap-4 flex-wrap">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Monitor className="h-5 w-5 text-blue-500" />
+        <div className="space-y-1">
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Monitor className="h-5 w-5 text-brand-orange" />
             Active Sessions
           </CardTitle>
-          <CardDescription>
-            All currently active user sessions across devices — revoke any suspicious ones
+          <CardDescription className="text-muted-foreground">
+            All currently authenticated devices connected to the application
           </CardDescription>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchSessions} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchSessions} 
+          disabled={loading}
+          className="h-9 flex items-center gap-1.5"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </CardHeader>
 
       <CardContent>
         {error && (
-          <div className="rounded-md bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm mb-4">
+          <div className="rounded-md bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-4 py-3 text-sm mb-4">
             {error}
           </div>
         )}
 
         {!error && !loading && sessions.length === 0 && (
-          <p className="text-center text-muted-foreground py-10 text-sm">
-            No active sessions found.
-          </p>
+          <div className="text-center py-10 flex flex-col items-center justify-center gap-2">
+            <ShieldAlert className="h-10 w-10 text-muted-foreground/50" />
+            <p className="text-muted-foreground text-sm">No active sessions found.</p>
+          </div>
         )}
 
         {loading && (
-          <div className="flex justify-center py-10">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <RefreshCw className="h-8 w-8 animate-spin text-brand-orange" />
+            <span className="text-xs text-muted-foreground">Retrieving active sessions...</span>
           </div>
         )}
 
         {!loading && sessions.length > 0 && (
-          <div className="space-y-2">
+          <div className="overflow-y-auto max-h-[450px] pr-1.5 space-y-2.5">
             {sessions.map((s) => (
               <div
                 key={s.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border rounded-xl hover:bg-muted/40 transition-colors"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-border/50 rounded-xl bg-background/40 hover:bg-muted/40 transition-all duration-200 shadow-sm"
               >
-                {/* Left: device + info */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="shrink-0 p-2 rounded-lg bg-muted">
+                {/* Left: Device + User info */}
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="shrink-0 p-2.5 rounded-xl bg-muted/60 border border-border/20">
                     <DeviceIcon device={s.device} />
                   </div>
                   <div className="min-w-0">
-                    <div className="font-semibold truncate">{s.username}</div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Globe className="h-3 w-3" />
+                    <div className="font-semibold text-foreground truncate">{s.username}</div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+                        <Globe className="h-3.5 w-3.5 text-muted-foreground/75" />
                         {s.ip.replace('::ffff:', '')}
                       </span>
-                      <span className="text-xs text-muted-foreground">{s.device}</span>
+                      <span className="text-xs text-muted-foreground/80 truncate max-w-[150px]" title={s.device}>
+                        {s.device}
+                      </span>
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground/75" />
                         Active {timeAgo(s.lastSeen)}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Right: status + revoke */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="outline" className="text-green-600 border-green-500 text-xs">
-                    ● Active
+                {/* Right: Active Indicator + Revoke action */}
+                <div className="flex items-center gap-3.5 shrink-0 self-end sm:self-auto">
+                  <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 font-medium text-xs px-2.5 py-0.5 shadow-none rounded-full flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                    Active
                   </Badge>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9 p-0 rounded-xl transition-all duration-150 active:scale-95 border border-transparent hover:border-destructive/25"
                     onClick={() => revokeSession(s.id)}
                     disabled={revoking === s.id}
-                    title="Revoke session"
+                    title="Terminate session"
                   >
                     {revoking === s.id ? (
                       <RefreshCw className="h-4 w-4 animate-spin" />
@@ -187,8 +193,8 @@ export function SessionsPanel() {
         )}
 
         {sessions.length > 0 && (
-          <p className="text-xs text-muted-foreground text-center mt-4">
-            {sessions.length} active session{sessions.length !== 1 ? 's' : ''} • Sessions auto-expire after 24 hours of inactivity
+          <p className="text-xs text-muted-foreground text-center mt-5 font-mono">
+            {sessions.length} active session{sessions.length !== 1 ? 's' : ''} • Checked in real-time
           </p>
         )}
       </CardContent>

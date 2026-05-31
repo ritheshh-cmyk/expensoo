@@ -10,7 +10,7 @@
 
 import { test, expect, Page } from '@playwright/test';
 
-const SITE    = 'https://expensoo-eight.vercel.app';
+const SITE    = process.env.FRONTEND_URL || 'http://localhost:4173';
 const ADMIN_U = 'admin';
 const ADMIN_P = 'admin123';
 const WORKER_U = 'sravan';

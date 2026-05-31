@@ -237,7 +237,7 @@ export default function Bills() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
               E-Bill Generator
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground">
@@ -245,7 +245,7 @@ export default function Bills() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-foreground text-sm font-medium transition-colors cursor-pointer min-h-[44px]">
+            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-background hover:bg-muted/50 border border-border text-foreground text-sm font-medium transition-colors cursor-pointer min-h-[44px]">
               <Download className="mr-2 h-4 w-4" />
               Export All
             </button>
@@ -629,16 +629,16 @@ export default function Bills() {
 
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+          <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <p className="text-sm font-medium text-muted-foreground">Total Bills</p>
               <FileText className="h-4 w-4 text-brand-orange-light" />
             </div>
-            <div className="text-2xl font-bold text-white">{bills.length}</div>
+            <div className="text-2xl font-bold text-foreground">{bills.length}</div>
             <p className="text-xs text-muted-foreground">All time</p>
           </div>
 
-          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+          <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
               <DollarSign className="h-4 w-4 text-brand-orange-light" />
@@ -650,7 +650,7 @@ export default function Bills() {
             <p className="text-xs text-muted-foreground">Total invoiced</p>
           </div>
 
-          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+          <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <p className="text-sm font-medium text-muted-foreground">Paid Bills</p>
               <Receipt className="h-4 w-4 text-brand-green" />
@@ -661,7 +661,7 @@ export default function Bills() {
             <p className="text-xs text-muted-foreground">Payment received</p>
           </div>
 
-          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+          <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <p className="text-sm font-medium text-muted-foreground">Pending</p>
               <Calendar className="h-4 w-4 text-brand-orange-light" />
@@ -674,7 +674,7 @@ export default function Bills() {
         </div>
 
         {/* Filters */}
-        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
+        <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -682,12 +682,12 @@ export default function Bills() {
                   placeholder="Search bills by customer or invoice number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground focus:border-brand-orange/50"
+                  className="pl-10 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-brand-orange/50"
                 />
               </div>
               <div className="flex gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-32 bg-white/5 border-white/10 text-foreground">
+                  <SelectTrigger className="w-32 bg-background border-border text-foreground">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent side="bottom" avoidCollisions={false}>
@@ -705,7 +705,7 @@ export default function Bills() {
         {/* Bills List */}
         <div className="grid gap-4">
           {filteredBills.map((bill) => (
-            <div key={bill.id} className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:border-brand-orange/30 transition-all duration-200">
+            <div key={bill.id} className="rounded-xl border border-border bg-background backdrop-blur-sm hover:border-brand-orange/30 transition-all duration-200">
               <div className="p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-start gap-4">
@@ -714,7 +714,7 @@ export default function Bills() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-lg text-white">{bill.id}</h3>
+                        <h3 className="font-semibold text-lg text-foreground">{bill.id}</h3>
                         <BillStatusBadge status={bill.status} />
                       </div>
                       <p className="text-sm text-muted-foreground mb-1">
@@ -729,7 +729,7 @@ export default function Bills() {
 
                   <div className="flex items-center gap-2 sm:flex-col sm:items-end">
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-2xl font-bold text-foreground">
                         ₹{typeof bill.amount === "number" ? bill.amount.toLocaleString() : "0"}
                       </p>
                     </div>
@@ -738,7 +738,7 @@ export default function Bills() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-9 w-9 bg-white/5 border-white/10 text-foreground hover:bg-white/10 hover:border-white/20 cursor-pointer min-h-[44px]"
+                        className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
                         onClick={() => handlePreview(bill)}
                       >
                         <Eye className="h-4 w-4" />
@@ -746,7 +746,7 @@ export default function Bills() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-9 w-9 bg-white/5 border-white/10 text-foreground hover:bg-white/10 hover:border-white/20 cursor-pointer min-h-[44px]"
+                        className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
                         onClick={() => handleDownloadPDF(bill)}
                       >
                         <Download className="h-4 w-4" />
@@ -755,7 +755,7 @@ export default function Bills() {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-9 w-9 bg-white/5 border-white/10 text-foreground hover:bg-white/10 hover:border-white/20 cursor-pointer min-h-[44px]"
+                          className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
                           onClick={() => handleSendSMS(bill)}
                         >
                           <MessageSquare className="h-4 w-4" />

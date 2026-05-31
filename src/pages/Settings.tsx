@@ -109,8 +109,8 @@ function ChangePasswordPanel() {
   };
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-      <h2 className="text-base font-semibold text-white mb-1 flex items-center gap-2">
+    <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-6">
+      <h2 className="text-base font-semibold text-foreground mb-1 flex items-center gap-2">
         <KeyRound className="h-5 w-5 text-brand-orange" />
         Change Password
       </h2>
@@ -135,12 +135,12 @@ function ChangePasswordPanel() {
               placeholder="Enter your current password"
               value={current}
               onChange={e => setCurrent(e.target.value)}
-              className="pr-10 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground min-h-[48px]"
+              className="pr-10 bg-background border-border text-foreground placeholder:text-muted-foreground min-h-[48px]"
               required
             />
             <button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowC(v => !v)}
             >
               {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -157,12 +157,12 @@ function ChangePasswordPanel() {
               placeholder="Enter new password"
               value={next}
               onChange={e => setNext(e.target.value)}
-              className="pr-10 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground min-h-[48px]"
+              className="pr-10 bg-background border-border text-foreground placeholder:text-muted-foreground min-h-[48px]"
               required
             />
             <button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => setShowN(v => !v)}
             >
               {showNext ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -176,7 +176,7 @@ function ChangePasswordPanel() {
                   <div
                     key={i}
                     className={`h-1 flex-1 rounded-full transition-colors ${
-                      i <= strength.score ? strength.color : "bg-white/10"
+                      i <= strength.score ? strength.color : "bg-muted/50"
                     }`}
                   />
                 ))}
@@ -199,7 +199,7 @@ function ChangePasswordPanel() {
             placeholder="Re-enter new password"
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
-            className={`bg-white/5 border-white/10 text-white placeholder:text-muted-foreground min-h-[48px] ${
+            className={`bg-background border-border text-foreground placeholder:text-muted-foreground min-h-[48px] ${
               mismatch ? "border-red-500/60" : ""
             }`}
             required
@@ -254,14 +254,14 @@ export default function Settings() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white">{t("settings")}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t("settings")}</h1>
         <p className="text-sm sm:text-base text-muted-foreground">
           Manage preferences, change password and backend configuration
         </p>
       </div>
 
       <Tabs defaultValue="password" className="space-y-6">
-        <TabsList className={`grid w-full grid-cols-${tabCount} bg-white/5 border border-white/10`}>
+        <TabsList className={`grid w-full grid-cols-${tabCount} bg-background border border-border`}>
           {/* Password — always first and most visible */}
           <TabsTrigger
             value="password"
@@ -310,8 +310,8 @@ export default function Settings() {
         {/* ── Appearance Tab ───────────────────────────────────────────────── */}
         <TabsContent value="appearance" className="space-y-6">
           {/* Theme Settings */}
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-            <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-6">
+            <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
               <Monitor className="h-5 w-5 text-brand-orange" />
               Theme Settings
             </h2>
@@ -334,7 +334,7 @@ export default function Settings() {
                       className={
                         theme === t
                           ? "bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg cursor-pointer min-h-[44px]"
-                          : "bg-white/5 hover:bg-white/10 border border-white/10 text-foreground rounded-lg cursor-pointer min-h-[44px]"
+                          : "bg-background hover:bg-muted/50 border border-border text-foreground rounded-lg cursor-pointer min-h-[44px]"
                       }
                     >
                       {t === "light" ? <Sun className="mr-2 h-4 w-4" /> : t === "dark" ? <Moon className="mr-2 h-4 w-4" /> : <Monitor className="mr-2 h-4 w-4" />}
@@ -347,8 +347,8 @@ export default function Settings() {
           </div>
 
           {/* Language Settings */}
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-            <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-6">
+            <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
               <Globe className="h-5 w-5 text-brand-orange" />
               Language Settings
             </h2>
@@ -366,7 +366,7 @@ export default function Settings() {
                   className={
                     language === "en"
                       ? "bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg cursor-pointer min-h-[44px]"
-                      : "bg-white/5 hover:bg-white/10 border border-white/10 text-foreground rounded-lg cursor-pointer min-h-[44px]"
+                      : "bg-background hover:bg-muted/50 border border-border text-foreground rounded-lg cursor-pointer min-h-[44px]"
                   }
                 >
                   🇺🇸 English
@@ -385,7 +385,7 @@ export default function Settings() {
                   className={
                     language === "te"
                       ? "bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg cursor-pointer min-h-[44px]"
-                      : "bg-white/5 hover:bg-white/10 border border-white/10 text-foreground rounded-lg cursor-pointer min-h-[44px]"
+                      : "bg-background hover:bg-muted/50 border border-border text-foreground rounded-lg cursor-pointer min-h-[44px]"
                   }
                 >
                   🇮🇳 తెలుగు
@@ -397,8 +397,8 @@ export default function Settings() {
 
         {/* ── System Tab ───────────────────────────────────────────────────── */}
         <TabsContent value="system" className="space-y-6">
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-            <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-6">
+            <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
               <SettingsIcon className="h-5 w-5 text-brand-orange" />
               App Information
             </h2>
@@ -411,14 +411,14 @@ export default function Settings() {
               ].map(item => (
                 <div key={item.label}>
                   <Label className="text-sm text-muted-foreground">{item.label}</Label>
-                  <p className="text-base font-semibold text-white mt-1">{item.value}</p>
+                  <p className="text-base font-semibold text-foreground mt-1">{item.value}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-            <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+          <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-6">
+            <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-brand-orange" />
               Mobile Optimization
             </h2>

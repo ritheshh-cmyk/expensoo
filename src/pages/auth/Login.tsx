@@ -10,8 +10,7 @@ import {
   CheckCircle2,
   Zap,
   Sun,
-  Moon,
-  Monitor
+  Moon
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/components/theme-provider";
@@ -19,6 +18,14 @@ import { toast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -120,10 +127,15 @@ export default function Login() {
   ];
 
   return (
-    <div className="min-h-screen w-full flex bg-background relative">
+    <div className="min-h-[100dvh] w-full flex bg-background relative overflow-x-hidden">
       {/* Theme Toggle */}
       <div className="absolute top-4 right-4 z-50 flex gap-2">
-        <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="rounded-full bg-background/50 backdrop-blur-sm border shadow-sm">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="rounded-full bg-background/50 backdrop-blur-sm border shadow-sm"
+        >
           {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
       </div>
@@ -201,157 +213,161 @@ export default function Login() {
         </div>
       </div>
 
-      {/* ── RIGHT PANEL: Login Form ─────────────────────────────── */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-12 bg-background">
-        <div className="w-full max-w-md">
-          {/* Form header */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      {/* ── RIGHT PANEL: Login Form Card ─────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-12 bg-background min-h-[100dvh] relative overflow-hidden py-8">
+        {/* Glow ambient background elements for premium feel (especially visible on mobile) */}
+        <div className="absolute top-[-20%] left-[-25%] w-[80%] h-[80%] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-25%] w-[80%] h-[80%] rounded-full bg-accent/5 blur-[120px] pointer-events-none" />
+
+        <Card className="w-full max-w-md border-border/60 shadow-2xl rounded-2xl glass z-10 transition-all duration-300 hover:shadow-primary/5">
+          <CardHeader className="space-y-1.5 pb-4">
+            <CardTitle className="text-2xl font-bold tracking-tight text-center sm:text-left" style={{ fontFamily: "'Poppins', sans-serif" }}>
               Sign in
-            </h2>
-            <p className="text-muted-foreground text-sm mt-1.5">
+            </CardTitle>
+            <CardDescription className="text-muted-foreground text-sm text-center sm:text-left">
               Enter your credentials to access the dashboard
-            </p>
-          </div>
-
-          {/* ── Session-expired banner ────────────────────────────── */}
-          {sessionExpired && (
-            <div
-              role="alert"
-              className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/25 text-primary text-sm mb-6"
-            >
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>
-                <strong>Session Expired</strong> — Your 15-minute session has ended. Please log in again.
-              </span>
-            </div>
-          )}
-
-          {/* ── Login form ───────────────────────────────────────── */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-foreground text-sm font-medium">
-                Username
-              </Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="Enter your username"
-                value={formData.username}
-                onChange={(e) =>
-                  handleInputChange("username", e.target.value)
-                }
-                className={`h-12 bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/30 ${fieldErrors.username ? "border-destructive focus:ring-destructive/30" : ""}`}
-                aria-describedby={fieldErrors.username ? "username-error" : undefined}
-              />
-              {fieldErrors.username && (
-                <p id="username-error" className="text-xs text-destructive mt-1">
-                  {fieldErrors.username}
-                </p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground text-sm font-medium">
-                Password
-              </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    handleInputChange("password", e.target.value)
-                  }
-                  className={`h-12 pr-12 bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/30 ${fieldErrors.password ? "border-destructive focus:ring-destructive/30" : ""}`}
-                  aria-describedby={fieldErrors.password ? "password-error" : undefined}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              {fieldErrors.password && (
-                <p id="password-error" className="text-xs text-destructive mt-1">
-                  {fieldErrors.password}
-                </p>
-              )}
-            </div>
-
-            {/* Inline error message */}
-            {loginError && (
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* ── Session-expired banner ────────────────────────────── */}
+            {sessionExpired && (
               <div
                 role="alert"
-                className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
+                className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/25 text-primary text-sm mb-4"
               >
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {loginError}
+                <span>
+                  <strong>Session Expired</strong> — Please log in again.
+                </span>
               </div>
             )}
 
-            {/* Remember me + Forgot password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <input
-                  id="remember"
-                  type="checkbox"
-                  checked={formData.rememberMe}
-                  onChange={(e) => handleInputChange("rememberMe", e.target.checked)}
-                  className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary/30 cursor-pointer accent-primary"
+            {/* ── Login form ───────────────────────────────────────── */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Username */}
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-foreground text-sm font-medium">
+                  Username
+                </Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Enter your username"
+                  value={formData.username}
+                  onChange={(e) =>
+                    handleInputChange("username", e.target.value)
+                  }
+                  className={`h-12 bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/30 ${fieldErrors.username ? "border-destructive focus:ring-destructive/30" : ""}`}
+                  aria-describedby={fieldErrors.username ? "username-error" : undefined}
                 />
-                <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer select-none">
-                  Remember me
-                </label>
+                {fieldErrors.username && (
+                  <p id="username-error" className="text-xs text-destructive mt-1">
+                    {fieldErrors.username}
+                  </p>
+                )}
               </div>
-              <Link
-                to="/auth/forgot-password"
-                className="text-sm text-primary hover:text-primary/80 transition-colors duration-150 font-medium"
-              >
-                Forgot password?
-              </Link>
-            </div>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 px-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-semibold rounded-xl transition-colors duration-150 cursor-pointer min-h-[48px] mt-2 flex items-center justify-center gap-2 text-base shadow-lg shadow-primary/20"
-              style={{ fontFamily: "'Poppins', sans-serif" }}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
+              {/* Password */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-foreground text-sm font-medium">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      handleInputChange("password", e.target.value)
+                    }
+                    className={`h-12 pr-12 bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/30 ${fieldErrors.password ? "border-destructive focus:ring-destructive/30" : ""}`}
+                    aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {fieldErrors.password && (
+                  <p id="password-error" className="text-xs text-destructive mt-1">
+                    {fieldErrors.password}
+                  </p>
+                )}
+              </div>
+
+              {/* Inline error message */}
+              {loginError && (
+                <div
+                  role="alert"
+                  className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
+                >
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {loginError}
+                </div>
               )}
-            </button>
-          </form>
 
-          {/* ── Footer ───────────────────────────────────────────── */}
-          <div className="text-center text-sm text-muted-foreground mt-8">
-            Need help?{" "}
-            <a
-              href="tel:+919392404104"
-              className="text-primary hover:text-primary/80 transition-colors duration-150 font-semibold"
-            >
-              Call Support
-            </a>
-          </div>
-        </div>
+              {/* Remember me + Forgot password */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="remember"
+                    type="checkbox"
+                    checked={formData.rememberMe}
+                    onChange={(e) => handleInputChange("rememberMe", e.target.checked)}
+                    className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary/30 cursor-pointer accent-primary"
+                  />
+                  <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer select-none">
+                    Remember me
+                  </label>
+                </div>
+                <Link
+                  to="/auth/forgot-password"
+                  className="text-sm text-primary hover:text-primary/80 transition-colors duration-150 font-medium"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 px-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-semibold rounded-xl transition-colors duration-150 cursor-pointer min-h-[48px] mt-2 flex items-center justify-center gap-2 text-base shadow-lg shadow-primary/20"
+                style={{ fontFamily: "'Poppins', sans-serif" }}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
+              </button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-4 pb-6 pt-0">
+            <div className="text-center text-sm text-muted-foreground">
+              Need help?{" "}
+              <a
+                href="tel:+919392404104"
+                className="text-primary hover:text-primary/80 transition-colors duration-150 font-semibold"
+              >
+                Call Support
+              </a>
+            </div>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
