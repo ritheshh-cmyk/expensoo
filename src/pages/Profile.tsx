@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { PasswordStrengthMeter, validatePassword } from "@/components/ui/PasswordStrengthMeter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ export default function Profile() {
   );
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
 
   const handleLogout = () => {
     logout();
@@ -265,10 +267,19 @@ export default function Profile() {
             const updates: any = {};
             if (username && username !== user?.username) updates.username = username;
             if (password) updates.password = password;
-            
+
             if (Object.keys(updates).length === 0) {
               toast({ title: "No changes", description: "You didn't make any changes." });
               return;
+            }
+
+            // Validate password strength before submitting
+            if (password) {
+              const pwError = validatePassword(password);
+              if (pwError) {
+                toast({ title: 'Weak Password', description: pwError, variant: 'destructive' });
+                return;
+              }
             }
 
             try {
@@ -301,13 +312,16 @@ export default function Profile() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">New Password (optional)</Label>
-              <input 
-                id="password" 
-                name="password" 
-                type="password" 
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
-                placeholder="Leave blank to keep current" 
+              <input
+                id="password"
+                name="password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Leave blank to keep current"
               />
+              <PasswordStrengthMeter password={newPassword} />
             </div>
             <Button type="submit">Update Credentials</Button>
           </form>

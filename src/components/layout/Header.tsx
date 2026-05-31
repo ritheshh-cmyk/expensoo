@@ -157,14 +157,21 @@ export function Header({ onMenuClick }: HeaderProps) {
 
         {/* ── Left ── */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" className="lg:hidden" onClick={onMenuClick}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="lg:hidden min-h-[44px] min-w-[44px] active:scale-95"
+            onClick={onMenuClick}
+            aria-label="Toggle navigation menu"
+            style={{ touchAction: "manipulation" }}
+          >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle menu</span>
           </Button>
 
           <div className="hidden lg:flex flex-col">
-            <h1 className="text-lg font-semibold text-foreground">CallMeMobiles</h1>
-            <p className="text-sm text-muted-foreground">Professional Repair Management</p>
+            <h1 className="text-base sm:text-lg font-semibold text-foreground truncate max-w-[160px] sm:max-w-none">CallMeMobiles</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Professional Repair Management</p>
           </div>
         </div>
 

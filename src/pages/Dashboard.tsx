@@ -152,19 +152,27 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
             onClick={() => fetchDashboardData(true)}
             disabled={loading}
+            className="min-h-[44px] px-4"
+            style={{ touchAction: "manipulation" }}
           >
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
             {loading ? "Loading…" : "Refresh"}
           </Button>
 
           {isOwnerOrAdmin && (
-            <Button variant="outline" size="sm" onClick={toggleProfits}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleProfits}
+              className="min-h-[44px] px-4"
+              style={{ touchAction: "manipulation" }}
+            >
               {showProfits ? "Hide Profits" : "Show Profits"}
             </Button>
           )}

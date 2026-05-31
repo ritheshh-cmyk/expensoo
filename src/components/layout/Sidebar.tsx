@@ -185,9 +185,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               size="icon"
               onClick={onClose}
               aria-label="Close sidebar"
-              className="h-8 w-8 electron-no-drag cursor-pointer hover:bg-white/5 text-white/70 hover:text-white transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange"
+              className="h-11 w-11 shrink-0 electron-no-drag cursor-pointer hover:bg-white/5 text-white/70 hover:text-white transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange active:scale-95"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </Button>
           </div>
           <nav className="flex flex-1 flex-col">

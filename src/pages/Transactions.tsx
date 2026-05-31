@@ -452,23 +452,27 @@ export default function Transactions() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-6">
+      {/* ── Header ─────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t("transactions")}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">{t("transactions")}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Manage all repair transactions</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={exportToExcel}
             className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-foreground hover:text-white font-medium rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px] text-sm"
             aria-label="Export transactions"
+            style={{ touchAction: "manipulation" }}
           >
             <Download className="w-4 h-4" />
             {t("export")}
           </button>
           <Link to="/transactions/new">
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px] text-sm">
+            <button
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px] text-sm"
+              style={{ touchAction: "manipulation" }}
+            >
               <Plus className="w-4 h-4" />
               {t("new-transaction")}
             </button>
@@ -497,28 +501,88 @@ export default function Transactions() {
               <SelectContent>
                 <SelectItem value="all">All Payments</SelectItem>
                 <SelectItem value="cash">{t("cash")}</SelectItem>
-                <SelectItem value="upi">{t("upi")}</SelectItem>
-                <SelectItem value="card">{t("card")}</SelectItem>
-                <SelectItem value="bank-transfer">
-                  {t("bank-transfer")}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Table ──────────────────────────────────────────────── */}
+                <SelectItem value      {/* ── Table (md+) / Card list (mobile) ──────────────────────────── */}
       <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
         {/* Table header row: count */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-white/10">
           <span className="text-sm font-semibold text-white">Transaction List</span>
           <span className="text-xs text-muted-foreground">
             {table.getFilteredRowModel().rows.length} transactions found
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* === Mobile card list (hidden md+) === */}
+        <div className="md:hidden">
+          {table.getRowModel().rows?.length ? (
+            <div className="divide-y divide-white/5">
+              {table.getRowModel().rows.map((row) => {
+                const tx = row.original;
+                const shortId = tx.id.length > 5 ? `TXN-${tx.id.slice(-5).toUpperCase()}` : `TXN-${tx.id}`;
+                return (
+                  <div key={row.id} className="flex items-start gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors">
+                    <div className="shrink-0 w-9 h-9 rounded-full bg-brand-orange/10 flex items-center justify-center mt-0.5">
+                      <Phone className="h-4 w-4 text-brand-orange-light" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-white text-sm truncate">{tx.customer}</p>
+                          <p className="text-xs text-muted-foreground truncate">{tx.device}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="font-bold text-brand-orange-light text-sm">₹{tx.cost.toLocaleString()}</p>
+                          <StatusBadge status={row.original ? (row.getValue('actions') as any)?.status || 'pending' : 'pending'} />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                        <span className="text-xs text-muted-foreground font-mono">{shortId}</span>
+                        <span className="text-xs text-muted-foreground">{tx.repairType}</span>
+                        <span className="text-xs text-muted-foreground">{t(tx.paymentMethod)}</span>
+                        {tx.freeGlass && <span className="text-xs text-brand-green">+Glass</span>}
+                      </div>
+                    </div>
+                    {/* Actions */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="shrink-0 h-8 w-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors"
+                          aria-label="Actions"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="bottom" align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link to={`/transactions/${tx.id}/edit`}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleDelete(tx.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Receipt className="w-8 h-8 text-muted-foreground mb-3" />
+              <p className="text-white font-medium text-sm">No transactions yet</p>
+              <p className="text-muted-foreground text-xs mt-1">Create your first transaction to get started</p>
+            </div>
+          )}
+        </div>
+
+        {/* === Desktop table (hidden below md) === */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -575,7 +639,7 @@ export default function Transactions() {
         </div>
 
         {/* Pagination */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4 border-t border-white/10 bg-white/[0.02]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-5 py-4 border-t border-white/10 bg-white/[0.02]">
           <div className="text-sm text-muted-foreground text-center sm:text-left">
             Showing {table.getState().pagination.pageIndex + 1} of{" "}
             {table.getPageCount()} pages
@@ -585,7 +649,8 @@ export default function Transactions() {
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
               aria-label="Previous page"
-              className="flex items-center justify-center h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
+              className="flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
+              style={{ touchAction: "manipulation" }}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -593,6 +658,14 @@ export default function Transactions() {
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
               aria-label="Next page"
+              className="flex items-center justify-center h-10 w-10 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
+              style={{ touchAction: "manipulation" }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>ria-label="Next page"
               className="flex items-center justify-center h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
             >
               <ChevronRight className="h-4 w-4" />

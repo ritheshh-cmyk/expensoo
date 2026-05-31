@@ -117,11 +117,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.3s ease, color 0.3s ease;
+    overscroll-behavior-y: contain;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
   }
 
   html {
     scroll-behavior: smooth;
     color-scheme: light;
+    overflow-x: hidden;
   }
 
   .dark html,
@@ -223,7 +227,27 @@
 
   /* Mobile friendly tap target */
   .tap-target {
-    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+    @apply min-h-[48px] min-w-[48px] flex items-center justify-center;
+    touch-action: manipulation;
+  }
+
+  /* Scrollable container with iOS momentum scroll */
+  .scroll-touch {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+  }
+
+  /* Prevent horizontal overflow in content areas */
+  .overflow-guard {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Mobile table wrapper */
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    @apply rounded-lg;
   }
 
   /* Empty state */
@@ -470,7 +494,7 @@
    GLOBAL MICRO-ANIMATIONS
    ============================================================ */
 
-/* All buttons & links — 150ms colour/shadow transition */
+/* All buttons & links — 150ms colour/shadow transition + touch-action */
 a,
 button,
 [role="button"] {
@@ -480,6 +504,14 @@ button,
     border-color     150ms ease,
     box-shadow       150ms ease,
     opacity          150ms ease;
+  touch-action: manipulation;
+}
+
+/* Active press state for all tap targets */
+button:active,
+[role="button"]:active,
+a:active {
+  transform: scale(0.97);
 }
 
 /* Card hover lift — opt-in only via .card-hover class */

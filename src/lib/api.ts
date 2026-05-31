@@ -196,7 +196,9 @@ class ApiClient {
         success: true,
         data: {
           token: response.data.token,
-          user: response.data.user
+          user: response.data.user,
+          passwordWarning: response.data.passwordWarning ?? null,
+          passwordExpired: response.data.passwordExpired ?? false,
         },
         message: response.data.message || 'Login successful'
       };

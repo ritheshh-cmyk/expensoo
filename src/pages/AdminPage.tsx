@@ -1,6 +1,9 @@
 import React from 'react';
 import { AdminControlSystem } from '@/components/admin/AdminControlSystem';
 import { UserManagement } from '@/components/admin/UserManagement';
+import { AuditLogPanel } from '@/components/admin/AuditLogPanel';
+import { DataExportPanel } from '@/components/admin/DataExportPanel';
+import { SessionsPanel } from '@/components/admin/SessionsPanel';
 import { ResponsiveGrid, ResponsiveContainer } from '@/components/layout/ResponsiveLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +22,8 @@ import {
   Tablet,
   Database,
   Server,
-  Globe
+  Globe,
+  Clock
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -218,6 +222,21 @@ export default function AdminPage() {
         {/* Main Admin Control System & User Management */}
         <UserManagement />
         <AdminControlSystem />
+
+        {/* Audit Log */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="h-5 w-5 text-indigo-500" />
+            <h2 className="text-xl font-semibold">Audit Log</h2>
+          </div>
+          <AuditLogPanel />
+        </div>
+
+        {/* One-click CSV Data Export */}
+        <DataExportPanel />
+
+        {/* Active Sessions Manager */}
+        <SessionsPanel />
       </div>
     </ResponsiveContainer>
   );

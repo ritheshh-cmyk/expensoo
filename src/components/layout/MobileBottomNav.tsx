@@ -84,26 +84,38 @@ export function MobileBottomNav() {
   return (
     <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur border-t border-border safe-area-bottom lg:hidden">
       <div
-        className={`grid px-2 py-2`}
+        className="grid px-1 py-1"
         style={{
           gridTemplateColumns: `repeat(${visibleNavigation.length}, 1fr)`,
         }}
       >
-        {visibleNavigation.map((item) => (
-          <Link
-            key={item.name}
-            to={item.href}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1 rounded-lg p-2 touch-target transition-colors",
-              isActive(item)
-                ? "text-primary bg-primary/10"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent",
-            )}
-          >
-            <item.icon className="h-5 w-5" />
-            <span className="text-xs font-medium">{t(item.name)}</span>
-          </Link>
-        ))}
+        {visibleNavigation.map((item) => {
+          const active = isActive(item);
+          return (
+            <Link
+              key={item.name}
+              to={item.href}
+              className={cn(
+                "relative flex flex-col items-center justify-center gap-0.5 rounded-xl min-h-[52px] px-1 py-2",
+                "touch-action-manipulation select-none",
+                "transition-all duration-150 active:scale-95",
+                active
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
+              )}
+              style={{ touchAction: "manipulation" }}
+            >
+              {/* Active indicator dot at top */}
+              {active && (
+                <span className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
+              )}
+              <item.icon className={cn("h-[22px] w-[22px] shrink-0", active && "stroke-[2.2px]")} />
+              <span className="text-[10px] font-semibold leading-tight text-center max-w-full truncate">
+                {t(item.name)}
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

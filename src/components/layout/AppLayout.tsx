@@ -3,6 +3,7 @@ import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { Breadcrumbs } from "./Breadcrumbs";
+import { IdleWarning } from "./IdleWarning";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -28,7 +29,7 @@ export function AppLayout({
       position:sticky children in Chromium (crbug.com/1251018), causing Radix
       floating-ui to misplace portals at (0,0).
     */
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Mobile sidebar backdrop — z-40 */}
       {sidebarOpen && (
         <div
@@ -60,6 +61,7 @@ export function AppLayout({
         </main>
       </div>
 
+      <IdleWarning />
       <MobileBottomNav />
     </div>
   );
