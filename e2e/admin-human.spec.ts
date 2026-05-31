@@ -347,7 +347,11 @@ test.describe('🧑 Human E2E — Admin Full Journey', () => {
     await page.screenshot({ path: 'screenshots/audit-log.png', fullPage: true });
 
     // Audit log should show entries or "no events" message
-    const content = page.locator('[class*="audit"], [class*="log"], text=/LOGIN|CREATE|UPDATE|DELETE|events/i').first();
+    // Use .or() — text=/regex/ can't be mixed in a CSS comma-selector
+    const content = page
+      .locator('[class*="audit"], [class*="log"]')
+      .or(page.getByText(/LOGIN|CREATE|UPDATE|DELETE|events/i))
+      .first();
     await expect(content).toBeVisible({ timeout: 10_000 });
     console.log('✅ Audit log panel loaded');
   });
