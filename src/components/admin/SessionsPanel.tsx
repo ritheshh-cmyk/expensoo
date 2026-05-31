@@ -49,7 +49,7 @@ export function SessionsPanel() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token') ?? sessionStorage.getItem('token');
+      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
       const res = await fetch(`${BASE_URL}/api/auth/admin/sessions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -74,7 +74,7 @@ export function SessionsPanel() {
     if (!confirm('Revoke this session? The user will be logged out on that device.')) return;
     setRevoking(id);
     try {
-      const token = localStorage.getItem('token') ?? sessionStorage.getItem('token');
+      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
       const res = await fetch(`${BASE_URL}/api/auth/sessions/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },

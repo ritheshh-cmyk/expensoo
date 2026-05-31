@@ -1,40 +1,34 @@
-import React from 'react';
+import { useRef } from 'react';
 import { AdminControlSystem } from '@/components/admin/AdminControlSystem';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { AuditLogPanel } from '@/components/admin/AuditLogPanel';
 import { DataExportPanel } from '@/components/admin/DataExportPanel';
 import { SessionsPanel } from '@/components/admin/SessionsPanel';
-import { ResponsiveGrid, ResponsiveContainer } from '@/components/layout/ResponsiveLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SystemStatsPanel } from '@/components/admin/SystemStatsPanel';
+import { ResponsiveContainer } from '@/components/layout/ResponsiveLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useEnhancedRBAC } from '@/contexts/EnhancedRBACContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Shield, 
-  Users, 
-  Settings, 
-  Activity, 
-  BarChart3, 
-  Zap,
-  Monitor,
-  Smartphone,
-  Tablet,
-  Database,
-  Server,
-  Globe,
-  Clock
+import {
+  Shield, Users, Settings, Activity, BarChart3,
+  Download, Monitor, Clock, Zap,
 } from 'lucide-react';
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
-  const { permissions } = useEnhancedRBAC();
 
-  // ── Admin gate: trust ONLY AuthContext (ground truth) ──────────────────────
-  // Never gate on RBAC loading — it can be slow or fail. AuthContext is the
-  // single source of truth for user identity and role.
+  // Section refs for scroll-to navigation
+  const usersRef   = useRef<HTMLDivElement>(null);
+  const rbacRef    = useRef<HTMLDivElement>(null);
+  const auditRef   = useRef<HTMLDivElement>(null);
+  const exportRef  = useRef<HTMLDivElement>(null);
+  const sessionRef = useRef<HTMLDivElement>(null);
 
-  // Still loading auth state — show spinner
+  const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // ── Admin gate: only AuthContext ─────────────────────────────────────────────
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -43,7 +37,6 @@ export default function AdminPage() {
     );
   }
 
-  // Auth resolved — check role directly (covers 'admin', 'Admin', 'ADMIN')
   const isAdminUser = user?.role?.toLowerCase() === 'admin';
 
   if (!isAdminUser) {
@@ -60,186 +53,109 @@ export default function AdminPage() {
     );
   }
 
-  const systemStats = {
-    totalUsers: 3,
-    totalPermissions: permissions.length,
-    activeFeatures: permissions.filter(p => p.ownerAccess || p.workerAccess).length,
-    systemHealth: 'Excellent'
-  };
-
   return (
     <ResponsiveContainer maxWidth="full" padding="md">
-      <div className="space-y-8">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="space-y-10">
+
+        {/* ── Page Header ─────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Administration
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              System management and role-based access control
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Administration</h1>
+            <p className="text-muted-foreground mt-1">
+              Full system control — users, permissions, sessions, exports, audit trail
             </p>
           </div>
-          <Badge variant="outline" className="flex items-center gap-2 w-fit">
-            <Shield className="h-4 w-4" />
-            Administrator: {user?.name}
+          <Badge variant="outline" className="flex items-center gap-2 w-fit shrink-0 py-1.5 px-3">
+            <Shield className="h-4 w-4 text-red-500" />
+            <span className="font-semibold">{user?.name ?? user?.username}</span>
+            <span className="text-muted-foreground">· Admin</span>
           </Badge>
         </div>
 
-        {/* System Overview */}
-        <ResponsiveGrid 
-          cols={{ default: 1, sm: 2, lg: 4 }}
-          gap={6}
-        >
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                Total Users
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{systemStats.totalUsers}</div>
-              <p className="text-sm text-muted-foreground">Admin, Owner, Worker</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Settings className="h-5 w-5 text-green-600" />
-                Permissions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{systemStats.totalPermissions}</div>
-              <p className="text-sm text-muted-foreground">Feature access controls</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="h-5 w-5 text-orange-600" />
-                Active Features
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{systemStats.activeFeatures}</div>
-              <p className="text-sm text-muted-foreground">Enabled for users</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-purple-600" />
-                System Health
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{systemStats.systemHealth}</div>
-              <p className="text-sm text-muted-foreground">All systems operational</p>
-            </CardContent>
-          </Card>
-        </ResponsiveGrid>
-
-        {/* System Information */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Monitor className="h-5 w-5" />
-                System Information
-              </CardTitle>
-              <CardDescription>Current system configuration and status</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Database className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Database:</span>
-                    <Badge variant="outline" className="text-xs">Connected</Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Server className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Backend:</span>
-                    <Badge variant="outline" className="text-xs">Operational</Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Frontend:</span>
-                    <Badge variant="outline" className="text-xs">Active</Badge>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Smartphone className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Mobile:</span>
-                    <Badge variant="outline" className="text-xs">Responsive</Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Tablet className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Tablet:</span>
-                    <Badge variant="outline" className="text-xs">Optimized</Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Monitor className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Desktop:</span>
-                    <Badge variant="outline" className="text-xs">Enhanced</Badge>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <Users className="h-4 w-4 mr-2" />
-                Manage Users
-              </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                System Reports
-              </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                System Settings
-              </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <Activity className="h-4 w-4 mr-2" />
-                Activity Logs
-              </Button>
-            </CardContent>
-          </Card>
+        {/* ── Quick Action Nav ─────────────────────────────────────────────── */}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => scrollTo(usersRef)}>
+            <Users className="h-4 w-4 mr-1.5" /> Users
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => scrollTo(rbacRef)}>
+            <Settings className="h-4 w-4 mr-1.5" /> Permissions
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => scrollTo(auditRef)}>
+            <Activity className="h-4 w-4 mr-1.5" /> Audit Log
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => scrollTo(exportRef)}>
+            <Download className="h-4 w-4 mr-1.5" /> Export Data
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => scrollTo(sessionRef)}>
+            <Monitor className="h-4 w-4 mr-1.5" /> Sessions
+          </Button>
         </div>
 
-        {/* Main Admin Control System & User Management */}
-        <UserManagement />
-        <AdminControlSystem />
+        {/* ── Live System Stats (real backend data) ────────────────────────── */}
+        <SystemStatsPanel />
 
-        {/* Audit Log */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
+        {/* ── User Management ──────────────────────────────────────────────── */}
+        <section ref={usersRef} className="scroll-mt-20">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="h-5 w-5 text-blue-500" />
+            <h2 className="text-xl font-semibold">User Management</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Create accounts, change roles, force-reset passwords, delete users
+          </p>
+          <UserManagement />
+        </section>
+
+        {/* ── RBAC Permission Controls ──────────────────────────────────────── */}
+        <section ref={rbacRef} className="scroll-mt-20">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="h-5 w-5 text-yellow-500" />
+            <h2 className="text-xl font-semibold">Role Permissions</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Control which pages and features Owner and Worker roles can access
+          </p>
+          <AdminControlSystem />
+        </section>
+
+        {/* ── Audit Log ─────────────────────────────────────────────────────── */}
+        <section ref={auditRef} className="scroll-mt-20">
+          <div className="flex items-center gap-2 mb-2">
             <Clock className="h-5 w-5 text-indigo-500" />
             <h2 className="text-xl font-semibold">Audit Log</h2>
           </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Last 200 security events — logins, role changes, password resets, deletions
+          </p>
           <AuditLogPanel />
-        </div>
+        </section>
 
-        {/* One-click CSV Data Export */}
-        <DataExportPanel />
+        {/* ── Data Export ───────────────────────────────────────────────────── */}
+        <section ref={exportRef} className="scroll-mt-20">
+          <div className="flex items-center gap-2 mb-2">
+            <Download className="h-5 w-5 text-green-500" />
+            <h2 className="text-xl font-semibold">Data Export</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Download users, transactions and suppliers as CSV for accounting/backup
+          </p>
+          <DataExportPanel />
+        </section>
 
-        {/* Active Sessions Manager */}
-        <SessionsPanel />
+        {/* ── Active Sessions ───────────────────────────────────────────────── */}
+        <section ref={sessionRef} className="scroll-mt-20">
+          <div className="flex items-center gap-2 mb-2">
+            <Monitor className="h-5 w-5 text-cyan-500" />
+            <h2 className="text-xl font-semibold">Active Sessions</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            All logged-in devices across all users — revoke any suspicious session instantly
+          </p>
+          <SessionsPanel />
+        </section>
+
+        {/* Bottom padding for mobile nav */}
+        <div className="h-6" />
       </div>
     </ResponsiveContainer>
   );

@@ -27,6 +27,8 @@ function actionVariant(action: string): { label: string; className: string } {
       return { label: 'LOGIN FAILED', className: 'bg-red-100 text-red-800 border-red-200' };
     case 'LOGOUT':
       return { label: 'LOGOUT', className: 'bg-gray-100 text-gray-700 border-gray-200' };
+    case 'CREATE_USER':
+      return { label: 'CREATE USER', className: 'bg-green-100 text-green-800 border-green-200' };
     case 'DELETE_USER':
       return { label: 'DELETE USER', className: 'bg-red-100 text-red-800 border-red-200' };
     case 'UPDATE_ROLE':
@@ -48,8 +50,8 @@ export function AuditLogPanel() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token') ?? sessionStorage.getItem('token');
-      const res = await fetch(`${BASE_URL}/api/auth/audit/logs?limit=100`, {
+      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
+      const res = await fetch(`${BASE_URL}/api/auth/audit/logs?limit=200`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',

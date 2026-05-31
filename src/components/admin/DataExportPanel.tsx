@@ -49,7 +49,7 @@ export function DataExportPanel() {
   const handleExport = async (option: ExportOption) => {
     setExporting(option.id);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
       const res = await fetch(`${BACKEND}${option.endpoint}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
