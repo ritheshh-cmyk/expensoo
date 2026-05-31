@@ -3,7 +3,6 @@ import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { Breadcrumbs } from "./Breadcrumbs";
-import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -17,8 +16,20 @@ export function AppLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
+    /*
+      Z-INDEX LAYER HIERARCHY (highest wins):
+        z-[200]  — Radix portals (dropdowns, dialogs, selects)   ← always on top
+        z-50     — Header (sticky)
+        z-50     — Mobile sidebar overlay
+        z-40     — Mobile backdrop
+        z-30     — Desktop sidebar
+
+      NO isolation:isolate on this root — it breaks getBoundingClientRect() on
+      position:sticky children in Chromium (crbug.com/1251018), causing Radix
+      floating-ui to misplace portals at (0,0).
+    */
     <div className="min-h-screen bg-background">
-      {/* Mobile sidebar backdrop */}
+      {/* Mobile sidebar backdrop — z-40 */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/80 lg:hidden"
@@ -26,14 +37,14 @@ export function AppLayout({
         />
       )}
 
-      {/* Sidebar */}
+      {/* Desktop sidebar z-30, mobile z-50 */}
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main content */}
+      {/* Main content — no stacking context on this div */}
       <div className="lg:pl-64">
+        {/* Header — sticky z-50, NO backdrop-blur (prevents GPU layer conflict) */}
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
-        {/* Breadcrumbs */}
         {showBreadcrumbs && (
           <div className="px-4 lg:px-6 py-3 border-b bg-muted/30">
             <div className="mx-auto max-w-7xl">
@@ -42,15 +53,13 @@ export function AppLayout({
           </div>
         )}
 
-        {/* Main content area */}
         <main className="flex-1 p-4 lg:p-6 pb-20 lg:pb-6 min-h-[calc(100vh-4rem)]">
-          <div className="mx-auto max-w-7xl w-full animate-in fade-in-50 duration-300">
+          <div className="mx-auto max-w-7xl w-full">
             {children}
           </div>
         </main>
       </div>
 
-      {/* Mobile bottom navigation */}
       <MobileBottomNav />
     </div>
   );

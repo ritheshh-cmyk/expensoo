@@ -27,14 +27,18 @@ class ApiClient {
   constructor() {
     const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
     const prodUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
-    const baseUrl = envBaseUrl || (import.meta.env.PROD ? prodUrl : 'http://localhost:10000');
+    // In dev: VITE_BACKEND_URL='' → use '' so /api/* goes through Vite proxy → localhost:5000
+    // In prod build: VITE_BACKEND_URL='' → fall back to hardcoded prodUrl
+    const baseUrl = envBaseUrl !== undefined && envBaseUrl !== ''
+      ? envBaseUrl
+      : (import.meta.env.PROD ? prodUrl : '');
 
     this.config = {
       baseUrl,
       retryConfig: {
-        maxRetries: 3,
-        baseDelay: 1000,
-        maxDelay: 10000
+        maxRetries: 1,
+        baseDelay: 500,
+        maxDelay: 3000
       },
       debug: import.meta.env.DEV || false
     };
@@ -47,6 +51,11 @@ class ApiClient {
         retryConfig: this.config.retryConfig
       });
     }
+  }
+
+  /** Returns the backend base URL currently in use */
+  getBackendUrl(): string {
+    return this.config.baseUrl || '(Vite proxy → localhost:5000)';
   }
 
   private debug(...args: any[]) {
@@ -72,7 +81,7 @@ class ApiClient {
     }
   }
 
-  private async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${this.config.baseUrl}${endpoint}`;
     const token = this.getAuthToken();
     let attempt = 0;
@@ -262,41 +271,43 @@ class ApiClient {
   async getDashboardStats(): Promise<ApiResponse> {
     this.debug('📊 Fetching dashboard stats from /api/dashboard/stats...');
     const response = await this.request('/api/dashboard/stats');
-    
+
     if (response.success) {
-      // The /api/dashboard/stats endpoint returns { totals, today, week }
-      const totals = response.data?.totals || {};
-      const today = response.data?.today || {};
-      const week = response.data?.week || {};
-      
+      // Backend returns { totals, today, week, userRole }
       return {
         success: true,
-        totals: {
-          totalRevenue: totals.totalRevenue || 0,
-          totalProfit: totals.totalProfit || 0,
-          totalTransactions: totals.totalTransactions || 0,
-          pendingTransactions: totals.pendingTransactions || 0,
-          completedTransactions: totals.completedTransactions || 0,
-          avgTransactionValue: totals.avgTransactionValue || 0,
+        data: {
+          totals: {
+            totalRevenue:          Number(response.data?.totals?.totalRevenue)          || 0,
+            totalProfit:           Number(response.data?.totals?.totalProfit)           || 0,
+            totalTransactions:     Number(response.data?.totals?.totalTransactions)     || 0,
+            pendingTransactions:   Number(response.data?.totals?.pendingTransactions)   || 0,
+            completedTransactions: Number(response.data?.totals?.completedTransactions) || 0,
+            avgTransactionValue:   Number(response.data?.totals?.avgTransactionValue)   || 0,
+          },
+          today: {
+            totalRevenue:      Number(response.data?.today?.totalRevenue)      || 0,
+            totalProfit:       Number(response.data?.today?.totalProfit)       || 0,
+            totalTransactions: Number(response.data?.today?.totalTransactions) || 0,
+          },
+          week: {
+            totalRevenue:      Number(response.data?.week?.totalRevenue)      || 0,
+            totalProfit:       Number(response.data?.week?.totalProfit)       || 0,
+            totalTransactions: Number(response.data?.week?.totalTransactions) || 0,
+          },
+          userRole:   response.data?.userRole,
         },
-        today: {
-          totalRevenue: today.totalRevenue || today.revenue || 0,
-          totalProfit: today.totalProfit || today.profit || 0,
-          totalTransactions: today.totalTransactions || today.transactions || 0,
-        },
-        week: {
-          totalRevenue: week.totalRevenue || week.revenue || 0,
-          totalProfit: week.totalProfit || week.profit || 0,
-          totalTransactions: week.totalTransactions || week.transactions || 0,
-        },
-        userRole: response.data?.userRole,
-        fullAccess: response.data?.fullAccess
       };
     }
-    
+
     this.error('❌ Dashboard stats fetch failed:', response.error);
-    return response;
+    return {
+      success: false,
+      data: null,
+      error: response.error,
+    };
   }
+
 
   // Transactions
   async getTransactions(): Promise<ApiResponse> {
@@ -304,7 +315,7 @@ class ApiClient {
     const response = await this.request('/api/transactions');
     
     if (response.success) {
-      const transactions = response.data?.transactions || response.data || [];
+      const transactions = response.data?.transactions || response.data?.data || response.data || [];
       return {
         success: true,
         data: Array.isArray(transactions) ? transactions : []
@@ -322,20 +333,35 @@ class ApiClient {
   async createTransaction(data: any): Promise<ApiResponse> {
     this.debug('➕ Creating transaction:', data);
     try {
+      const partsArray = Array.isArray(data.partsCost) ? data.partsCost : [];
+      const totalPartsCost = partsArray.reduce((sum: number, p: any) => sum + (Number(p.cost || p.amount) || 0), 0);
+      const extPurchases = partsArray.length > 0 ? partsArray.map((p: any) => ({
+        store: String(p.supplier || 'Unknown'),
+        item: String(p.item || p.name || 'Part'),
+        cost: Number(p.cost || p.amount || 0)
+      })) : undefined;
+
       // Always send all required and optional camelCase fields for backend validation
       const validationData = {
-        customerName: data.customerName || data.customer_name,
-        mobileNumber: data.mobileNumber || data.mobile_number || data.phoneNumber,
-        deviceModel: data.deviceModel || data.device_model,
-        repairType: data.repairType || data.repair_type,
+        customerName: data.customerName || data.customer_name || '',
+        mobileNumber: data.mobileNumber || data.mobile_number || data.phoneNumber || '',
+        deviceModel: data.deviceModel || data.device_model || '',
+        repairType: data.repairType || data.repair_type || '',
         repairCost: Number(data.repairCost || data.repair_cost || 0),
+        actualCost: Number(data.actualCost || data.actual_cost || 0) || undefined,
+        profit: Number(data.profit || 0) || undefined,
         amountGiven: Number(data.amountGiven || data.amount_given || 0),
         changeReturned: Number(data.changeReturned || data.change_returned || Math.max(0, (Number(data.amountGiven || data.amount_given || 0)) - (Number(data.repairCost || data.repair_cost || 0)))),
         paymentMethod: data.paymentMethod || data.payment_method || 'cash',
         status: data.status || 'Completed',
         remarks: data.remarks || '',
-        partsCost: data.partsCost || [],
-        freeGlass: data.freeGlass || false
+        // Correct field names matching backend Zod schema
+        freeGlassInstallation: Boolean(data.freeGlassInstallation ?? data.freeGlass ?? false),
+        requiresInventory: Boolean(data.requiresInventory ?? false),
+        partsCost: partsArray.length > 0 ? totalPartsCost : undefined,
+        supplierName: data.supplierName || undefined,
+        externalPurchases: extPurchases || data.externalPurchases || undefined,
+        shop_id: data.shop_id || undefined,
       };
 
       this.debug('📤 Sending validation format (camelCase):', validationData);
@@ -389,7 +415,7 @@ class ApiClient {
     const response = await this.request('/api/suppliers');
     
     if (response.success) {
-      const suppliers = response.data?.suppliers || response.data || [];
+      const suppliers = response.data?.suppliers || response.data?.data || response.data || [];
       return {
         success: true,
         data: Array.isArray(suppliers) ? suppliers : []
@@ -416,7 +442,7 @@ class ApiClient {
     const response = await this.request('/api/expenditures');
     
     if (response.success) {
-      const expenditures = response.data?.expenditures || response.data || [];
+      const expenditures = response.data?.expenditures || response.data?.data || response.data || [];
       return {
         success: true,
         data: Array.isArray(expenditures) ? expenditures : []
@@ -438,6 +464,22 @@ class ApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  async updateExpenditure(id: string, data: any): Promise<ApiResponse> {
+    this.debug('💰 Updating expenditure:', id, data);
+    return this.request(`/api/expenditures/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteExpenditure(id: string): Promise<ApiResponse> {
+    this.debug('💰 Deleting expenditure:', id);
+    return this.request(`/api/expenditures/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
 
   // Metrics
   async getMetrics(): Promise<ApiResponse> {
@@ -462,7 +504,6 @@ class ApiClient {
     };
   }
 
-  // Health Check
   async healthCheck(): Promise<ApiResponse> {
     try {
       const response = await this.request('/api/health');
@@ -484,6 +525,77 @@ class ApiClient {
         error: error.message
       };
     }
+  }
+
+  // ─── Bills ────────────────────────────────────────────────────────────────
+
+  async getBills(): Promise<ApiResponse> {
+    this.debug('🧾 Fetching bills...');
+    const response = await this.request('/api/bills');
+
+    if (response.success) {
+      const bills = response.data?.bills || response.data?.data || response.data || [];
+      return {
+        success: true,
+        data: Array.isArray(bills) ? bills : [],
+      };
+    }
+
+    this.error('❌ Bills fetch failed:', response.error);
+    return { success: false, data: [], error: response.error };
+  }
+
+  async createBill(data: any): Promise<any> {
+    this.debug('🧾 Creating bill:', data);
+    const response = await this.request('/api/bills', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (response.success) {
+      // Return the bill object directly so Bills.tsx can use it immediately
+      return response.data?.bill ?? response.data ?? data;
+    }
+
+    this.error('❌ Bill creation failed:', response.error);
+    throw new Error(response.error || 'Failed to create bill');
+  }
+
+  async updateBill(id: string, data: any): Promise<ApiResponse> {
+    this.debug('🧾 Updating bill:', id, data);
+    return this.request(`/api/bills/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteBill(id: string): Promise<ApiResponse> {
+    this.debug('🧾 Deleting bill:', id);
+    return this.request(`/api/bills/${id}`, { method: 'DELETE' });
+  }
+
+  // ─── Customers ────────────────────────────────────────────────────────────
+
+  async getCustomerById(customerId: string): Promise<any> {
+    this.debug('👤 Fetching customer:', customerId);
+    const response = await this.request(`/api/customers/${customerId}`);
+
+    if (response.success) {
+      return response.data?.customer ?? response.data ?? null;
+    }
+
+    this.error('❌ Customer fetch failed:', response.error);
+    return null;
+  }
+
+  // ─── SMS / Notifications ──────────────────────────────────────────────────
+
+  async sendBillSMS(payload: { phone: string; message: string }): Promise<ApiResponse> {
+    this.debug('📱 Sending bill SMS:', payload.phone);
+    return this.request('/api/sms/send', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 }
 

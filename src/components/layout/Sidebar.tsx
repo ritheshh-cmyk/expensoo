@@ -14,6 +14,7 @@ import {
   X,
   Smartphone,
   LogOut,
+  ShieldAlert,
 } from "lucide-react";
 
 type UserRole = 'admin' | 'owner' | 'worker';
@@ -62,6 +63,12 @@ const navigation = [
     icon: Settings,
     roles: ["admin", "owner", "worker"] as UserRole[],
   },
+  {
+    name: "admin",
+    href: "/admin",
+    icon: ShieldAlert,
+    roles: ["admin", "owner"] as UserRole[],
+  },
 ];
 
 interface SidebarProps {
@@ -86,61 +93,61 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-sidebar border-r border-sidebar-border px-6 py-6">
+      <div className="hidden lg:fixed lg:inset-y-0 lg:z-30 lg:flex lg:w-64 lg:flex-col">
+        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-[#1a1918]/95 backdrop-blur-xl border-r border-white/8 px-6 py-6">
           <div className="flex h-16 shrink-0 items-center">
             <div className="flex items-center space-x-3">
-              <div className="expenso-gradient w-10 h-10 rounded-xl flex items-center justify-center">
+              <div className="expenso-gradient w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-brand-orange/25">
                 <Smartphone className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-sidebar-foreground">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-brand-orange to-[#e8a07a] bg-clip-text text-transparent">
                   CallMeMobiles
                 </h1>
-                <p className="text-xs text-sidebar-foreground/60">
+                <p className="text-xs text-white/50">
                   Mobile Repair Tracker
                 </p>
               </div>
             </div>
           </div>
           <nav className="flex flex-1 flex-col">
-            <ul role="list" className="flex flex-1 flex-col gap-y-2">
+            <ul role="list" className="flex flex-1 flex-col gap-y-1">
               {visibleNavigation.map((item) => (
                 <li key={item.name}>
                   <Link
                     to={item.href}
                     className={cn(
-                      "group flex gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 transition-all duration-200 min-h-[48px] items-center touch-manipulation",
+                      "group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 min-h-[44px] text-sm font-medium",
                       isActive(item)
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent/80",
+                        ? "bg-brand-orange/15 text-brand-orange border-l-2 border-brand-orange pl-[10px]"
+                        : "text-white/70 hover:bg-white/5 hover:text-white border-l-2 border-transparent pl-[10px] focus-visible:ring-2 focus-visible:ring-brand-orange",
                     )}
                   >
                     <item.icon
                       className={cn(
                         "h-5 w-5 shrink-0 transition-colors",
                         isActive(item)
-                          ? "text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground",
+                          ? "text-brand-orange"
+                          : "text-white/40 group-hover:text-white",
                       )}
                     />
                     {t(item.name)}
                   </Link>
                 </li>
               ))}
-              <li className="mt-auto pt-4 border-t border-sidebar-border">
+              <li className="mt-auto pt-4 border-t border-white/8">
                 <div className="px-4 py-2 mb-2">
-                  <div className="text-xs text-sidebar-foreground/60 uppercase tracking-wider">
+                  <div className="text-xs text-white/40 uppercase tracking-wider font-heading">
                     Logged in as
                   </div>
-                  <div className="text-sm font-medium text-sidebar-foreground capitalize">
+                  <div className="text-sm font-medium text-white/90 capitalize">
                     {user?.role}
                   </div>
                 </div>
                 <Button
                   onClick={logout}
                   variant="ghost"
-                  className="w-full justify-start gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  className="w-full justify-start gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 text-white/70 hover:bg-white/5 hover:text-white cursor-pointer min-h-[44px] transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange"
                 >
                   <LogOut className="h-5 w-5 shrink-0" />
                   Sign out
@@ -158,17 +165,17 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-sidebar border-r border-sidebar-border px-6 py-6 safe-area-top">
+        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-[#1a1918]/95 backdrop-blur-xl border-r border-white/8 px-6 py-6 safe-area-top">
           <div className="flex h-16 shrink-0 items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="expenso-gradient w-10 h-10 rounded-xl flex items-center justify-center">
+              <div className="expenso-gradient w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-brand-orange/25">
                 <Smartphone className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-sidebar-foreground">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-brand-orange to-[#e8a07a] bg-clip-text text-transparent">
                   CallMeMobiles
                 </h1>
-                <p className="text-xs text-sidebar-foreground/60">
+                <p className="text-xs text-white/50">
                   Mobile Repair Tracker
                 </p>
               </div>
@@ -177,43 +184,44 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-8 w-8 electron-no-drag"
+              aria-label="Close sidebar"
+              className="h-8 w-8 electron-no-drag cursor-pointer hover:bg-white/5 text-white/70 hover:text-white transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
           <nav className="flex flex-1 flex-col">
-            <ul role="list" className="flex flex-1 flex-col gap-y-2">
+            <ul role="list" className="flex flex-1 flex-col gap-y-1">
               {visibleNavigation.map((item) => (
                 <li key={item.name}>
                   <Link
                     to={item.href}
                     onClick={onClose}
                     className={cn(
-                      "group flex gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 transition-all duration-200 min-h-[48px] items-center touch-manipulation",
+                      "group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 min-h-[44px] text-sm font-medium",
                       isActive(item)
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent/80",
+                        ? "bg-brand-orange/15 text-brand-orange border-l-2 border-brand-orange pl-[10px]"
+                        : "text-white/70 hover:bg-white/5 hover:text-white border-l-2 border-transparent pl-[10px] focus-visible:ring-2 focus-visible:ring-brand-orange",
                     )}
                   >
                     <item.icon
                       className={cn(
                         "h-5 w-5 shrink-0 transition-colors",
                         isActive(item)
-                          ? "text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground",
+                          ? "text-brand-orange"
+                          : "text-white/40 group-hover:text-white",
                       )}
                     />
                     {t(item.name)}
                   </Link>
                 </li>
               ))}
-              <li className="mt-auto pt-4 border-t border-sidebar-border">
+              <li className="mt-auto pt-4 border-t border-white/8">
                 <div className="px-4 py-2 mb-2">
-                  <div className="text-xs text-sidebar-foreground/60 uppercase tracking-wider">
+                  <div className="text-xs text-white/40 uppercase tracking-wider font-heading">
                     Logged in as
                   </div>
-                  <div className="text-sm font-medium text-sidebar-foreground capitalize">
+                  <div className="text-sm font-medium text-white/90 capitalize">
                     {user?.role}
                   </div>
                 </div>
@@ -223,7 +231,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     onClose();
                   }}
                   variant="ghost"
-                  className="w-full justify-start gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  className="w-full justify-start gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 text-white/70 hover:bg-white/5 hover:text-white cursor-pointer min-h-[44px] transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange"
                 >
                   <LogOut className="h-5 w-5 shrink-0" />
                   Sign out

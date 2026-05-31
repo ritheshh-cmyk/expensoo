@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, User, Smartphone, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { apiClient } from "@/lib/api";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface GlobalSearchProps {
   placeholder?: string;
@@ -24,8 +25,11 @@ export function GlobalSearch({
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
+  // Debounce raw input — API is only called after typing stops for 300 ms
+  const debouncedQuery = useDebounce(searchQuery, 300);
+
   useEffect(() => {
-    if (searchQuery.length > 1) {
+    if (debouncedQuery.length > 1) {
       const performSearch = async () => {
         // Only perform search if user is authenticated and token is available
         const token = localStorage.getItem("callmemobiles_token");
@@ -38,7 +42,7 @@ export function GlobalSearch({
         try {
           // Try backend search only
           const backendResults = await apiClient.request(
-            `/search?q=${encodeURIComponent(searchQuery)}`,
+            `/search?q=${encodeURIComponent(debouncedQuery)}`,
           );
 
           // Transform backend results to match our format
@@ -66,13 +70,11 @@ export function GlobalSearch({
           setIsOpen(true);
         }
       };
-      // Debounce search
-      const debounceTimer = setTimeout(performSearch, 300);
-      return () => clearTimeout(debounceTimer);
+      performSearch();
     } else {
       setSearchResults([]);
     }
-  }, [searchQuery]);
+  }, [debouncedQuery]);
 
   const handleResultClick = () => {
     setSearchQuery("");
@@ -86,7 +88,7 @@ export function GlobalSearch({
       case "transaction":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+        return "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-300";
     }
   };
 
@@ -157,10 +159,11 @@ export function GlobalSearch({
         isSearching ||
         (searchQuery.length > 1 && !isSearching)) && (
         <PopoverContent
-          className="w-80 p-0"
+          className="w-80 p-0 z-[300]"
           align="start"
           side="bottom"
           sideOffset={4}
+          avoidCollisions={false}
         >
           <div className="border-b p-3">
             <h4 className="font-medium text-sm">

@@ -40,7 +40,7 @@ import {
   Plus,
   Receipt,
   Calculator,
-  PieChart,
+  PieChart as PieChartIcon,
   Download,
   Search,
   Filter,
@@ -67,6 +67,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  PieChart,
   Pie,
   Cell,
 } from "recharts";
@@ -86,20 +87,54 @@ export default function Expenditures() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initial fetch
-    apiClient.getExpenditures().then(setExpenditures).finally(() => setLoading(false));
+    let cancelled = false;
+
+    const fetchExpenditures = async () => {
+      try {
+        const response = await apiClient.getExpenditures();
+        if (!cancelled) {
+          // getExpenditures returns ApiResponse — extract .data array
+          if (response.success && Array.isArray(response.data)) {
+            setExpenditures(response.data);
+          } else {
+            setExpenditures([]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch expenditures:', err);
+        if (!cancelled) setExpenditures([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchExpenditures();
 
     // Real-time updates
-    const websocketUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://expensoo-app-gu3wg.ondigitalocean.app";
-    const socket = io(websocketUrl, { transports: ["websocket"] });
-    const update = () => apiClient.getExpenditures().then(setExpenditures);
-    socket.on("expenditureCreated", update);
-    socket.on("expenditureUpdated", update);
-    socket.on("expenditureDeleted", update);
+    const wsUrl =
+      import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL ||
+      import.meta.env.VITE_PRODUCTION_BACKEND_URL ||
+      'https://expensoo-app-gu3wg.ondigitalocean.app';
+    const socket = io(wsUrl, { transports: ['websocket'] });
+    socket.on('connect_error', (err) => console.warn('Socket error (non-fatal):', err.message));
+
+    const update = async () => {
+      if (cancelled) return;
+      try {
+        const response = await apiClient.getExpenditures();
+        if (!cancelled && response.success && Array.isArray(response.data)) {
+          setExpenditures(response.data);
+        }
+      } catch { /* non-fatal */ }
+    };
+    socket.on('expenditureCreated', update);
+    socket.on('expenditureUpdated', update);
+    socket.on('expenditureDeleted', update);
     return () => {
-      socket.off("expenditureCreated", update);
-      socket.off("expenditureUpdated", update);
-      socket.off("expenditureDeleted", update);
+      cancelled = true;
+      socket.off('expenditureCreated', update);
+      socket.off('expenditureUpdated', update);
+      socket.off('expenditureDeleted', update);
       socket.disconnect();
     };
   }, []);
@@ -112,25 +147,35 @@ export default function Expenditures() {
 
   // Filter expenditures
   const filteredExpenditures = expenditures.filter((exp) => {
+    const desc = (exp.description ?? exp.category ?? '').toLowerCase();
+    const sup  = (exp.recipient ?? exp.supplier ?? '').toLowerCase();
+    const note = (exp.items ?? exp.notes ?? exp.remarks ?? '').toLowerCase();
     const matchesSearch =
-      exp.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exp.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exp.notes.toLowerCase().includes(searchTerm.toLowerCase());
+      searchTerm === '' ||
+      desc.includes(searchTerm.toLowerCase()) ||
+      sup.includes(searchTerm.toLowerCase())  ||
+      note.includes(searchTerm.toLowerCase());
 
     const matchesCategory =
-      categoryFilter === "all" || exp.category === categoryFilter;
+      categoryFilter === 'all' || exp.category === categoryFilter;
     const matchesPayment =
-      paymentMethodFilter === "all" ||
+      paymentMethodFilter === 'all' ||
       exp.paymentMethod === paymentMethodFilter;
 
     return matchesSearch && matchesCategory && matchesPayment;
   });
 
   // Calculate totals
-  const totalExpenses = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
+  const totalExpenses = expenditures.reduce((sum, exp) => sum + Number(exp.amount ?? 0), 0);
+  // Dynamic current-month filter (not hardcoded 2024-01)
+  const now = new Date();
+  const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const monthlyExpenses = expenditures
-    .filter((exp) => exp.date.startsWith("2024-01"))
-    .reduce((sum, exp) => sum + exp.amount, 0);
+    .filter((exp) => {
+      const d = exp.createdAt ?? exp.date ?? '';
+      return d.toString().startsWith(currentYearMonth);
+    })
+    .reduce((sum, exp) => sum + Number(exp.amount ?? 0), 0);
 
   const categories = [...new Set(expenditures.map((exp) => exp.category))];
   const paymentMethods = [
@@ -139,14 +184,34 @@ export default function Expenditures() {
 
   // Add, update, delete handlers
   const handleAddExpenditure = async (formData: any) => {
-    await apiClient.createExpenditure(formData);
-    // Real-time event will trigger refetch
+    try {
+      const response = await apiClient.createExpenditure(formData);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to add expenditure');
+      }
+      setIsAddDialogOpen(false);
+      toast({ title: 'Expenditure Added', description: 'Expense recorded successfully.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err?.message || 'Failed to add expenditure', variant: 'destructive' });
+    }
   };
   const handleUpdateExpenditure = async (id: string, formData: any) => {
-    await apiClient.updateExpenditure(id, formData);
+    try {
+      await (apiClient as any).updateExpenditure?.(id, formData);
+      toast({ title: 'Updated', description: 'Expenditure updated.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err?.message || 'Failed to update', variant: 'destructive' });
+    }
   };
   const handleDeleteExpenditure = async (id: string) => {
-    await apiClient.deleteExpenditure(id);
+    if (!window.confirm('Are you sure you want to delete this expenditure? This cannot be undone.')) return;
+    try {
+      await apiClient.deleteExpenditure(id);
+      setExpenditures(prev => prev.filter(e => String(e.id) !== String(id)));
+      toast({ title: 'Deleted', description: 'Expenditure removed successfully.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err?.message || 'Failed to delete', variant: 'destructive' });
+    }
   };
 
   const getPaymentMethodIcon = (method: string) => {
@@ -198,7 +263,7 @@ export default function Expenditures() {
     };
     return (
       colors[category] ||
-      "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+      "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-300"
     );
   };
 
@@ -289,7 +354,9 @@ export default function Expenditures() {
               <div className="text-2xl font-bold">
                 ₹{typeof monthlyExpenses === "number" ? monthlyExpenses.toLocaleString() : "0"}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">January 2024</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -314,11 +381,13 @@ export default function Expenditures() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {showProfits
-                  ? "₹31,000"
-                  : `₹${typeof totalExpenses === 'number' ? Math.round(totalExpenses / (expenditures.length || 1)).toLocaleString() : '0'}`}
+                  ? `₹${(Number(monthlyExpenses) || 0).toLocaleString()}`
+                  : `₹${Math.round((Number(totalExpenses) || 0) / (expenditures.length || 1)).toLocaleString()}`}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {showProfits ? "January 2024" : "Per transaction"}
+                {showProfits
+                  ? new Date().toLocaleString('default', { month: 'long', year: 'numeric' })
+                  : 'Per transaction'}
               </p>
             </CardContent>
           </Card>
@@ -411,7 +480,7 @@ export default function Expenditures() {
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue placeholder="Filter by category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent side="bottom" avoidCollisions={false}>
                   <SelectItem value="all">All Categories</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category} value={category}>
@@ -427,7 +496,7 @@ export default function Expenditures() {
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Payment method" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent side="bottom" avoidCollisions={false}>
                   <SelectItem value="all">All Methods</SelectItem>
                   {paymentMethods.map((method) => (
                     <SelectItem key={method} value={method}>
@@ -438,7 +507,7 @@ export default function Expenditures() {
               </Select>
             </div>
 
-            <div className="rounded-md border">
+            <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -452,57 +521,94 @@ export default function Expenditures() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredExpenditures.map((expenditure) => (
-                    <TableRow key={expenditure.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {expenditure.date}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {expenditure.description}
-                          </div>
-                          {expenditure.notes && (
-                            <div className="text-sm text-muted-foreground">
-                              {expenditure.notes}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={getCategoryColor(expenditure.category) || ""}
-                        >
-                          {expenditure.category}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{expenditure.supplier}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getPaymentMethodIcon(expenditure.paymentMethod)}
-                          {getPaymentMethodLabel(expenditure.paymentMethod)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">
-                          ₹{typeof expenditure.amount === "number" ? expenditure.amount.toLocaleString() : "0"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center">
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                          <span className="text-sm">Loading expenditures...</span>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : filteredExpenditures.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center">
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                          <Receipt className="h-8 w-8 opacity-40" />
+                          <span className="text-sm font-medium">No expenditures found</span>
+                          <span className="text-xs">Try adjusting your filters or add a new expenditure.</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredExpenditures.map((expenditure) => (
+                      <TableRow key={expenditure.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {(() => {
+                              const raw = expenditure.date ?? expenditure.createdAt;
+                              if (!raw) return '—';
+                              const d = new Date(raw);
+                              return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN');
+                            })()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {expenditure.description}
+                            </div>
+                            {(expenditure.items || expenditure.notes) && (
+                              <div className="text-sm text-muted-foreground">
+                                {expenditure.items || expenditure.notes}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={getCategoryColor(expenditure.category) || ""}
+                          >
+                            {expenditure.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{expenditure.recipient || expenditure.supplier || '—'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getPaymentMethodIcon(expenditure.paymentMethod)}
+                            {getPaymentMethodLabel(expenditure.paymentMethod)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">
+                            ₹{(Number(expenditure.amount) || 0).toLocaleString()}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUpdateExpenditure(expenditure.id, expenditure)}
+                              title="Edit expenditure"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteExpenditure(expenditure.id)}
+                              title="Delete expenditure"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -519,8 +625,8 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
     category: "Supplies",
     amount: "",
     paymentMethod: "cash",
-    supplier: "",
-    notes: "",
+    recipient: "",
+    items: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -534,8 +640,8 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
       category: "Supplies",
       amount: "",
       paymentMethod: "cash",
-      supplier: "",
-      notes: "",
+      recipient: "",
+      items: "",
     });
   };
 
@@ -569,7 +675,7 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent side="bottom" avoidCollisions={false}>
               <SelectItem value="Supplies">Supplies</SelectItem>
               <SelectItem value="Rent">Rent</SelectItem>
               <SelectItem value="Utilities">Utilities</SelectItem>
@@ -606,7 +712,7 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent side="bottom" avoidCollisions={false}>
               <SelectItem value="cash">Cash</SelectItem>
               <SelectItem value="card">Card</SelectItem>
               <SelectItem value="upi">UPI</SelectItem>
@@ -616,26 +722,26 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
           </Select>
         </div>
         <div>
-          <Label htmlFor="supplier">Supplier/Vendor</Label>
+          <Label htmlFor="recipient">Supplier / Vendor</Label>
           <Input
-            id="supplier"
-            value={formData.supplier}
+            id="recipient"
+            value={formData.recipient}
             onChange={(e) =>
-              setFormData({ ...formData, supplier: e.target.value })
+              setFormData({ ...formData, recipient: e.target.value })
             }
             placeholder="Who was paid?"
             required
           />
         </div>
         <div>
-          <Label htmlFor="notes">Notes (Optional)</Label>
+          <Label htmlFor="items">Items / Notes (Optional)</Label>
           <Textarea
-            id="notes"
-            value={formData.notes}
+            id="items"
+            value={formData.items}
             onChange={(e) =>
-              setFormData({ ...formData, notes: e.target.value })
+              setFormData({ ...formData, items: e.target.value })
             }
-            placeholder="Additional details..."
+            placeholder="What was purchased? Any additional details..."
             rows={3}
           />
         </div>

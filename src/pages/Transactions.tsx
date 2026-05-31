@@ -57,6 +57,7 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -79,6 +80,34 @@ interface Transaction {
 
 
 
+// Extracted to avoid duplication between initial fetch and delete-rollback
+const normaliseTransaction = (raw: Record<string, unknown>): Transaction => ({
+  id:            String(raw.id ?? ''),
+  date:          raw.createdAt ? new Date(raw.createdAt as string) : raw.created_at ? new Date(raw.created_at as string) : new Date(),
+  customer:      (raw.customerName ?? raw.customer_name ?? raw.customer ?? '') as string,
+  phone:         (raw.mobileNumber ?? raw.mobile_number ?? raw.phone ?? '') as string,
+  device:        (raw.deviceModel  ?? raw.device_model  ?? raw.device  ?? '') as string,
+  repairType:    (raw.repairType   ?? raw.repair_type   ?? '') as string,
+  cost:          Number(raw.repairCost ?? raw.repair_cost ?? raw.cost ?? 0),
+  paymentMethod: (raw.paymentMethod ?? raw.payment_method ?? 'cash') as Transaction['paymentMethod'],
+  freeGlass:     Boolean(raw.freeGlassInstallation ?? raw.free_glass_installation ?? raw.freeGlass ?? false),
+});
+
+// ─── Status Badge helper ──────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    completed: 'bg-brand-green/15 text-brand-green border-brand-green/20',
+    pending:   'bg-brand-orange/15  text-brand-orange-light  border-brand-orange/20',
+    cancelled: 'bg-red-500/15    text-red-400    border-red-500/20',
+  };
+  const cls = map[status?.toLowerCase()] ?? 'bg-zinc-500/15 text-muted-foreground border-zinc-500/20';
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${cls}`}>
+      {status || 'Unknown'}
+    </span>
+  );
+}
+
 export default function Transactions() {
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,35 +122,57 @@ export default function Transactions() {
 
   const columns = useMemo(
     () => [
+      // S.No — sequential row number, independent of DB id
+      columnHelper.display({
+        id: "sno",
+        header: "S.No",
+        cell: ({ row }) => (
+          <div className="text-sm font-medium text-muted-foreground w-10 text-center">
+            {row.index + 1}
+          </div>
+        ),
+      }),
       columnHelper.accessor("id", {
         header: ({ column }) => (
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="h-8 p-0 font-medium"
+            className="h-8 p-0 font-medium text-muted-foreground hover:text-white cursor-pointer"
           >
-            Transaction ID
+            Txn ID
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         ),
-        cell: ({ row }) => (
-          <div className="font-mono text-sm">{row.getValue("id")}</div>
-        ),
+        cell: ({ row }) => {
+          const id = String(row.getValue("id") ?? "");
+          // Show short formatted ID: TXN-12345 (last 5 chars of DB id)
+          const shortId = id.length > 5 ? `TXN-${id.slice(-5).toUpperCase()}` : `TXN-${id}`;
+          return (
+            <div className="font-mono text-xs text-muted-foreground" title={id}>
+              {shortId}
+            </div>
+          );
+        },
       }),
       columnHelper.accessor("date", {
         header: ({ column }) => (
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="h-8 p-0 font-medium"
+            className="h-8 p-0 font-medium text-muted-foreground hover:text-white cursor-pointer"
           >
             Date
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         ),
         cell: ({ row }) => (
-          <div className="text-sm">
-            {row.getValue<Date>("date") ? row.getValue<Date>("date").toLocaleDateString() : ""}
+          <div className="text-sm text-foreground">
+            {(() => {
+              const d = row.getValue<Date>("date");
+              if (!d) return '';
+              const dt = d instanceof Date ? d : new Date(d);
+              return isNaN(dt.getTime()) ? '' : dt.toLocaleDateString();
+            })()}
           </div>
         ),
       }),
@@ -129,8 +180,8 @@ export default function Transactions() {
         header: "Customer",
         cell: ({ row }) => (
           <div>
-            <div className="font-medium">{row.getValue("customer")}</div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <div className="font-medium text-white">{row.getValue("customer")}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
               <Phone className="h-3 w-3" />
               {row.original.phone}
             </div>
@@ -141,8 +192,8 @@ export default function Transactions() {
         header: "Device",
         cell: ({ row }) => (
           <div>
-            <div className="font-medium">{row.getValue("device")}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="font-medium text-white">{row.getValue("device")}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
               {t(row.original.repairType)}
             </div>
           </div>
@@ -153,7 +204,7 @@ export default function Transactions() {
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="h-8 p-0 font-medium"
+            className="h-8 p-0 font-medium text-muted-foreground hover:text-white cursor-pointer"
           >
             Cost
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -161,10 +212,9 @@ export default function Transactions() {
         ),
         cell: ({ row }) => (
           <div className="text-right">
-            <div className="font-semibold">
-              ₹{typeof row.getValue<number>("cost") === "number" ? row.getValue<number>("cost").toLocaleString() : ""}
+            <div className="font-semibold text-brand-orange-light">
+              ₹{(Number(row.getValue<number>("cost")) || 0).toLocaleString()}
             </div>
-
           </div>
         ),
       }),
@@ -172,10 +222,10 @@ export default function Transactions() {
       columnHelper.accessor("paymentMethod", {
         header: "Payment",
         cell: ({ row }) => (
-          <div className="text-sm">
+          <div className="text-sm text-foreground">
             {t(row.getValue("paymentMethod"))}
             {row.original.freeGlass && (
-              <div className="text-xs text-success">+ Free Glass</div>
+              <div className="text-xs text-brand-green mt-0.5">+ Free Glass</div>
             )}
           </div>
         ),
@@ -185,7 +235,13 @@ export default function Transactions() {
         id: "history",
         header: "History",
         cell: ({ row }) => (
-          <Button variant="ghost" size="icon" onClick={() => setHistoryDialog({ open: true, customer: row.original.customer })}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="View customer history"
+            className="cursor-pointer text-muted-foreground hover:text-white hover:bg-white/10 transition-colors duration-150"
+            onClick={() => setHistoryDialog({ open: true, customer: row.original.customer })}
+          >
             <Eye className="h-4 w-4" />
           </Button>
         ),
@@ -196,12 +252,16 @@ export default function Transactions() {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button
+                variant="ghost"
+                className="h-8 w-8 p-0 cursor-pointer text-muted-foreground hover:text-white hover:bg-white/10 transition-colors duration-150"
+                aria-label="Open transaction actions"
+              >
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent side="bottom" align="end" avoidCollisions={false} sideOffset={4}>
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() => navigator.clipboard.writeText(row.original.id)}
@@ -254,80 +314,127 @@ export default function Transactions() {
 
   // All transaction data is loaded from backend and updated via socket.io
   useEffect(() => {
-    // Only fetch data if user is authenticated and token is available
-    const token = localStorage.getItem("callmemobiles_token");
-    const user = localStorage.getItem("callmemobiles_user");
-    if (!token || !user) {
-      console.log('⏭️ Skipping transactions fetch - no authentication token or user');
-      setLoading(false);
-      return;
-    }
+    let cancelled = false; // prevent state updates after unmount
+
+    // Uses normaliseTransaction defined at module scope
 
     const fetchTransactions = async () => {
+      // Use correct localStorage key — set by api.ts login()
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
       try {
-        // Add delay to ensure authentication is fully established
-        await new Promise(resolve => setTimeout(resolve, 3500));
-        
-        // Double-check authentication state after delay
-        const currentToken = localStorage.getItem("callmemobiles_token");
-        const currentUser = localStorage.getItem("callmemobiles_user");
-        if (!currentToken || !currentUser) {
-          console.log('⏭️ Authentication state changed during delay, aborting transactions fetch');
-          setLoading(false);
-          return;
-        }
-        
-        console.log('🔄 Fetching transactions data...');
         const response = await apiClient.getTransactions();
-        if (response.success && response.data) {
-          setData(response.data);
-        } else {
-          setData([]);
+        if (!cancelled) {
+          if (response.success && Array.isArray(response.data)) {
+            setData(response.data.map(normaliseTransaction));
+          } else {
+            setData([]);
+          }
         }
       } catch (error) {
         console.error('❌ Failed to fetch transactions:', error);
-        setData([]);
+        if (!cancelled) setData([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    // Initial fetch
     fetchTransactions();
 
-    // Real-time updates
-    const websocketUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://expensoo-app-gu3wg.ondigitalocean.app";
-    const socket = io(websocketUrl, { transports: ["websocket"] });
+    // Real-time updates via socket.io
+    const wsUrl =
+      import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL ||
+      import.meta.env.VITE_PRODUCTION_BACKEND_URL ||
+      'https://expensoo-app-gu3wg.ondigitalocean.app';
+
+    const socket = io(wsUrl, { transports: ['websocket'] });
+
+    socket.on('connect_error', (err) => {
+      console.warn('Socket.io connection error (non-fatal):', err.message);
+    });
+
     const update = async () => {
-      const currentToken = localStorage.getItem("callmemobiles_token");
-      if (currentToken) {
+      const token = localStorage.getItem('auth_token');
+      if (!token || cancelled) return;
+      try {
         const response = await apiClient.getTransactions();
-        if (response.success && response.data) {
-          setData(response.data);
+        if (!cancelled && response.success && Array.isArray(response.data)) {
+          setData(response.data.map(normaliseTransaction));
         }
-      }
+      } catch { /* real-time update failure is non-fatal */ }
     };
-    socket.on("transactionCreated", update);
-    socket.on("transactionUpdated", update);
-    socket.on("transactionDeleted", update);
+
+    socket.on('transactionCreated', update);
+    socket.on('transactionUpdated', update);
+    socket.on('transactionDeleted', update);
+
     return () => {
-      socket.off("transactionCreated", update);
-      socket.off("transactionUpdated", update);
-      socket.off("transactionDeleted", update);
+      cancelled = true;
+      socket.off('transactionCreated', update);
+      socket.off('transactionUpdated', update);
+      socket.off('transactionDeleted', update);
       socket.disconnect();
     };
   }, []);
 
+
   // Add, update, delete handlers
-  const handleAdd = async (txn) => {
-    await apiClient.createTransaction(txn);
-    // No need to manually update state, real-time event will trigger refetch
+  const handleAdd = async (txn: Partial<Transaction>) => {
+    try {
+      const response = await apiClient.createTransaction(txn);
+      if (!response || !response.success) {
+        throw new Error(response?.message || 'Failed to create transaction');
+      }
+      toast({ title: 'Transaction Added', description: 'New repair transaction recorded successfully.' });
+      // Real-time event will also trigger a refetch
+    } catch (error: any) {
+      console.error('Failed to create transaction:', error);
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to add transaction. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
-  const handleUpdate = async (updatedTxn) => {
-    await apiClient.updateTransaction(updatedTxn.id, updatedTxn);
+  const handleUpdate = async (updatedTxn: Transaction) => {
+    try {
+      await apiClient.updateTransaction(updatedTxn.id, updatedTxn);
+      toast({ title: 'Updated', description: 'Transaction updated successfully.' });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to update transaction.',
+        variant: 'destructive',
+      });
+    }
   };
-  const handleDelete = async (id) => {
-    await apiClient.deleteTransaction(id);
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) return;
+    // Optimistic UI: remove from local state immediately
+    setData(prev => prev.filter(t => t.id !== id));
+    try {
+      await apiClient.deleteTransaction(id);
+      toast({ title: 'Deleted', description: 'Transaction deleted successfully.' });
+    } catch (error: any) {
+      // Rollback optimistic update by re-fetching
+      console.error('Failed to delete transaction:', error);
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to delete transaction.',
+        variant: 'destructive',
+      });
+      // Re-fetch to restore correct state after failed delete
+      try {
+        const response = await apiClient.getTransactions();
+        if (response.success && Array.isArray(response.data)) {
+          setData(response.data.map(normaliseTransaction));
+        }
+      } catch { /* non-fatal rollback attempt */ }
+    }
   };
 
 
@@ -345,190 +452,180 @@ export default function Transactions() {
 
   return (
     <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
-              {t("transactions")}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Manage and track all repair transactions
-            </p>
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">{t("transactions")}</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Manage all repair transactions</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-foreground hover:text-white font-medium rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px] text-sm"
+            aria-label="Export transactions"
+          >
+            <Download className="w-4 h-4" />
+            {t("export")}
+          </button>
+          <Link to="/transactions/new">
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px] text-sm">
+              <Plus className="w-4 h-4" />
+              {t("new-transaction")}
+            </button>
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Filters ────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder={`${t("search")} transactions...`}
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all duration-150 text-sm"
+            />
           </div>
           <div className="flex flex-col sm:flex-row gap-2 lg:flex-shrink-0">
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={exportToExcel}
-              className="h-9 min-w-[100px] justify-start"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              {t("export")}
-            </Button>
-            <Link to="/transactions/new">
-              <Button size="sm" className="h-9 min-w-[140px] justify-start">
-                <Plus className="mr-2 h-4 w-4" />
-                {t("new-transaction")}
-              </Button>
-            </Link>
+            <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+              <SelectTrigger className="w-full sm:w-40 h-10 bg-white/5 border-white/10 text-foreground cursor-pointer">
+                <SelectValue placeholder="All Payments" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Payments</SelectItem>
+                <SelectItem value="cash">{t("cash")}</SelectItem>
+                <SelectItem value="upi">{t("upi")}</SelectItem>
+                <SelectItem value="card">{t("card")}</SelectItem>
+                <SelectItem value="bank-transfer">
+                  {t("bank-transfer")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-
-        {/* Filters */}
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder={`${t("search")} transactions...`}
-                  value={globalFilter}
-                  onChange={(e) => setGlobalFilter(e.target.value)}
-                  className="pl-10 h-10"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 lg:flex-shrink-0">
-
-                <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-                  <SelectTrigger className="w-full sm:w-40 h-10">
-                    <SelectValue placeholder="All Payments" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Payments</SelectItem>
-                    <SelectItem value="cash">{t("cash")}</SelectItem>
-                    <SelectItem value="upi">{t("upi")}</SelectItem>
-                    <SelectItem value="card">{t("card")}</SelectItem>
-                    <SelectItem value="bank-transfer">
-                      {t("bank-transfer")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Table */}
-        <Card>
-          <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <CardTitle className="text-lg font-semibold">Transaction List</CardTitle>
-                <CardDescription className="mt-1">
-                  {table.getFilteredRowModel().rows.length} transactions found
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto border-t">
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && "selected"}
-                        className="hover:bg-muted/50"
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        No transactions found.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-6 py-4 border-t bg-muted/20">
-              <div className="text-sm text-muted-foreground text-center sm:text-left">
-                Showing {table.getState().pagination.pageIndex + 1} of{" "}
-                {table.getPageCount()} pages
-              </div>
-              <div className="flex items-center justify-center sm:justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => table.previousPage()}
-                  disabled={!table.getCanPreviousPage()}
-                  className="h-9 px-3"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Previous page</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => table.nextPage()}
-                  disabled={!table.getCanNextPage()}
-                  className="h-9 px-3"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Next page</span>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Customer History Dialog */}
-        {historyDialog.open && historyDialog.customer && (
-          <Dialog open={historyDialog.open} onOpenChange={open => setHistoryDialog({ open, customer: open ? historyDialog.customer : null })}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Customer History: {historyDialog.customer}</DialogTitle>
-              </DialogHeader>
-              {(() => {
-                const txns = getCustomerTransactions(historyDialog.customer!);
-                // Sort by date descending
-                txns.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                // If you have parts/supplier info, list them here. For now, show a placeholder.
-                return (
-                  <div>
-                    {/* If you have parts/supplier info, map and show here */}
-                    <div className="mt-2">
-                      <div className="font-medium mb-1">Parts Purchased from Suppliers:</div>
-                      <div className="text-muted-foreground text-sm">(No parts data available in mock. Integrate with parts/supplier info if present in your data model.)</div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </DialogContent>
-          </Dialog>
-        )}
       </div>
+
+      {/* ── Table ──────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
+        {/* Table header row: count */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <span className="text-sm font-semibold text-white">Transaction List</span>
+          <span className="text-xs text-muted-foreground">
+            {table.getFilteredRowModel().rows.length} transactions found
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id} className="border-b border-white/10 bg-white/[0.03]">
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="border-b border-white/5 hover:bg-white/[0.03] transition-colors duration-150 cursor-pointer"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3 text-sm text-foreground">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={columns.length}>
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                        <Receipt className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-white font-medium mb-1">No transactions yet</h3>
+                      <p className="text-muted-foreground text-sm">Create your first transaction to get started</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4 border-t border-white/10 bg-white/[0.02]">
+          <div className="text-sm text-muted-foreground text-center sm:text-left">
+            Showing {table.getState().pagination.pageIndex + 1} of{" "}
+            {table.getPageCount()} pages
+          </div>
+          <div className="flex items-center justify-center sm:justify-end space-x-2">
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              aria-label="Previous page"
+              className="flex items-center justify-center h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              aria-label="Next page"
+              className="flex items-center justify-center h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Customer History Dialog ─────────────────────────────── */}
+      {historyDialog.open && historyDialog.customer && (
+        <Dialog open={historyDialog.open} onOpenChange={open => setHistoryDialog({ open, customer: open ? historyDialog.customer : null })}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Customer History: {historyDialog.customer}</DialogTitle>
+            </DialogHeader>
+            {(() => {
+              const txns = getCustomerTransactions(historyDialog.customer!);
+              // Sort by date descending
+              txns.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              // If you have parts/supplier info, list them here. For now, show a placeholder.
+              return (
+                <div>
+                  {/* If you have parts/supplier info, map and show here */}
+                  <div className="mt-2">
+                    <div className="font-medium mb-1">Parts Purchased from Suppliers:</div>
+                    <div className="text-muted-foreground text-sm">(No parts data available in mock. Integrate with parts/supplier info if present in your data model.)</div>
+                  </div>
+                </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   );
 }

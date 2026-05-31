@@ -95,8 +95,8 @@ export default function Reports() {
   useEffect(() => {
     const fetchReportsData = async () => {
       try {
-        // Only fetch data if user is authenticated and token is available
-        const token = localStorage.getItem("callmemobiles_token");
+        // Use correct localStorage key — set by api.ts login()
+        const token = localStorage.getItem('auth_token');
         if (!token) {
           setLoading(false);
           return;
@@ -104,19 +104,20 @@ export default function Reports() {
 
         setLoading(true);
         
-        // Fetch dashboard data for totals
-        const dashboardData = await apiClient.getDashboardData();
+        // getDashboardData() returns { success, data: { totalRevenue, totalProfit, ... } }
+        const dashboardResponse = await apiClient.getDashboardData();
+        const dashboardData = dashboardResponse?.data || {};
         console.log('📊 Reports - Dashboard data:', dashboardData);
-        
-        // Fetch transactions for detailed analysis
-        const transactions = await apiClient.getTransactions();
-        console.log('📋 Reports - Transactions data:', transactions);
-        
-        // Calculate metrics
-        const totals = dashboardData?.totals || {};
-        const totalRevenue = totals.totalRevenue || 0;
-        const totalProfit = totals.totalProfit || 0;
-        const totalRepairs = totals.totalTransactions || 0;
+
+        // getTransactions() returns { success, data: Transaction[] }
+        const txnResponse = await apiClient.getTransactions();
+        const transactionsArr = Array.isArray(txnResponse?.data) ? txnResponse.data : [];
+        console.log('📋 Reports - Transactions count:', transactionsArr.length);
+
+        // Calculate metrics from dashboard
+        const totalRevenue = Number(dashboardData.totalRevenue ?? 0);
+        const totalProfit  = Number(dashboardData.totalProfit  ?? 0);
+        const totalRepairs = Number(dashboardData.totalTransactions ?? 0);
         const avgTicketSize = totalRepairs > 0 ? Math.round(totalRevenue / totalRepairs) : 0;
         
         console.log('📊 Reports - Calculated metrics:', {
@@ -132,12 +133,12 @@ export default function Reports() {
         const deviceBrandsMap = new Map();
         const customersMap = new Map();
         
-        if (transactions && transactions.length > 0) {
+        if (transactionsArr.length > 0) {
           // Group transactions by month
           const monthlyStats = new Map();
-          
-          transactions.forEach(transaction => {
-            const date = new Date(transaction.created_at || transaction.date);
+
+          transactionsArr.forEach((transaction: any) => {
+            const date = new Date(transaction.createdAt || transaction.created_at || transaction.date || Date.now());
             const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
             
             // Monthly aggregation
@@ -145,39 +146,40 @@ export default function Reports() {
               monthlyStats.set(monthKey, { revenue: 0, profit: 0, repairs: 0 });
             }
             const monthData = monthlyStats.get(monthKey);
-            monthData.revenue += transaction.amount || 0;
-            monthData.profit += transaction.profit || 0;
+            monthData.revenue += Number(transaction.repairCost ?? transaction.amount ?? 0);
+            monthData.profit  += Number(transaction.profit  ?? 0);
             monthData.repairs += 1;
-            
+
             // Repair types aggregation
-            const repairType = transaction.repair_type || transaction.service_type || 'Other';
+            const repairType = transaction.repairType ?? transaction.repair_type ?? 'Other';
             repairTypesMap.set(repairType, (repairTypesMap.get(repairType) || 0) + 1);
-            
-            // Device brands aggregation
-            const deviceBrand = transaction.device_brand || transaction.brand || 'Unknown';
+
+            // Device brands aggregation — derive brand from deviceModel
+            const deviceBrand = (transaction.deviceModel ?? transaction.device_model ?? 'Unknown').split(' ')[0];
             if (!deviceBrandsMap.has(deviceBrand)) {
               deviceBrandsMap.set(deviceBrand, { repairs: 0, revenue: 0 });
             }
             const brandData = deviceBrandsMap.get(deviceBrand);
             brandData.repairs += 1;
-            brandData.revenue += transaction.amount || 0;
-            
+            brandData.revenue += Number(transaction.repairCost ?? transaction.amount ?? 0);
+
             // Customer tracking
-            const customerId = transaction.customer_id || transaction.customer;
+            const customerId = transaction.mobileNumber ?? transaction.mobile_number ?? transaction.customerName ?? null;
             if (customerId) {
               if (!customersMap.has(customerId)) {
                 customersMap.set(customerId, {
-                  name: transaction.customer_name || `Customer ${customerId}`,
+                  name: transaction.customerName ?? transaction.customer_name ?? `Customer ${customerId}`,
                   repairs: 0,
                   revenue: 0,
-                  lastVisit: transaction.created_at || transaction.date
+                  lastVisit: transaction.createdAt ?? transaction.created_at ?? transaction.date
                 });
               }
               const customerData = customersMap.get(customerId);
               customerData.repairs += 1;
-              customerData.revenue += transaction.amount || 0;
-              if (new Date(transaction.created_at || transaction.date) > new Date(customerData.lastVisit)) {
-                customerData.lastVisit = transaction.created_at || transaction.date;
+              customerData.revenue += Number(transaction.repairCost ?? transaction.amount ?? 0);
+              const txnDate = new Date(transaction.createdAt ?? transaction.created_at ?? transaction.date);
+              if (txnDate > new Date(customerData.lastVisit)) {
+                customerData.lastVisit = transaction.createdAt ?? transaction.created_at ?? transaction.date;
               }
             }
           });
@@ -211,11 +213,11 @@ export default function Reports() {
           totalRevenue,
           totalProfit,
           totalRepairs,
-          totalCustomers: Math.floor(totalRepairs * 0.7), // Estimate unique customers
+          totalCustomers: customersMap.size || totalRepairs, // real unique customers
           avgTicketSize,
-          revenueGrowth: 12.5,
-          profitGrowth: 8.3,
-          repairGrowth: 15.2,
+          revenueGrowth: 0, // real growth requires historical comparison
+          profitGrowth: 0,
+          repairGrowth: 0,
         });
         
         setMonthlyData(monthlyChartData);
@@ -225,7 +227,11 @@ export default function Reports() {
         
       } catch (error) {
         console.error('Error fetching reports data:', error);
-        toast.error('Failed to load reports data');
+        toast({
+          title: 'Error',
+          description: 'Failed to load reports data',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
@@ -272,7 +278,7 @@ export default function Reports() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">
               {t("reports")}
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground">
@@ -281,11 +287,11 @@ export default function Reports() {
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-full sm:w-48">
-                <Calendar className="mr-2 h-4 w-4" />
+              <SelectTrigger className="w-full sm:w-48 bg-white/5 border border-white/10 text-white focus:ring-brand-orange/50 focus:border-brand-orange/50">
+                <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent side="bottom" avoidCollisions={false}>
                 <SelectItem value="last30days">Last 30 Days</SelectItem>
                 <SelectItem value="last3months">Last 3 Months</SelectItem>
                 <SelectItem value="last6months">Last 6 Months</SelectItem>
@@ -296,7 +302,7 @@ export default function Reports() {
               variant="outline"
               size="sm"
               onClick={toggleProfits}
-              className="h-10 sm:h-9"
+              className="h-10 sm:h-9 bg-white/5 border border-white/10 text-foreground hover:bg-white/10"
             >
               {showProfits ? (
                 <EyeOff className="mr-2 h-4 w-4" />
@@ -305,7 +311,7 @@ export default function Reports() {
               )}
               {showProfits ? "Hide Profits" : "Show Profits"}
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="bg-white/5 border border-white/10 text-foreground hover:bg-white/10">
               <Download className="mr-2 h-4 w-4" />
               {t("export")}
             </Button>
@@ -314,356 +320,313 @@ export default function Reports() {
 
         {/* Key Performance Indicators */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                Total Revenue
-                <DollarSign className="h-4 w-4" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹{loading ? '...' : (typeof reportsData.totalRevenue === 'number' ? reportsData.totalRevenue.toLocaleString() : '0')}
-              </div>
-              <div className="flex items-center text-xs mt-1">
-                <ArrowUpRight className="h-3 w-3 text-green-600 mr-1" />
-                <span className="text-green-600">+{loading ? '...' : reportsData.revenueGrowth}%</span>
-                <span className="text-muted-foreground ml-1">
-                  vs last month
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                {showProfits ? "Total Profit" : "Total Repairs"}
-                {showProfits ? (
-                  <TrendingUp className="h-4 w-4" />
-                ) : (
-                  <Smartphone className="h-4 w-4" />
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {showProfits
-                  ? `₹${loading ? '...' : (typeof reportsData.totalProfit === 'number' ? reportsData.totalProfit.toLocaleString() : '0')}`
-                  : (loading ? '...' : reportsData.totalRepairs)}
-              </div>
-              <div className="flex items-center text-xs mt-1">
-                <ArrowUpRight className="h-3 w-3 text-green-600 mr-1" />
-                <span className="text-green-600">
-                  +{loading ? '...' : (showProfits ? reportsData.profitGrowth : reportsData.repairGrowth)}%
-                </span>
-                <span className="text-muted-foreground ml-1">
-                  vs last month
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                Avg. Ticket Size
-                <Target className="h-4 w-4" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹{loading ? '...' : (typeof reportsData.avgTicketSize === 'number' ? reportsData.avgTicketSize.toLocaleString() : '0')}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Per repair</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-                Customer Base
-                <Users className="h-4 w-4" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? '...' : reportsData.totalCustomers}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total customers
-              </p>
-            </CardContent>
-          </Card>
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-muted-foreground">Total Revenue</span>
+              <DollarSign className="h-4 w-4 text-brand-orange" />
+            </div>
+            <div className="text-2xl font-bold text-white">
+              ₹{loading ? '...' : (typeof reportsData.totalRevenue === 'number' ? reportsData.totalRevenue.toLocaleString() : '0')}
+            </div>
+            <div className="flex items-center text-xs mt-1">
+              <ArrowUpRight className="h-3 w-3 text-green-400 mr-1" />
+              <span className="text-green-400">+{loading ? '...' : reportsData.revenueGrowth}%</span>
+              <span className="text-muted-foreground ml-1">vs last month</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-muted-foreground">{showProfits ? 'Total Profit' : 'Total Repairs'}</span>
+              {showProfits ? <TrendingUp className="h-4 w-4 text-brand-orange" /> : <Smartphone className="h-4 w-4 text-brand-orange" />}
+            </div>
+            <div className="text-2xl font-bold text-white">
+              {showProfits
+                ? `₹${loading ? '...' : (typeof reportsData.totalProfit === 'number' ? reportsData.totalProfit.toLocaleString() : '0')}`
+                : (loading ? '...' : reportsData.totalRepairs)}
+            </div>
+            <div className="flex items-center text-xs mt-1">
+              <ArrowUpRight className="h-3 w-3 text-green-400 mr-1" />
+              <span className="text-green-400">+{loading ? '...' : (showProfits ? reportsData.profitGrowth : reportsData.repairGrowth)}%</span>
+              <span className="text-muted-foreground ml-1">vs last month</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-muted-foreground">Avg. Ticket Size</span>
+              <Target className="h-4 w-4 text-brand-orange" />
+            </div>
+            <div className="text-2xl font-bold text-white">
+              ₹{loading ? '...' : (typeof reportsData.avgTicketSize === 'number' ? reportsData.avgTicketSize.toLocaleString() : '0')}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Per repair</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-muted-foreground">Customer Base</span>
+              <Users className="h-4 w-4 text-brand-orange" />
+            </div>
+            <div className="text-2xl font-bold text-white">{loading ? '...' : reportsData.totalCustomers}</div>
+            <p className="text-xs text-muted-foreground mt-1">Total customers</p>
+          </div>
         </div>
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue Trend */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue & Profit Trend</CardTitle>
-              <CardDescription>Monthly performance over time</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip
-                    formatter={(value) => `₹${typeof value === 'number' ? value.toLocaleString() : '0'}`}
-                    labelFormatter={(label) => `Month: ${label}`}
-                  />
-                  <Legend />
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-white mb-1">Revenue &amp; Profit Trend</h3>
+            <p className="text-xs text-muted-foreground mb-4">Monthly performance over time</p>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#71717a', fontSize: 12 }} />
+                <Tooltip
+                  formatter={(value) => `₹${typeof value === 'number' ? value.toLocaleString() : '0'}`}
+                  labelFormatter={(label) => `Month: ${label}`}
+                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stackId="1"
+                  stroke="#f59e0b"
+                  fill="#f59e0b"
+                  fillOpacity={0.3}
+                  name="Revenue"
+                />
+                {showProfits && (
                   <Area
                     type="monotone"
-                    dataKey="revenue"
-                    stackId="1"
-                    stroke="#3B82F6"
-                    fill="#3B82F6"
-                    fillOpacity={0.6}
-                    name="Revenue"
+                    dataKey="profit"
+                    stackId="2"
+                    stroke="#10B981"
+                    fill="#10B981"
+                    fillOpacity={0.3}
+                    name="Profit"
                   />
-                  {showProfits && (
-                    <Area
-                      type="monotone"
-                      dataKey="profit"
-                      stackId="2"
-                      stroke="#10B981"
-                      fill="#10B981"
-                      fillOpacity={0.6}
-                      name="Profit"
-                    />
-                  )}
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+                )}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
 
           {/* Repair Types */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Repair Types Distribution</CardTitle>
-              <CardDescription>Breakdown by repair category</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <RechartsPieChart>
-                  <Pie
-                    data={repairTypesData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}%`}
-                  >
-                    {repairTypesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'][index % 5]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => `${value}%`} />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-white mb-1">Repair Types Distribution</h3>
+            <p className="text-xs text-muted-foreground mb-4">Breakdown by repair category</p>
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsPieChart>
+                <Pie
+                  data={repairTypesData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  fill="#f59e0b"
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}%`}
+                >
+                  {repairTypesData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={['#f59e0b', '#10B981', '#8B5CF6', '#EF4444', '#06b6d4'][index % 5]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => `${value}%`}
+                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                />
+              </RechartsPieChart>
+            </ResponsiveContainer>
+          </div>
 
           {/* Device Brands */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Device Brand Performance</CardTitle>
-              <CardDescription>
-                Revenue and repair count by brand
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <RechartsBarChart data={deviceBrandsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="brand" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip
-                    formatter={(value, name) => [
-                      name === "revenue" ? `₹${typeof value === 'number' ? value.toLocaleString() : '0'}` : value,
-                      name === "revenue" ? "Revenue" : "Repairs",
-                    ]}
-                  />
-                  <Legend />
-                  <Bar dataKey="repairs" fill="#3B82F6" name="Repairs" />
-                  {showProfits && (
-                    <Bar dataKey="revenue" fill="#10B981" name="Revenue" />
-                  )}
-                </RechartsBarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-white mb-1">Device Brand Performance</h3>
+            <p className="text-xs text-muted-foreground mb-4">Revenue and repair count by brand</p>
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsBarChart data={deviceBrandsData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="brand" tick={{ fill: '#71717a', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#71717a', fontSize: 12 }} />
+                <Tooltip
+                  formatter={(value, name) => [
+                    name === "revenue" ? `₹${typeof value === 'number' ? value.toLocaleString() : '0'}` : value,
+                    name === "revenue" ? "Revenue" : "Repairs",
+                  ]}
+                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                />
+                <Legend />
+                <Bar dataKey="repairs" fill="#f59e0b" name="Repairs" />
+                {showProfits && (
+                  <Bar dataKey="revenue" fill="#10B981" name="Revenue" />
+                )}
+              </RechartsBarChart>
+            </ResponsiveContainer>
+          </div>
 
           {/* Customer Analytics */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Segments</CardTitle>
-              <CardDescription>
-                Customer breakdown by visit frequency
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-primary"></div>
-                    <div>
-                      <div className="font-medium">No Data Available</div>
-                      <div className="text-sm text-muted-foreground">
-                        No customer analytics data found.
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">
-                      {showProfits
-                        ? `₹${0}`
-                        : "0 customers"}
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-white mb-1">Customer Segments</h3>
+            <p className="text-xs text-muted-foreground mb-4">Customer breakdown by visit frequency</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-brand-orange"></div>
+                  <div>
+                    <div className="font-medium text-white">No Data Available</div>
+                    <div className="text-sm text-muted-foreground">
+                      No customer analytics data found.
                     </div>
                   </div>
                 </div>
+                <div className="text-right">
+                  <div className="font-medium text-white">
+                    {showProfits ? `₹${0}` : "0 customers"}
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Data Tables */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Customers */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Customers</CardTitle>
-              <CardDescription>
-                Customers with highest repair count and revenue
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Repairs</TableHead>
-                      <TableHead>Revenue</TableHead>
-                      <TableHead>Last Visit</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {topCustomersData.length > 0 ? (
-                      topCustomersData.map((customer, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-medium">
-                            {customer.name}
-                          </TableCell>
-                          <TableCell>{customer.repairs}</TableCell>
-                          <TableCell>
-                            ₹{typeof customer.revenue === 'number' ? customer.revenue.toLocaleString() : '0'}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(customer.lastVisit).toLocaleDateString()}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8">
-                          No customer data available.
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-white mb-1">Top Customers</h3>
+            <p className="text-xs text-muted-foreground mb-4">Customers with highest repair count and revenue</p>
+            <div className="overflow-x-auto rounded-md border border-white/10">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-white/10">
+                    <TableHead className="text-muted-foreground">Customer</TableHead>
+                    <TableHead className="text-muted-foreground">Repairs</TableHead>
+                    <TableHead className="text-muted-foreground">Revenue</TableHead>
+                    <TableHead className="text-muted-foreground">Last Visit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {topCustomersData.length > 0 ? (
+                    topCustomersData.map((customer, index) => (
+                      <TableRow key={index} className="border-white/10 hover:bg-white/5">
+                        <TableCell className="font-medium text-white">
+                          {customer.name}
+                        </TableCell>
+                        <TableCell className="text-foreground">{customer.repairs}</TableCell>
+                        <TableCell className="text-foreground">
+                          ₹{typeof customer.revenue === 'number' ? customer.revenue.toLocaleString() : '0'}
+                        </TableCell>
+                        <TableCell className="text-foreground">
+                          {(() => {
+                            if (!customer.lastVisit) return '—';
+                            const d = new Date(customer.lastVisit);
+                            return isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+                          })()}
                         </TableCell>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Supplier Spending */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Supplier Spending Analysis</CardTitle>
-              <CardDescription>Spending breakdown by supplier</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
+                    ))
+                  ) : (
                     <TableRow>
-                      <TableHead>Supplier</TableHead>
-                      <TableHead>Orders</TableHead>
-                      <TableHead>Total Spent</TableHead>
-                      <TableHead>Avg Order</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8">
-                        No data available for supplier spending.
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        No customer data available.
                       </TableCell>
                     </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* Supplier Spending */}
+          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+            <h3 className="text-base font-semibold text-white mb-1">Supplier Spending Analysis</h3>
+            <p className="text-xs text-muted-foreground mb-4">Spending breakdown by supplier</p>
+            <div className="overflow-x-auto rounded-md border border-white/10">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-white/10">
+                    <TableHead className="text-muted-foreground">Supplier</TableHead>
+                    <TableHead className="text-muted-foreground">Orders</TableHead>
+                    <TableHead className="text-muted-foreground">Total Spent</TableHead>
+                    <TableHead className="text-muted-foreground">Avg Order</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      No data available for supplier spending.
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </div>
 
         {/* Report Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Report Summary</CardTitle>
-            <CardDescription>
-              Key insights and business intelligence
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                <div className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                  Revenue Growth
-                </div>
-                <div className="text-lg font-bold text-blue-900 dark:text-blue-100">
-                  +0% MoM
-                </div>
-                <div className="text-xs text-blue-600 dark:text-blue-400">
-                  No revenue data available.
-                </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+          <h3 className="text-base font-semibold text-white mb-1">Report Summary</h3>
+          <p className="text-xs text-muted-foreground mb-4">Key insights and business intelligence</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 rounded-lg border border-brand-orange/20 bg-brand-orange/10">
+              <div className="text-sm font-medium text-brand-orange-light">
+                Revenue Growth
               </div>
-              <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                <div className="text-sm font-medium text-green-700 dark:text-green-300">
-                  Top Repair Type
-                </div>
-                <div className="text-lg font-bold text-green-900 dark:text-green-100">
-                  No data available.
-                </div>
-                <div className="text-xs text-green-600 dark:text-green-400">
-                  No repair type data available.
-                </div>
+              <div className="text-lg font-bold text-white">
+                {loading ? '...' : `+${reportsData.revenueGrowth}% MoM`}
               </div>
-              <div className="p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
-                <div className="text-sm font-medium text-orange-700 dark:text-orange-300">
-                  Top Device Brand
-                </div>
-                <div className="text-lg font-bold text-orange-900 dark:text-orange-100">
-                  No data available.
-                </div>
-                <div className="text-xs text-orange-600 dark:text-orange-400">
-                  No device brand data available.
-                </div>
-              </div>
-              <div className="p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                <div className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                  Customer Retention
-                </div>
-                <div className="text-lg font-bold text-purple-900 dark:text-purple-100">
-                  No data available.
-                </div>
-                <div className="text-xs text-purple-600 dark:text-purple-400">
-                  No customer retention data available.
-                </div>
+              <div className="text-xs text-brand-orange/70">
+                {loading ? '' : reportsData.totalRevenue > 0
+                  ? `Total: ₹${reportsData.totalRevenue.toLocaleString()}`
+                  : 'No revenue data available.'}
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="p-4 rounded-lg border border-brand-green/20 bg-brand-green/10">
+              <div className="text-sm font-medium text-brand-green">
+                Top Repair Type
+              </div>
+              <div className="text-lg font-bold text-white">
+                {loading ? '...' : repairTypesData.length > 0
+                  ? repairTypesData[0]?.name
+                  : 'No data'}
+              </div>
+              <div className="text-xs text-brand-green">
+                {loading ? '' : repairTypesData.length > 0
+                  ? `${repairTypesData[0]?.value ?? 0}% of all repairs`
+                  : 'No repair type data available.'}
+              </div>
+            </div>
+            <div className="p-4 rounded-lg border border-orange-500/20 bg-orange-500/10">
+              <div className="text-sm font-medium text-orange-400">
+                Top Device Brand
+              </div>
+              <div className="text-lg font-bold text-white">
+                {loading ? '...' : deviceBrandsData.length > 0
+                  ? deviceBrandsData[0]?.brand
+                  : 'No data'}
+              </div>
+              <div className="text-xs text-orange-500/70">
+                {loading ? '' : deviceBrandsData.length > 0
+                  ? `${deviceBrandsData[0]?.repairs ?? 0} repairs`
+                  : 'No device brand data available.'}
+              </div>
+            </div>
+            <div className="p-4 rounded-lg border border-violet-500/20 bg-violet-500/10">
+              <div className="text-sm font-medium text-violet-400">
+                Customer Retention
+              </div>
+              <div className="text-lg font-bold text-white">
+                {loading ? '...' : reportsData.totalCustomers > 0
+                  ? `${reportsData.totalCustomers} customers`
+                  : 'No data'}
+              </div>
+              <div className="text-xs text-violet-500/70">
+                {loading ? '' : reportsData.totalRepairs > 0
+                  ? `${reportsData.totalRepairs} total repairs`
+                  : 'No customer retention data available.'}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
   );
 }

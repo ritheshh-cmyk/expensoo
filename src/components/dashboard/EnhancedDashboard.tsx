@@ -153,7 +153,7 @@ export function EnhancedDashboard() {
       case 'transaction': return <Receipt className="h-4 w-4 text-blue-600" />;
       case 'supplier': return <Building2 className="h-4 w-4 text-purple-600" />;
       case 'customer': return <Users className="h-4 w-4 text-purple-600" />;
-      default: return <Activity className="h-4 w-4 text-gray-600" />;
+      default: return <Activity className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -171,8 +171,8 @@ export function EnhancedDashboard() {
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
-            <p className="text-gray-600 dark:text-gray-400">Welcome back, {user?.name}</p>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-white">Dashboard</h1>
+            <p className="text-muted-foreground dark:text-muted-foreground">Welcome back, {user?.name}</p>
           </div>
           <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full" />
         </div>
@@ -181,12 +181,12 @@ export function EnhancedDashboard() {
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="pb-3">
-                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded float-right -mt-4" />
+                <div className="h-4 w-24 bg-secondary dark:bg-gray-700 rounded" />
+                <div className="h-4 w-4 bg-secondary dark:bg-gray-700 rounded float-right -mt-4" />
               </CardHeader>
               <CardContent>
-                <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-                <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-8 w-20 bg-secondary dark:bg-gray-700 rounded mb-2" />
+                <div className="h-3 w-32 bg-secondary dark:bg-gray-700 rounded" />
               </CardContent>
             </Card>
           ))}
@@ -200,8 +200,8 @@ export function EnhancedDashboard() {
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
-            <p className="text-gray-600 dark:text-gray-400">Welcome back, {user?.name}</p>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-white">Dashboard</h1>
+            <p className="text-muted-foreground dark:text-muted-foreground">Welcome back, {user?.name}</p>
           </div>
         </div>
         
@@ -229,10 +229,10 @@ export function EnhancedDashboard() {
       {/* Professional Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-white">
             Dashboard
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground dark:text-muted-foreground">
             Welcome back, {user?.name}. Here's your business overview for today.
           </p>
         </div>
@@ -336,11 +336,11 @@ export function EnhancedDashboard() {
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+                <CardTitle className="flex items-center gap-2 text-lg font-semibold text-foreground dark:text-white">
                   <BarChart3 className="h-5 w-5 text-blue-600" />
                   Revenue Overview
                 </CardTitle>
-                <CardDescription className="text-gray-600 dark:text-gray-400">
+                <CardDescription className="text-muted-foreground dark:text-muted-foreground">
                   Daily revenue and profit trends
                 </CardDescription>
               </div>
@@ -350,13 +350,13 @@ export function EnhancedDashboard() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="h-80 flex items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="h-80 flex items-center justify-center border-2 border-dashed border-border dark:border-gray-700 rounded-lg">
               <div className="text-center space-y-3">
-                <PieChart className="h-12 w-12 mx-auto text-gray-400" />
+                <PieChart className="h-12 w-12 mx-auto text-muted-foreground" />
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Revenue Analytics</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Chart integration ready</p>
-                  <p className="text-xs text-gray-500">Total: ₹{metrics.totalRevenue.toLocaleString()}</p>
+                  <p className="font-medium text-foreground dark:text-white">Revenue Analytics</p>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">Chart integration ready</p>
+                  <p className="text-xs text-muted-foreground">Total: ₹{metrics.totalRevenue.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -366,11 +366,11 @@ export function EnhancedDashboard() {
         {/* Recent Activity */}
         <Card className="lg:col-span-3 border-0 shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-foreground dark:text-white">
               <Activity className="h-5 w-5 text-green-600" />
               Recent Activity
             </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400">
+            <CardDescription className="text-muted-foreground dark:text-muted-foreground">
               Latest transactions and updates
             </CardDescription>
           </CardHeader>
@@ -386,17 +386,17 @@ export function EnhancedDashboard() {
                       {getActivityIcon(activity.type)}
                     </div>
                     <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none text-gray-900 dark:text-white">
+                      <p className="text-sm font-medium leading-none text-foreground dark:text-white">
                         {activity.message}
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <p className="text-xs text-muted-foreground dark:text-muted-foreground">
                         {activity.time}
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <div className="text-center py-8 text-muted-foreground dark:text-muted-foreground">
                   <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No recent activity</p>
                 </div>
@@ -416,10 +416,10 @@ export function EnhancedDashboard() {
       {/* Quick Actions - Professional Business Actions */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+          <CardTitle className="text-lg font-semibold text-foreground dark:text-white">
             Quick Actions
           </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-400">
+          <CardDescription className="text-muted-foreground dark:text-muted-foreground">
             Access frequently used business functions
           </CardDescription>
         </CardHeader>

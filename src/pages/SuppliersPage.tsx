@@ -160,11 +160,11 @@ export default function SuppliersPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-brand-green/15 dark:text-brand-green dark:border-brand-green/20">Active</Badge>;
       case 'inactive':
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Inactive</Badge>;
+        return <Badge className="bg-secondary text-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border">Inactive</Badge>;
       case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-amber-900/40 dark:text-brand-orange-light dark:border-amber-800">Pending</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -191,17 +191,17 @@ export default function SuppliersPage() {
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Supplier Management</h1>
-            <p className="text-gray-600 dark:text-gray-400">Loading suppliers...</p>
+            <h1 className="text-3xl font-bold text-foreground dark:text-white">Supplier Management</h1>
+            <p className="text-muted-foreground dark:text-muted-foreground">Loading suppliers...</p>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="p-6">
-                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
-                <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-                <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-4 w-24 bg-secondary dark:bg-gray-700 rounded mb-4" />
+                <div className="h-8 w-16 bg-secondary dark:bg-gray-700 rounded mb-2" />
+                <div className="h-3 w-32 bg-secondary dark:bg-gray-700 rounded" />
               </CardContent>
             </Card>
           ))}
@@ -215,10 +215,10 @@ export default function SuppliersPage() {
       {/* Professional Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-foreground dark:text-white">
             Supplier Management
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground dark:text-muted-foreground">
             Manage your suppliers and track payments
           </p>
         </div>
@@ -387,7 +387,7 @@ export default function SuppliersPage() {
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search suppliers by name, email, or contact person..."
                 value={searchTerm}
@@ -409,7 +409,7 @@ export default function SuppliersPage() {
           <CardTitle className="text-lg font-semibold">Supplier Directory</CardTitle>
           <CardDescription>Complete list of all suppliers and their details</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -426,8 +426,8 @@ export default function SuppliersPage() {
                 <TableRow key={supplier.id}>
                   <TableCell>
                     <div className="space-y-1">
-                      <p className="font-medium text-gray-900 dark:text-white">{supplier.name}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{supplier.contact_person}</p>
+                      <p className="font-medium text-foreground dark:text-white">{supplier.name}</p>
+                      <p className="text-sm text-muted-foreground dark:text-muted-foreground">{supplier.contact_person}</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -453,7 +453,7 @@ export default function SuppliersPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground">
                       <Calendar className="h-3 w-3" />
                       {formatDate(supplier.last_payment_date)}
                     </div>
@@ -497,8 +497,8 @@ export default function SuppliersPage() {
 
           {filteredSuppliers.length === 0 && (
             <div className="p-8 text-center">
-              <Building2 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">
+              <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground dark:text-muted-foreground">
                 {searchTerm ? 'No suppliers found matching your search.' : 'No suppliers added yet.'}
               </p>
             </div>
@@ -518,7 +518,7 @@ export default function SuppliersPage() {
           {selectedSupplier && (
             <div className="space-y-4">
               <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Outstanding Amount</p>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground">Outstanding Amount</p>
                 <p className="text-lg font-bold text-orange-600">
                   {formatCurrency(selectedSupplier.outstanding_amount || 0)}
                 </p>

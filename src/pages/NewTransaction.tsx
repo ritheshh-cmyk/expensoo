@@ -6,28 +6,10 @@ import { apiClient } from "@/lib/api";
 export default function NewTransaction() {
   const navigate = useNavigate();
 
-  const handleSubmit = async (data: any) => {
-    try {
-      // Transform parts array to partsCost for backend compatibility
-      const transformedData = {
-        ...data,
-        partsCost: data.parts || [],
-        // Remove the parts field as backend expects partsCost
-        parts: undefined
-      };
-      await apiClient.createTransaction(transformedData);
-    toast({
-      title: "Transaction Created",
-        description: `Transaction for ${data.customerName} has been created successfully and synced with backend.`,
-    });
+  const handleSubmit = async (createdTransaction: any) => {
+    // MultiStepTransactionForm already handled backend save and success toasts.
+    // We simply redirect the user back to the main transactions view.
     navigate("/transactions");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create transaction. Please try again.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleCancel = () => {

@@ -236,15 +236,15 @@ export default function BillingPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Paid</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-brand-green/15 dark:text-brand-green dark:border-brand-green/20">Paid</Badge>;
       case 'sent':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Sent</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800">Sent</Badge>;
       case 'overdue':
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Overdue</Badge>;
+        return <Badge className="bg-red-100 text-red-800 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800">Overdue</Badge>;
       case 'draft':
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Draft</Badge>;
+        return <Badge className="bg-secondary text-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border">Draft</Badge>;
       case 'cancelled':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Cancelled</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-amber-900/40 dark:text-brand-orange-light dark:border-amber-800">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -276,17 +276,17 @@ export default function BillingPage() {
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Billing & Invoicing</h1>
-            <p className="text-gray-600 dark:text-gray-400">Loading bills...</p>
+            <h1 className="text-3xl font-bold text-foreground dark:text-white">Billing & Invoicing</h1>
+            <p className="text-muted-foreground dark:text-muted-foreground">Loading bills...</p>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="p-6">
-                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
-                <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-                <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-4 w-24 bg-secondary dark:bg-gray-700 rounded mb-4" />
+                <div className="h-8 w-16 bg-secondary dark:bg-gray-700 rounded mb-2" />
+                <div className="h-3 w-32 bg-secondary dark:bg-gray-700 rounded" />
               </CardContent>
             </Card>
           ))}
@@ -300,10 +300,10 @@ export default function BillingPage() {
       {/* Professional Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-foreground dark:text-white">
             Billing & Invoicing
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground dark:text-muted-foreground">
             Create and manage professional invoices
           </p>
         </div>
@@ -571,7 +571,7 @@ export default function BillingPage() {
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search bills by number, customer name, or email..."
                 value={searchTerm}
@@ -593,7 +593,7 @@ export default function BillingPage() {
           <CardTitle className="text-lg font-semibold">Bills & Invoices</CardTitle>
           <CardDescription>Manage all your billing and invoicing</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -610,8 +610,8 @@ export default function BillingPage() {
                 <TableRow key={bill.id}>
                   <TableCell>
                     <div className="space-y-1">
-                      <p className="font-medium text-gray-900 dark:text-white">{bill.bill_number}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="font-medium text-foreground dark:text-white">{bill.bill_number}</p>
+                      <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                         {bill.items.length} item{bill.items.length > 1 ? 's' : ''}
                       </p>
                     </div>
@@ -619,13 +619,13 @@ export default function BillingPage() {
                   <TableCell>
                     <div className="space-y-1">
                       <p className="font-medium">{bill.customer_name}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{bill.customer_email}</p>
+                      <p className="text-sm text-muted-foreground dark:text-muted-foreground">{bill.customer_email}</p>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <p className="font-medium">{formatCurrency(bill.total_amount)}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                         +{formatCurrency(bill.tax_amount)} tax
                       </p>
                     </div>
@@ -633,7 +633,7 @@ export default function BillingPage() {
                   <TableCell>
                     <div className="space-y-1 text-sm">
                       <p>Created: {formatDate(bill.bill_date)}</p>
-                      <p className="text-gray-600 dark:text-gray-400">Due: {formatDate(bill.due_date)}</p>
+                      <p className="text-muted-foreground dark:text-muted-foreground">Due: {formatDate(bill.due_date)}</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -676,8 +676,8 @@ export default function BillingPage() {
 
           {filteredBills.length === 0 && (
             <div className="p-8 text-center">
-              <Receipt className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">
+              <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground dark:text-muted-foreground">
                 {searchTerm ? 'No bills found matching your search.' : 'No bills created yet.'}
               </p>
             </div>
@@ -752,7 +752,7 @@ export default function BillingPage() {
               {selectedBill.notes && (
                 <div>
                   <h4 className="font-semibold mb-2">Notes</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{selectedBill.notes}</p>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground">{selectedBill.notes}</p>
                 </div>
               )}
             </div>

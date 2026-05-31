@@ -328,7 +328,7 @@ export default function Customers() {
                         <SelectTrigger className="h-12">
                           <SelectValue placeholder="Select job type" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent side="bottom" avoidCollisions={false}>
                           {jobTypes.map((type) => (
                             <SelectItem key={type.value} value={type.value}>
                               {type.label}
@@ -348,7 +348,7 @@ export default function Customers() {
                         <SelectTrigger className="h-12">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent side="bottom" avoidCollisions={false}>
                           {Object.entries(statusConfig).map(([key, config]) => (
                             <SelectItem key={key} value={key}>
                               {config.label}
@@ -504,7 +504,7 @@ export default function Customers() {
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent side="bottom" avoidCollisions={false}>
                     <SelectItem value="all">All Status</SelectItem>
                     {Object.entries(statusConfig).map(([key, config]) => (
                       <SelectItem key={key} value={key}>
@@ -517,7 +517,7 @@ export default function Customers() {
                   <SelectTrigger className="w-40">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent side="bottom" avoidCollisions={false}>
                     <SelectItem value="all">All Jobs</SelectItem>
                     {jobTypes.map((type) => (
                       <SelectItem key={type.value} value={type.value}>

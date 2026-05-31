@@ -280,7 +280,7 @@ export default function Expenses() {
                               )}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
+                          <PopoverContent className="w-auto p-0" side="bottom" avoidCollisions={false}>
                             <Calendar
                               mode="single"
                               selected={formData.date}

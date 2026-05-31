@@ -146,9 +146,9 @@ export default function SupplierDetails() {
       case "active":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
       case "inactive":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+        return "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-300";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+        return "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-300";
     }
   };
 
@@ -161,7 +161,7 @@ export default function SupplierDetails() {
       case "overdue":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+        return "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-300";
     }
   };
 
@@ -528,7 +528,7 @@ export default function SupplierDetails() {
                     Filter
                   </Button>
                 </div>
-                <div className="rounded-md border">
+                <div className="overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -597,7 +597,7 @@ export default function SupplierDetails() {
                     Filter
                   </Button>
                 </div>
-                <div className="rounded-md border">
+                <div className="overflow-x-auto rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -694,7 +694,7 @@ function PaymentDialog({
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent side="bottom" avoidCollisions={false}>
               <SelectItem value="cash">Cash</SelectItem>
               <SelectItem value="upi">UPI</SelectItem>
               <SelectItem value="card">Card</SelectItem>

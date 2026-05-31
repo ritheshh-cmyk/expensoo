@@ -10,6 +10,7 @@ import {
   TrendingUp,
   FileText,
   Settings,
+  ShieldAlert,
 } from "lucide-react";
 
 const mobileNavigation = [
@@ -56,6 +57,12 @@ const mobileNavigation = [
     icon: Settings,
     roles: ["admin", "owner", "worker"] as UserRole[],
   },
+  {
+    name: "admin",
+    href: "/admin",
+    icon: ShieldAlert,
+    roles: ["admin", "owner"] as UserRole[],
+  },
 ];
 
 export function MobileBottomNav() {
@@ -75,7 +82,7 @@ export function MobileBottomNav() {
   );
 
   return (
-    <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur border-t border-border safe-area-bottom">
+    <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur border-t border-border safe-area-bottom lg:hidden">
       <div
         className={`grid px-2 py-2`}
         style={{

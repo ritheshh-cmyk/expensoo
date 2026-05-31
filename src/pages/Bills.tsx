@@ -66,6 +66,19 @@ const statusConfig = {
   overdue: { label: "Overdue", color: "bg-red-500 text-white" },
 };
 
+function BillStatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    paid:    'bg-brand-green/15 text-brand-green border-brand-green/20',
+    unpaid:  'bg-brand-orange/15  text-brand-orange-light  border-brand-orange/20',
+    overdue: 'bg-red-500/15    text-red-400    border-red-500/20',
+    partial: 'bg-blue-500/15   text-blue-400   border-blue-500/20',
+    draft:   'bg-zinc-500/15   text-muted-foreground   border-zinc-500/20',
+    sent:    'bg-blue-500/15   text-blue-400   border-blue-500/20',
+  };
+  const cls = map[status?.toLowerCase()] ?? 'bg-zinc-500/15 text-muted-foreground border-zinc-500/20';
+  return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${cls}`}>{status || 'Unknown'}</span>;
+}
+
 export default function Bills() {
   const [bills, setBills] = useState<any[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -224,7 +237,7 @@ export default function Bills() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">
               E-Bill Generator
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground">
@@ -232,13 +245,13 @@ export default function Bills() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" size="sm">
+            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-foreground text-sm font-medium transition-colors cursor-pointer min-h-[44px]">
               <Download className="mr-2 h-4 w-4" />
               Export All
-            </Button>
+            </button>
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
-                <Button size="sm">
+                <Button size="sm" className="bg-brand-orange hover:bg-brand-orange-light text-black font-semibold border-0">
                   <Plus className="mr-2 h-4 w-4" />
                   Create Bill
                 </Button>
@@ -267,7 +280,7 @@ export default function Bills() {
                             <SelectTrigger>
                               <SelectValue placeholder="Choose existing customer" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent side="bottom" avoidCollisions={false}>
                               {/* This section will be populated by API calls */}
                             </SelectContent>
                           </Select>
@@ -473,19 +486,19 @@ export default function Bills() {
                     </TabsContent>
 
                     <TabsContent value="preview" className="space-y-4">
-                      <Card className="p-6 bg-white text-black">
+                      <Card className="p-6">
                         <div className="space-y-6">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h1 className="text-2xl font-bold text-blue-600">
+                              <h1 className="text-2xl font-bold text-primary">
                                 INVOICE
                               </h1>
                             </div>
                             <div className="text-right">
-                              <div className="text-xl font-bold text-blue-600">
+                              <div className="text-xl font-bold text-primary">
                                 Call Me Mobiles
                               </div>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-muted-foreground">
                                 Mobile Repair Services
                               </p>
                             </div>
@@ -493,10 +506,10 @@ export default function Bills() {
 
                           <div className="grid grid-cols-2 gap-6">
                             <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">
+                              <h3 className="font-semibold text-foreground mb-2">
                                 Bill To:
                               </h3>
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-muted-foreground">
                                 <p className="font-medium">
                                   {formData.customerName}
                                 </p>
@@ -512,10 +525,10 @@ export default function Bills() {
                               </div>
                             </div>
                             <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">
+                              <h3 className="font-semibold text-foreground mb-2">
                                 Invoice Details:
                               </h3>
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-muted-foreground">
                                 <p>Date: {formData.date}</p>
                                 <p>Due Date: {formData.date}</p>
                               </div>
@@ -525,7 +538,7 @@ export default function Bills() {
                           <div>
                             <table className="w-full border-collapse">
                               <thead>
-                                <tr className="border-b border-gray-200">
+                                <tr className="border-b border-border">
                                   <th className="text-left py-2">
                                     Description
                                   </th>
@@ -540,7 +553,7 @@ export default function Bills() {
                                   .map((item, index) => (
                                     <tr
                                       key={index}
-                                      className="border-b border-gray-100"
+                                      className="border-b border-border/50"
                                     >
                                       <td className="py-2">
                                         {item.description}
@@ -576,7 +589,7 @@ export default function Bills() {
                                   <span>-₹{formData.discount.toFixed(2)}</span>
                                 </div>
                               )}
-                              <div className="flex justify-between py-2 border-t border-gray-200 font-bold text-lg">
+                              <div className="flex justify-between py-2 border-t border-border font-bold text-lg">
                                 <span>Total:</span>
                                 <span>₹{total.toFixed(2)}</span>
                               </div>
@@ -585,10 +598,10 @@ export default function Bills() {
 
                           {formData.notes && (
                             <div>
-                              <h3 className="font-semibold text-gray-900 mb-2">
+                              <h3 className="font-semibold text-foreground mb-2">
                                 Notes:
                               </h3>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-muted-foreground">
                                 {formData.notes}
                               </p>
                             </div>
@@ -616,63 +629,52 @@ export default function Bills() {
 
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Bills</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{bills.length}</div>
-              <p className="text-xs text-muted-foreground">All time</p>
-            </CardContent>
-          </Card>
+          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Bills</p>
+              <FileText className="h-4 w-4 text-brand-orange-light" />
+            </div>
+            <div className="text-2xl font-bold text-white">{bills.length}</div>
+            <p className="text-xs text-muted-foreground">All time</p>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Amount
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₹
-                {typeof bills.reduce((sum, bill) => sum + (typeof bill.amount === 'number' ? bill.amount : 0), 0) === 'number' ? bills.reduce((sum, bill) => sum + (typeof bill.amount === 'number' ? bill.amount : 0), 0).toLocaleString() : '0'}
-              </div>
-              <p className="text-xs text-muted-foreground">Total invoiced</p>
-            </CardContent>
-          </Card>
+          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <p className="text-sm font-medium text-muted-foreground">Total Amount</p>
+              <DollarSign className="h-4 w-4 text-brand-orange-light" />
+            </div>
+            <div className="text-2xl font-bold text-brand-orange-light">
+              ₹
+              {typeof bills.reduce((sum, bill) => sum + (typeof bill.amount === 'number' ? bill.amount : 0), 0) === 'number' ? bills.reduce((sum, bill) => sum + (typeof bill.amount === 'number' ? bill.amount : 0), 0).toLocaleString() : '0'}
+            </div>
+            <p className="text-xs text-muted-foreground">Total invoiced</p>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Paid Bills</CardTitle>
-              <Receipt className="h-4 w-4 text-success" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">
-                {bills.filter((bill) => bill.status === "paid").length}
-              </div>
-              <p className="text-xs text-muted-foreground">Payment received</p>
-            </CardContent>
-          </Card>
+          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <p className="text-sm font-medium text-muted-foreground">Paid Bills</p>
+              <Receipt className="h-4 w-4 text-brand-green" />
+            </div>
+            <div className="text-2xl font-bold text-brand-green">
+              {bills.filter((bill) => bill.status === "paid").length}
+            </div>
+            <p className="text-xs text-muted-foreground">Payment received</p>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <Calendar className="h-4 w-4 text-warning" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-warning">
-                {bills.filter((bill) => bill.status === "sent").length}
-              </div>
-              <p className="text-xs text-muted-foreground">Awaiting payment</p>
-            </CardContent>
-          </Card>
+          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <p className="text-sm font-medium text-muted-foreground">Pending</p>
+              <Calendar className="h-4 w-4 text-brand-orange-light" />
+            </div>
+            <div className="text-2xl font-bold text-brand-orange-light">
+              {bills.filter((bill) => bill.status === "sent").length}
+            </div>
+            <p className="text-xs text-muted-foreground">Awaiting payment</p>
+          </div>
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardContent className="p-6">
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -680,15 +682,15 @@ export default function Bills() {
                   placeholder="Search bills by customer or invoice number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground focus:border-brand-orange/50"
                 />
               </div>
               <div className="flex gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-32 bg-white/5 border-white/10 text-foreground">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent side="bottom" avoidCollisions={false}>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="sent">Sent</SelectItem>
@@ -698,35 +700,22 @@ export default function Bills() {
                 </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
+        </div>
 
         {/* Bills List */}
         <div className="grid gap-4">
           {filteredBills.map((bill) => (
-            <Card key={bill.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
+            <div key={bill.id} className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:border-brand-orange/30 transition-all duration-200">
+              <div className="p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Receipt className="h-6 w-6 text-primary" />
+                    <div className="w-12 h-12 bg-brand-orange/10 rounded-lg flex items-center justify-center">
+                      <Receipt className="h-6 w-6 text-brand-orange-light" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-lg">{bill.id}</h3>
-                        <Badge
-                          className={
-                            statusConfig[
-                              bill.status as keyof typeof statusConfig
-                            ].color || ""
-                          }
-                        >
-                          {
-                            statusConfig[
-                              bill.status as keyof typeof statusConfig
-                            ].label
-                          }
-                        </Badge>
+                        <h3 className="font-semibold text-lg text-white">{bill.id}</h3>
+                        <BillStatusBadge status={bill.status} />
                       </div>
                       <p className="text-sm text-muted-foreground mb-1">
                         {bill.customerName}
@@ -740,7 +729,7 @@ export default function Bills() {
 
                   <div className="flex items-center gap-2 sm:flex-col sm:items-end">
                     <div className="text-right">
-                      <p className="text-2xl font-bold">
+                      <p className="text-2xl font-bold text-white">
                         ₹{typeof bill.amount === "number" ? bill.amount.toLocaleString() : "0"}
                       </p>
                     </div>
@@ -749,7 +738,7 @@ export default function Bills() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-9 w-9"
+                        className="h-9 w-9 bg-white/5 border-white/10 text-foreground hover:bg-white/10 hover:border-white/20 cursor-pointer min-h-[44px]"
                         onClick={() => handlePreview(bill)}
                       >
                         <Eye className="h-4 w-4" />
@@ -757,7 +746,7 @@ export default function Bills() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-9 w-9"
+                        className="h-9 w-9 bg-white/5 border-white/10 text-foreground hover:bg-white/10 hover:border-white/20 cursor-pointer min-h-[44px]"
                         onClick={() => handleDownloadPDF(bill)}
                       >
                         <Download className="h-4 w-4" />
@@ -766,7 +755,7 @@ export default function Bills() {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-9 w-9"
+                          className="h-9 w-9 bg-white/5 border-white/10 text-foreground hover:bg-white/10 hover:border-white/20 cursor-pointer min-h-[44px]"
                           onClick={() => handleSendSMS(bill)}
                         >
                           <MessageSquare className="h-4 w-4" />
@@ -775,8 +764,8 @@ export default function Bills() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
 
@@ -791,19 +780,19 @@ export default function Bills() {
             </DialogHeader>
 
             {previewBill && (
-              <div className="space-y-6 p-6 bg-white border rounded-lg text-black">
+              <div className="space-y-6 p-6 bg-card border rounded-lg text-card-foreground">
                 {/* Bill content similar to the form preview */}
                 <div className="flex justify-between items-start">
                   <div>
-                    <h1 className="text-2xl font-bold text-blue-600">
+                    <h1 className="text-2xl font-bold text-primary">
                       INVOICE
                     </h1>
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-bold text-blue-600">
+                    <div className="text-xl font-bold text-primary">
                       Call Me Mobiles
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       Mobile Repair Services
                     </p>
                   </div>
@@ -812,19 +801,19 @@ export default function Bills() {
                 {/* Customer and invoice details */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">
+                    <h3 className="font-semibold text-foreground mb-2">
                       Bill To:
                     </h3>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       <p className="font-medium">{previewBill.customerName}</p>
                       <p>{previewBill.customerPhone}</p>
                     </div>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">
+                    <h3 className="font-semibold text-foreground mb-2">
                       Invoice Details:
                     </h3>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       <p>Date: {previewBill.date}</p>
                       <p>
                         Status:{" "}
@@ -842,7 +831,7 @@ export default function Bills() {
                 <div>
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr className="border-b border-gray-200">
+                      <tr className="border-b border-border">
                         <th className="text-left py-2">Description</th>
                         <th className="text-right py-2">Qty</th>
                         <th className="text-right py-2">Rate</th>
@@ -851,7 +840,7 @@ export default function Bills() {
                     </thead>
                     <tbody>
                       {previewBill.items.filter((item: any) => item.description && item.description.toLowerCase() !== 'service charge').map((item: any, index: number) => (
-                        <tr key={index} className="border-b border-gray-100">
+                        <tr key={index} className="border-b border-border/50">
                           <td className="py-2">{item.description}</td>
                           <td className="text-right py-2">{item.quantity}</td>
                           <td className="text-right py-2">
@@ -869,7 +858,7 @@ export default function Bills() {
                 {/* Total */}
                 <div className="flex justify-end">
                   <div className="w-64">
-                    <div className="flex justify-between py-2 border-t border-gray-200 font-bold text-lg">
+                    <div className="flex justify-between py-2 border-t border-border font-bold text-lg">
                       <span>Total:</span>
                       <span>₹{previewBill.total.toFixed(2)}</span>
                     </div>

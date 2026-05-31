@@ -412,9 +412,9 @@ const LiveActivityFeed: React.FC = () => {
       case 'user':
         return <User className="h-4 w-4 text-indigo-500" />
       case 'system':
-        return <Wrench className="h-4 w-4 text-gray-500" />
+        return <Wrench className="h-4 w-4 text-muted-foreground" />
       default:
-        return <Activity className="h-4 w-4 text-gray-500" />
+        return <Activity className="h-4 w-4 text-muted-foreground" />
     }
   }
 

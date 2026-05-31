@@ -381,7 +381,7 @@ export function AdminControlSystem({ className }: AdminControlSystemProps) {
                           {permission.ownerAccess ? (
                             <Eye className="h-4 w-4 text-green-600" />
                           ) : (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
                           )}
                         </div>
                         
@@ -396,7 +396,7 @@ export function AdminControlSystem({ className }: AdminControlSystemProps) {
                           {permission.workerAccess ? (
                             <Eye className="h-4 w-4 text-green-600" />
                           ) : (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
                           )}
                         </div>
                       </div>

@@ -89,7 +89,7 @@ const defaultPermissions: Permission[] = [
 ];
 
 export function EnhancedRBACProvider({ children }: { children: ReactNode }) {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [permissions, setPermissions] = useState<Permission[]>(defaultPermissions);
   const [loading, setLoading] = useState(true);
 

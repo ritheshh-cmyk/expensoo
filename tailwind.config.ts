@@ -15,7 +15,6 @@ export default {
         'xl': '1280px',
         '2xl': '1536px',
         '3xl': '1920px',
-        // Custom breakpoints for specific layouts
         'tablet': '768px',
         'laptop': '1024px',
         'desktop': '1280px',
@@ -28,32 +27,6 @@ export default {
         '128': '32rem',
       },
       colors: {
-        primary: {
-          50: '#f0f4f8',
-          100: '#d9e2ec',
-          200: '#bcccdc',
-          300: '#9fb3c8',
-          400: '#829ab1',
-          500: '#627d98',
-          600: '#486581',
-          700: '#334e68',
-          800: '#243b53',
-          900: '#102a43',
-          DEFAULT: '#627d98',
-          foreground: '#ffffff'
-        },
-        gray: {
-          50: '#f7fafc',
-          100: '#edf2f7',
-          200: '#e2e8f0',
-          300: '#cbd5e0',
-          400: '#a0aec0',
-          500: '#718096',
-          600: '#4a5568',
-          700: '#2d3748',
-          800: '#1a202c',
-          900: '#171923'
-        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
@@ -63,6 +36,14 @@ export default {
         popover: {
           DEFAULT: 'hsl(var(--popover))',
           foreground: 'hsl(var(--popover-foreground))'
+        },
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))'
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))'
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
@@ -78,11 +59,67 @@ export default {
         },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))'
+        ring: 'hsl(var(--ring))',
+        /* ── Brand accent palette ── */
+        'brand-orange': {
+          DEFAULT: '#d97757',
+          light: '#f0c4b3',
+          dark: '#c4593b',
+          50: '#fdf3ef',
+          100: '#fbe4da',
+          500: '#d97757',
+          600: '#c4593b',
+          700: '#a4482f',
+        },
+        'brand-blue': {
+          DEFAULT: '#6a9bcc',
+          light: '#c7ddef',
+          dark: '#4a7ba8',
+          50: '#f0f5fa',
+          500: '#6a9bcc',
+          600: '#4a7ba8',
+        },
+        'brand-green': {
+          DEFAULT: '#788c5d',
+          light: '#d4ddc7',
+          dark: '#606f4a',
+          50: '#f3f5ef',
+          500: '#788c5d',
+          600: '#606f4a',
+        },
+        success: {
+          DEFAULT: '#788c5d',
+          foreground: '#ffffff',
+          light: '#d4ddc7',
+          dark: '#606f4a',
+        },
+        warning: {
+          DEFAULT: '#d97757',
+          foreground: '#ffffff',
+          light: '#f0c4b3',
+          dark: '#c4593b',
+        },
+        info: {
+          DEFAULT: '#6a9bcc',
+          foreground: '#ffffff',
+          light: '#c7ddef',
+          dark: '#4a7ba8',
+        },
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar-bg))',
+          foreground: 'hsl(var(--sidebar-fg))',
+          primary: 'hsl(var(--primary))',
+          'primary-foreground': 'hsl(var(--primary-foreground))',
+          accent: 'hsl(var(--sidebar-accent))',
+          'accent-foreground': 'hsl(var(--sidebar-fg))',
+          border: 'hsl(var(--sidebar-border))',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['ui-monospace', 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'monospace']
+        heading: ['Poppins', 'ui-sans-serif', 'system-ui', 'Arial', 'sans-serif'],
+        body:    ['Lora', 'Georgia', 'ui-serif', 'serif'],
+        sans:    ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono:    ['ui-monospace', 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'monospace'],
       },
       fontSize: {
         xs: ['0.75rem', { lineHeight: '1rem' }],
@@ -119,6 +156,10 @@ export default {
         "bounce-subtle": {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-5px)" }
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" }
         }
       },
       animation: {
@@ -127,6 +168,7 @@ export default {
         "fade-in": "fade-in 0.5s ease-in-out",
         "slide-in": "slide-in 0.3s ease-out",
         "bounce-subtle": "bounce-subtle 2s infinite",
+        "shimmer": "shimmer 2s linear infinite",
       },
       gridTemplateColumns: {
         'auto-fit': 'repeat(auto-fit, minmax(250px, 1fr))',

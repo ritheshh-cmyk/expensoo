@@ -1,5 +1,6 @@
 import React from 'react';
 import { AdminControlSystem } from '@/components/admin/AdminControlSystem';
+import { UserManagement } from '@/components/admin/UserManagement';
 import { ResponsiveGrid, ResponsiveContainer } from '@/components/layout/ResponsiveLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -202,7 +203,8 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* Main Admin Control System */}
+        {/* Main Admin Control System & User Management */}
+        <UserManagement />
         <AdminControlSystem />
       </div>
     </ResponsiveContainer>

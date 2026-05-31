@@ -110,10 +110,10 @@ export function CorporateHeader({ onMenuClick }: CorporateHeaderProps) {
 
   const getRoleColor = (role: string) => {
     switch(role?.toLowerCase()) {
-      case 'admin': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'owner': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'worker': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case 'admin': return 'bg-brand-orange-50 text-brand-orange-600 dark:bg-brand-orange/15 dark:text-brand-orange';
+      case 'owner': return 'bg-brand-blue-50 text-brand-blue-600 dark:bg-brand-blue/15 dark:text-brand-blue';
+      case 'worker': return 'bg-brand-green-50 text-brand-green-600 dark:bg-brand-green/15 dark:text-brand-green';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -133,9 +133,11 @@ export function CorporateHeader({ onMenuClick }: CorporateHeaderProps) {
           </Button>
           
           <div className="flex items-center gap-3">
-            <Building2 className="h-8 w-8 text-primary" />
+            <div className="expenso-gradient w-8 h-8 rounded-lg flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-white" />
+            </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-foreground">CallMeMobiles</h1>
+              <h1 className="text-lg font-bold text-foreground font-heading">CallMeMobiles</h1>
               <p className="text-xs text-muted-foreground">Professional Repair Management</p>
             </div>
           </div>
@@ -157,7 +159,7 @@ export function CorporateHeader({ onMenuClick }: CorporateHeaderProps) {
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
               {systemStatus.status === 'online' ? (
-                <Wifi className="h-3 w-3 mr-1 text-green-600" />
+                <Wifi className="h-3 w-3 mr-1 text-brand-green" />
               ) : (
                 <WifiOff className="h-3 w-3 mr-1 text-red-600" />
               )}
@@ -200,7 +202,7 @@ export function CorporateHeader({ onMenuClick }: CorporateHeaderProps) {
           {/* Notifications */}
           <Button variant="ghost" size="sm" className="h-9 w-9 p-0 relative">
             <Bell className="h-4 w-4" />
-            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 h-4 w-4 bg-brand-orange text-white text-xs rounded-full flex items-center justify-center">
               3
             </span>
             <span className="sr-only">Notifications</span>

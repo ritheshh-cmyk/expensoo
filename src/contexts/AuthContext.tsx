@@ -1,10 +1,13 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { apiClient } from '../lib/api';
+
+export type UserRole = 'admin' | 'owner' | 'worker';
 
 interface User {
   id: string;
   name: string;
+  username?: string;
   role: 'admin' | 'owner' | 'worker';
   email?: string;
 }
@@ -19,86 +22,156 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+/** Absolute session duration: 15 minutes from login, regardless of activity */
+const SESSION_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const SESSION_START_KEY   = 'session_started_at';
+const LOGOUT_CHANNEL      = 'callmemobiles_logout';
 
-  // Check for existing session on mount
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser]       = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const timerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // BroadcastChannel lets other open tabs receive the logout signal
+  const channelRef            = useRef<BroadcastChannel | null>(null);
+
+  /** Hard logout — clears everything and broadcasts to other tabs.
+   *  @param reason 'session' = auto-expiry timer, 'user' = manual sign-out.
+   *                Only 'session' logouts set the banner flag for Login page.
+   */
+  const logout = useCallback((reason: 'session' | 'user' = 'user', broadcast = true) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setUser(null);
+    localStorage.removeItem(SESSION_START_KEY);
+    // Set flag BEFORE apiClient.logout() so it isn't wiped by any cleanup there
+    if (reason === 'session' && broadcast) {
+      localStorage.setItem('session_expired_flag', 'true');
+    }
+    apiClient.logout();
+    if (broadcast && channelRef.current) {
+      channelRef.current.postMessage({ type: LOGOUT_CHANNEL });
+    }
+  }, []);
+
+  /** Schedule the hard logout timer from the original login timestamp */
+  const scheduleSessionExpiry = useCallback((loginTimestamp: number) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    const elapsed   = Date.now() - loginTimestamp;
+    const remaining = SESSION_DURATION_MS - elapsed;
+
+    if (remaining <= 0) {
+      // Session already expired — logout immediately
+      logout();
+      return;
+    }
+
+    timerRef.current = setTimeout(() => {
+      logout('session', true);
+    }, remaining);
+  }, [logout]);
+
+  // ── Init: restore session & set expiry timer ──────────────────────────────
   useEffect(() => {
+    // BroadcastChannel for cross-tab logout
+    try {
+      channelRef.current = new BroadcastChannel(LOGOUT_CHANNEL);
+      channelRef.current.onmessage = (e) => {
+        // Cross-tab logout signal received — logout without re-broadcasting
+        if (e.data?.type === LOGOUT_CHANNEL) logout('user', false);
+      };
+    } catch {
+      // BroadcastChannel not supported in some environments — silent fallback
+    }
+
     const initializeAuth = async () => {
-      const savedUser = localStorage.getItem('auth_user');
-      const token = localStorage.getItem('auth_token');
-      
-      if (savedUser && token) {
+      const savedUser  = localStorage.getItem('auth_user');
+      const token      = localStorage.getItem('auth_token');
+      const sessionAt  = localStorage.getItem(SESSION_START_KEY);
+
+      if (savedUser && token && sessionAt) {
+        const loginTimestamp = parseInt(sessionAt, 10);
+        const elapsed        = Date.now() - loginTimestamp;
+
+        // If session is already older than 15 min — wipe it immediately
+        if (elapsed >= SESSION_DURATION_MS) {
+          logout('user', false);
+          setLoading(false);
+          return;
+        }
+
+        let parsedUser: User | null = null;
         try {
-          // Try to verify token with backend, but don't fail if it doesn't work
+          parsedUser = JSON.parse(savedUser);
+        } catch {
+          // Corrupted auth_user in localStorage — clear and restart
+          logout('user', false);
+          setLoading(false);
+          return;
+        }
+
+        try {
           const verifyResponse = await apiClient.verifyToken();
-          if (verifyResponse.success) {
-            setUser(JSON.parse(savedUser));
+          if (verifyResponse.status === 401 || !verifyResponse.success) {
+            // Token rejected by server — force clean logout
+            logout('user', false);
           } else {
-            // Token verification failed, but we'll still trust the saved user
-            // This allows the app to work even if the verification endpoint is missing
-            console.warn('Token verification failed, but using saved user session');
-            setUser(JSON.parse(savedUser));
+            setUser(parsedUser);
+            scheduleSessionExpiry(loginTimestamp);
           }
-        } catch (error) {
-          console.warn('Error verifying token, but using saved user session:', error);
-          // Still set the user from saved data
-          setUser(JSON.parse(savedUser));
+        } catch {
+          // Network failure — trust saved session (offline support)
+          setUser(parsedUser);
+          scheduleSessionExpiry(loginTimestamp);
         }
       }
+
       setLoading(false);
     };
 
     initializeAuth();
-  }, []);
 
+    return () => {
+      if (timerRef.current)  clearTimeout(timerRef.current);
+      if (channelRef.current) channelRef.current.close();
+    };
+  }, [logout, scheduleSessionExpiry]);
+
+  // ── Login ─────────────────────────────────────────────────────────────────
   const login = async (username: string, password: string): Promise<boolean> => {
     setLoading(true);
-    
     try {
       const response = await apiClient.login(username, password);
-      
+
       if (response.success && response.data) {
-        const user = response.data.user || {
-          id: response.data.id || '1',
-          name: response.data.name || username,
-          role: response.data.role || 'admin',
-          email: response.data.email || username
+        const raw           = response.data.user ?? response.data;
+        const loginUsername = (raw.username || username) as string;
+
+        const normalised: User = {
+          id:       String(raw.id ?? '1'),
+          name:     loginUsername,
+          username: loginUsername,
+          role:     ((raw.role || 'worker') as 'admin' | 'owner' | 'worker'),
+          email:    raw.email || '',
         };
-        
-        setUser(user);
-        localStorage.setItem('auth_user', JSON.stringify(user));
-        return true; // Success
+
+        const now = Date.now();
+        localStorage.setItem(SESSION_START_KEY, String(now));
+        localStorage.setItem('auth_user', JSON.stringify(normalised));
+        if (response.data.token) {
+          localStorage.setItem('auth_token', response.data.token);
+        }
+
+        setUser(normalised);
+        scheduleSessionExpiry(now);
+        return true;
       } else {
-        console.error('Login failed:', response.error);
-        return false; // Failed
+        throw new Error(response.error || response.message || 'Invalid username or password');
       }
-    } catch (error: any) {
-      console.error('Login error:', error);
-      // For demo purposes, allow mock login if backend fails
-      if (username && password) {
-        const mockUser = {
-          id: '1',
-          name: username,
-          role: 'admin' as const,
-          email: username
-        };
-        setUser(mockUser);
-        localStorage.setItem('auth_user', JSON.stringify(mockUser));
-        localStorage.setItem('auth_token', 'mock-token');
-        return true; // Mock success
-      } else {
-        return false; // Failed
-      }
+    } catch (error: unknown) {
+      throw error instanceof Error ? error : new Error(String(error));
     } finally {
       setLoading(false);
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    apiClient.logout();
   };
 
   const hasAccess = (roles: string[]) => {
@@ -106,13 +179,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return roles.includes(user.role);
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    logout,
-    hasAccess,
-  };
+  // Memoize the context value so consumers only re-render when the shape
+  // actually changes — not on every unrelated AuthProvider render.
+  const value = useMemo(
+    () => ({ user, loading, login, logout: () => logout('user', true), hasAccess }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user, loading, logout]
+  );
 
   return (
     <AuthContext.Provider value={value}>
@@ -123,8 +196,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

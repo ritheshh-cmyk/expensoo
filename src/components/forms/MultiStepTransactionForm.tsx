@@ -27,6 +27,8 @@ import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
+import { PaymentStatusChecker } from "@/components/PaymentStatusChecker";
+import { sendTransactionWhatsApp } from "@/lib/whatsapp";
 import {
   User,
   Smartphone,
@@ -36,7 +38,11 @@ import {
   Trash2,
   Calculator,
   Store,
-  ShoppingCart
+  ShoppingCart,
+  MessageSquare,
+  CheckCircle,
+  Loader2,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -77,8 +83,10 @@ interface Part {
 }
 
 interface MultiStepTransactionFormProps {
-  onSubmit: (data: any) => void;
+  onSubmit: (data: Record<string, unknown> | null) => void;
 }
+
+const DRAFT_KEY = "txn_form_draft";
 
 export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -86,6 +94,9 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
   const [requiresParts, setRequiresParts] = useState(false);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("");
+  const [transactionCreated, setTransactionCreated] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
   const { t } = useLanguage();
 
   const form = useForm<TransactionFormData>({
@@ -102,6 +113,60 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
   });
 
   const { register, handleSubmit, watch, setValue, trigger, formState: { errors } } = form;
+  const watchedValues = watch();
+
+  // ── Draft persistence ───────────────────────────────────────────────────────
+  // Check on mount whether a previous draft exists
+  useEffect(() => {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (raw) {
+      try {
+        const saved = JSON.parse(raw);
+        // Only flag as draft if there's meaningful data (name or device filled)
+        if (saved?.formValues?.customerName || saved?.formValues?.deviceModel) {
+          setHasDraft(true);
+        }
+      } catch { /* corrupt draft — ignore */ }
+    }
+  }, []);
+
+  // Auto-save every time any form field or step changes
+  useEffect(() => {
+    if (!hasDraft && !watchedValues.customerName && !watchedValues.deviceModel) return;
+    const draft = {
+      formValues: watchedValues,
+      currentStep,
+      parts,
+      requiresParts,
+      selectedSupplier,
+    };
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [watchedValues, currentStep, parts, requiresParts, selectedSupplier]);
+
+  const resumeDraft = () => {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw);
+      if (saved?.formValues) {
+        // Restore every field
+        Object.entries(saved.formValues).forEach(([key, val]) => {
+          setValue(key as any, val as any);
+        });
+      }
+      if (typeof saved.currentStep === "number") setCurrentStep(saved.currentStep);
+      if (Array.isArray(saved.parts)) setParts(saved.parts);
+      if (typeof saved.requiresParts === "boolean") setRequiresParts(saved.requiresParts);
+      if (saved.selectedSupplier) setSelectedSupplier(saved.selectedSupplier);
+    } catch { /* ignore corrupt draft */ }
+    setHasDraft(false); // banner dismissed — now in "live" save mode
+  };
+
+  const discardDraft = () => {
+    sessionStorage.removeItem(DRAFT_KEY);
+    setHasDraft(false);
+  };
+  // ────────────────────────────────────────────────────────────────────────────
 
   // Load suppliers on component mount
   useEffect(() => {
@@ -111,11 +176,11 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
   const loadSuppliers = async () => {
     try {
       const response = await apiClient.getSuppliers();
-      if (response.success && response.suppliers) {
-        setSuppliers(response.suppliers);
+      if (response.success && Array.isArray(response.data)) {
+        setSuppliers(response.data);
       }
-    } catch (error) {
-      console.error("Failed to load suppliers:", error);
+    } catch {
+      // Supplier load failed — user can still continue without pre-filling
     }
   };
 
@@ -221,6 +286,7 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
   };
 
   const onFormSubmit = async (data: TransactionFormData) => {
+    setIsSubmitting(true);
     try {
       // Create suppliers first if needed
       const createdSuppliers = [];
@@ -241,8 +307,8 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
               description: `${data.newSupplierName} has been added to your suppliers list.`,
             });
           }
-        } catch (error) {
-          console.error("Failed to create supplier:", error);
+        } catch {
+          // Supplier creation failed — transaction will still proceed
         }
       }
 
@@ -265,12 +331,14 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
         })) : []
       };
 
-      console.log("🔧 Sending transaction with validation format (camelCase):", validationData);
 
       // Submit transaction
       const response = await apiClient.createTransaction(validationData);
 
       if (response.success) {
+        const createdId = response.transaction?.id || `TXN${Date.now()}`;
+        setTransactionCreated(createdId);
+
         // Update supplier expenditures if parts were purchased
         if (parts.length > 0) {
           for (const part of parts) {
@@ -281,14 +349,42 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                   body: JSON.stringify({
                     amount: part.cost * part.quantity,
                     description: `Parts for ${data.customerName} - ${part.name}`,
-                    transaction_id: response.transaction?.id
+                    transaction_id: createdId
                   })
                 });
-              } catch (error) {
-                console.error("Failed to update supplier expenditure:", error);
+              } catch {
+                // Expenditure update failed — non-fatal, transaction is already saved
               }
             }
           }
+        }
+
+        // Trigger WhatsApp Notification
+        try {
+          const whatsappResult = await sendTransactionWhatsApp({
+            customerName: data.customerName,
+            phoneNumber: data.phoneNumber,
+            deviceModel: data.deviceModel,
+            repairType: data.repairType === "others" ? data.customRepairType || "Other Repair" : data.repairType,
+            repairCost: data.repairCost,
+            status: "pending",
+            transactionId: createdId,
+          });
+
+          if (whatsappResult.success) {
+            toast({
+              title: "Transaction Created & WhatsApp Sent",
+              description: "Transaction created successfully and WhatsApp notification opened.",
+            });
+          } else {
+            toast({
+              title: "Transaction Created",
+              description: "Transaction created successfully. WhatsApp notification failed to open.",
+              variant: "destructive",
+            });
+          }
+        } catch {
+          // WhatsApp notification failed — non-fatal, transaction is saved
         }
 
         toast({
@@ -296,32 +392,70 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
           description: "Transaction created successfully with all supplier information.",
         });
 
-        // Reset form
-        form.reset();
-        setParts([]);
-        setRequiresParts(false);
-        setSelectedSupplier("");
-        setCurrentStep(1);
-
         // Force transaction list refresh (if parent provides onSubmit)
         if (typeof onSubmit === 'function') {
-          onSubmit(response.transaction);
+          onSubmit(response.data?.transaction ?? response.data);
         }
+
+        // Reset form to initial state so the user can create another transaction
+        form.reset({
+          repairCost: 0,
+          amountGiven: 0,
+          paymentMethod: 'cash',
+          requiresParts: false,
+          freeGlass: false,
+          externalPurchase: false,
+          priority: 'medium',
+        });
+        setParts([]);
+        setSelectedSupplier('');
+        setCurrentStep(1);
+        setTransactionCreated(null);
+        // Wipe draft so next visit starts clean
+        sessionStorage.removeItem(DRAFT_KEY);
       } else {
         throw new Error(response.error || "Failed to create transaction");
       }
-    } catch (error) {
-      console.error("Transaction creation error:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to create transaction. Please try again.';
       toast({
         title: "Error",
-        description: "Failed to create transaction. Please try again.",
+        description: message,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+
+      {/* ── Draft resume banner ─────────────────────────────────────────── */}
+      {hasDraft && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-brand-orange/30 bg-brand-orange/10 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-brand-orange-light">
+            <span className="text-base">&#9888;&#65039;</span>
+            <span>You have an unsaved draft from your last visit. Want to continue where you left off?</span>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={resumeDraft}
+              className="text-xs font-semibold px-3 py-1.5 rounded-md bg-brand-orange hover:bg-brand-orange-light text-black transition-colors"
+            >
+              Resume
+            </button>
+            <button
+              type="button"
+              onClick={discardDraft}
+              className="text-xs font-semibold px-3 py-1.5 rounded-md border border-white/10 hover:bg-white/10 text-foreground transition-colors"
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
       {/* Enhanced Progress Steps */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -336,9 +470,9 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                 key={stepNumber}
                 className={cn(
                   "flex items-center space-x-2 px-4 py-2 rounded-lg transition-all",
-                  isActive && "bg-primary text-primary-foreground shadow-md",
-                  isCompleted && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
-                  !isActive && !isCompleted && "bg-muted text-muted-foreground"
+                  isActive && "bg-brand-orange text-black shadow-md shadow-brand-orange/20",
+                  isCompleted && "bg-brand-orange/20 text-brand-orange-light border border-brand-orange/30",
+                  !isActive && !isCompleted && "bg-white/5 text-muted-foreground border border-white/10"
                 )}
               >
                 <StepIcon className="w-5 h-5" />
@@ -346,16 +480,16 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                   <div className="font-medium text-sm">{step.title}</div>
                   <div className="text-xs opacity-80">{step.description}</div>
                 </div>
-                {isCompleted && <div className="w-2 h-2 bg-green-500 rounded-full" />}
+                {isCompleted && <div className="w-2 h-2 bg-brand-orange-light rounded-full" />}
               </div>
             );
           })}
         </div>
         
         {/* Progress Bar */}
-        <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+        <div className="w-full bg-white/10 rounded-full h-2">
           <div 
-            className="bg-primary h-2 rounded-full transition-all duration-300"
+            className="bg-brand-orange h-2 rounded-full transition-all duration-300 shadow-sm shadow-brand-orange/50"
             style={{ width: `${(currentStep / steps.length) * 100}%` }}
           />
         </div>
@@ -364,55 +498,55 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
       <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
         {/* Step 1: Customer Details */}
         {currentStep === 1 && (
-          <Card className="border-2">
-            <CardHeader className="bg-primary/5">
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
+          <Card className="border border-white/10 bg-card">
+            <CardHeader className="border-b border-white/10">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <User className="w-5 h-5 text-brand-orange" />
                 Customer Information
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-muted-foreground">
                 Enter customer details and device information
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="customerName">Customer Name *</Label>
+                  <Label htmlFor="customerName" className="text-sm font-medium text-muted-foreground mb-1.5">Customer Name *</Label>
                   <Input
                     id="customerName"
                     {...register("customerName")}
                     placeholder="Enter customer name"
-                    className="border-2"
+                    className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
                   />
                   {errors.customerName && (
-                    <p className="text-red-500 text-sm">{errors.customerName.message}</p>
+                    <p className="text-red-400 text-sm">{errors.customerName.message}</p>
                   )}
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="phoneNumber">Phone Number *</Label>
+                  <Label htmlFor="phoneNumber" className="text-sm font-medium text-muted-foreground mb-1.5">Phone Number *</Label>
                   <Input
                     id="phoneNumber"
                     {...register("phoneNumber")}
                     placeholder="Enter phone number"
-                    className="border-2"
+                    className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
                   />
                   {errors.phoneNumber && (
-                    <p className="text-red-500 text-sm">{errors.phoneNumber.message}</p>
+                    <p className="text-red-400 text-sm">{errors.phoneNumber.message}</p>
                   )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="deviceModel">Device Model *</Label>
+                <Label htmlFor="deviceModel" className="text-sm font-medium text-muted-foreground mb-1.5">Device Model *</Label>
                 <Input
                   id="deviceModel"
                   {...register("deviceModel")}
                   placeholder="e.g., iPhone 15 Pro, Samsung Galaxy S24"
-                  className="border-2"
+                  className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
                 />
                 {errors.deviceModel && (
-                  <p className="text-red-500 text-sm">{errors.deviceModel.message}</p>
+                  <p className="text-red-400 text-sm">{errors.deviceModel.message}</p>
                 )}
               </div>
             </CardContent>
@@ -421,25 +555,25 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
 
         {/* Step 2: Repair Details */}
         {currentStep === 2 && (
-          <Card className="border-2">
-            <CardHeader className="bg-primary/5">
-              <CardTitle className="flex items-center gap-2">
-                <Wrench className="w-5 h-5" />
+          <Card className="border border-white/10 bg-card overflow-visible">
+            <CardHeader className="border-b border-white/10">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Wrench className="w-5 h-5 text-brand-orange" />
                 Repair Information
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-muted-foreground">
                 Specify repair type, cost and payment details
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="repairType">Repair Type *</Label>
+                  <Label htmlFor="repairType" className="text-sm font-medium text-muted-foreground mb-1.5">Repair Type *</Label>
                   <Select onValueChange={(value) => setValue("repairType", value)}>
-                    <SelectTrigger className="border-2">
+                    <SelectTrigger className="bg-white/5 border border-white/10 text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
                       <SelectValue placeholder="Select repair type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" align="start" sideOffset={4} className="z-[9999] bg-popover border border-border shadow-xl">
                       <SelectItem value="screen-replacement">Screen Replacement</SelectItem>
                       <SelectItem value="battery-replacement">Battery Replacement</SelectItem>
                       <SelectItem value="charging-port">Charging Port Repair</SelectItem>
@@ -451,33 +585,53 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                     </SelectContent>
                   </Select>
                   {errors.repairType && (
-                    <p className="text-red-500 text-sm">{errors.repairType.message}</p>
+                    <p className="text-red-400 text-sm">{errors.repairType.message}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="repairCost">Repair Cost (₹) *</Label>
+                  <Label htmlFor="repairCost" className="text-sm font-medium text-muted-foreground mb-1.5">Repair Cost (₹) *</Label>
                   <Input
                     id="repairCost"
                     type="number"
                     {...register("repairCost", { valueAsNumber: true })}
                     placeholder="0"
-                    className="border-2"
+                    className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
                   />
                   {errors.repairCost && (
-                    <p className="text-red-500 text-sm">{errors.repairCost.message}</p>
+                    <p className="text-red-400 text-sm">{errors.repairCost.message}</p>
                   )}
                 </div>
               </div>
 
+              {/* Custom repair type input — shown only when 'Others' is selected */}
+              {watchedValues.repairType === "others" && (
+                <div className="space-y-2">
+                  <Label htmlFor="customRepairType" className="text-sm font-medium text-muted-foreground mb-1.5">Specify Repair Type *</Label>
+                  <Input
+                    id="customRepairType"
+                    {...register("customRepairType")}
+                    placeholder="e.g., Motherboard repair, Mic replacement, Face ID fix..."
+                    className="bg-white/5 border border-brand-orange/40 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange"
+                    autoFocus
+                  />
+                  {errors.customRepairType && (
+                    <p className="text-red-400 text-sm">{errors.customRepairType.message}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    This will appear as the repair type in reports and receipts.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">Payment Method *</Label>
+                  <Label htmlFor="paymentMethod" className="text-sm font-medium text-muted-foreground mb-1.5">Payment Method *</Label>
                   <Select onValueChange={(value) => setValue("paymentMethod", value as any)}>
-                    <SelectTrigger className="border-2">
+                    <SelectTrigger className="bg-white/5 border border-white/10 text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
                       <SelectValue placeholder="Select payment method" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" side="bottom" align="start" sideOffset={4} className="z-[9999] bg-popover border border-border shadow-xl">
                       <SelectItem value="cash">Cash</SelectItem>
                       <SelectItem value="upi">UPI</SelectItem>
                       <SelectItem value="card">Card</SelectItem>
@@ -485,21 +639,21 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                     </SelectContent>
                   </Select>
                   {errors.paymentMethod && (
-                    <p className="text-red-500 text-sm">{errors.paymentMethod.message}</p>
+                    <p className="text-red-400 text-sm">{errors.paymentMethod.message}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="amountGiven">Amount Given (₹) *</Label>
+                  <Label htmlFor="amountGiven" className="text-sm font-medium text-muted-foreground mb-1.5">Amount Given (₹) *</Label>
                   <Input
                     id="amountGiven"
                     type="number"
                     {...register("amountGiven", { valueAsNumber: true })}
                     placeholder="0"
-                    className="border-2"
+                    className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
                   />
                   {errors.amountGiven && (
-                    <p className="text-red-500 text-sm">{errors.amountGiven.message}</p>
+                    <p className="text-red-400 text-sm">{errors.amountGiven.message}</p>
                   )}
                 </div>
               </div>
@@ -509,14 +663,14 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
 
         {/* Step 3: Enhanced Parts and Supplier Selection */}
         {currentStep === 3 && (
-          <Card className="border-2">
-            <CardHeader className="bg-primary/5">
-              <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                <Store className="w-5 h-5" />
-                Parts & Supplier Selection
+          <Card className="border border-white/10 bg-card overflow-visible">
+            <CardHeader className="border-b border-white/10">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Package className="w-5 h-5 text-brand-orange" />
+                <Store className="w-5 h-5 text-brand-orange" />
+                Parts &amp; Supplier Selection
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-muted-foreground">
                 Manage parts requirements and select suppliers
               </CardDescription>
             </CardHeader>
@@ -529,23 +683,23 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                     checked={watch("externalPurchase")}
                     onCheckedChange={(checked) => setValue("externalPurchase", !!checked)}
                   />
-                  <Label htmlFor="externalPurchase" className="flex items-center gap-2">
+                  <Label htmlFor="externalPurchase" className="flex items-center gap-2 text-foreground">
                     <ShoppingCart className="w-4 h-4" />
                     External Purchase (parts bought from supplier)
                   </Label>
                 </div>
 
                 {watch("externalPurchase") && (
-                  <div className="space-y-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                  <div className="space-y-4 p-4 border border-white/10 rounded-lg bg-white/5">
                     <div className="space-y-2">
-                      <Label htmlFor="supplier">Select Supplier</Label>
+                      <Label htmlFor="supplier" className="text-sm font-medium text-muted-foreground mb-1.5">Select Supplier</Label>
                       <Select 
                         onValueChange={(value) => {
                           setSelectedSupplier(value);
                           setValue("supplier", value);
                         }}
                       >
-                        <SelectTrigger className="border-2">
+                        <SelectTrigger className="bg-white/5 border border-white/10 text-white focus:ring-brand-orange/50 focus:border-brand-orange/50">
                           <SelectValue placeholder="Choose supplier for parts" />
                         </SelectTrigger>
                         <SelectContent>
@@ -559,15 +713,100 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                       </Select>
                     </div>
 
+                    {/* After selecting supplier, prompt what parts are needed */}
+                    {watch("supplier") && watch("supplier") !== "Other" && (
+                      <div className="space-y-2 border-t border-white/10 pt-3">
+                        <Label className="text-sm font-medium text-foreground">
+                          What type of parts are you getting from this supplier?
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            "Screen / Display",
+                            "Battery",
+                            "Charging Port",
+                            "Speaker / Mic",
+                            "Camera Module",
+                            "Back Cover / Glass",
+                            "Motherboard Parts",
+                            "Other Parts",
+                          ].map((partType) => (
+                            <label
+                              key={partType}
+                              className="flex items-center gap-2 text-sm cursor-pointer p-2 rounded border border-white/10 bg-white/5 hover:bg-white/10 text-foreground transition-colors"
+                            >
+                              <input
+                                type="checkbox"
+                                className="rounded"
+                                onChange={(e) => {
+                                  if (e.target.checked && parts.length === 0) {
+                                    // Auto-add a part row pre-filled with this type
+                                    setParts([{ name: partType, cost: 0, quantity: 1, supplier: selectedSupplier }]);
+                                  }
+                                }}
+                              />
+                              {partType}
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Selecting a type will pre-fill the parts list below. You can edit the details there.
+                        </p>
+                      </div>
+                    )}
+
                     {watch("supplier") === "Other" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="newSupplierName">New Supplier Name</Label>
-                        <Input
-                          id="newSupplierName"
-                          {...register("newSupplierName")}
-                          placeholder="Enter new supplier name"
-                          className="border-2"
-                        />
+                      <div className="space-y-3 p-3 border border-dashed border-brand-orange/40 rounded-lg bg-brand-orange/5">
+                        <p className="text-sm font-medium text-white flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-brand-orange" />
+                          Add New Supplier
+                        </p>
+                        <div className="space-y-2">
+                          <Label htmlFor="newSupplierName" className="text-sm font-medium text-muted-foreground mb-1.5">Supplier Name <span className="text-red-400">*</span></Label>
+                          <Input
+                            id="newSupplierName"
+                            {...register("newSupplierName")}
+                            placeholder="e.g. Global Electronics"
+                            className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="newSupplierPhone" className="text-sm font-medium text-muted-foreground mb-1.5">Phone (optional)</Label>
+                          <Input
+                            id="newSupplierPhone"
+                            {...register("newSupplierPhone" as any)}
+                            placeholder="e.g. +91-9876543210"
+                            className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
+                            type="tel"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full flex items-center gap-2"
+                          disabled={!watch("newSupplierName" as any)?.trim()}
+                          onClick={async () => {
+                            const name = (watch("newSupplierName" as any) as string)?.trim();
+                            const phone = (watch("newSupplierPhone" as any) as string)?.trim() || "";
+                            if (!name) return;
+                            try {
+                              const res = await apiClient.createSupplier({ name, contact_number: phone });
+                              if (res.success) {
+                                const newSup = res.data?.supplier ?? res.data ?? { id: name, name, contact_number: phone };
+                                setSuppliers(prev => [...prev, newSup]);
+                                setSelectedSupplier(newSup.id || name);
+                                setValue("supplier", newSup.id || name);
+                                toast({ title: "Supplier added", description: `${name} added and selected.` });
+                              } else {
+                                toast({ title: "Error", description: res.error || "Could not add supplier.", variant: "destructive" });
+                              }
+                            } catch (e: any) {
+                              toast({ title: "Error", description: e.message || "Network error.", variant: "destructive" });
+                            }
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Save &amp; Select Supplier
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -599,15 +838,15 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
 
                 {requiresParts && parts.length > 0 && (
                   <div className="space-y-4">
-                    <h4 className="font-medium">Parts List</h4>
+                    <h4 className="font-medium text-white">Parts List</h4>
                     {parts.map((part, index) => (
-                      <div key={index} className="grid grid-cols-12 gap-2 items-center p-3 border rounded-lg">
+                      <div key={index} className="grid grid-cols-12 gap-2 items-center p-3 border border-white/10 rounded-lg bg-white/5">
                         <div className="col-span-4">
                           <Input
                             placeholder="Part name"
                             value={part.name}
                             onChange={(e) => updatePart(index, "name", e.target.value)}
-                            className="border-2"
+                            className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
                           />
                         </div>
                         <div className="col-span-2">
@@ -616,7 +855,7 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                             placeholder="Cost"
                             value={part.cost}
                             onChange={(e) => updatePart(index, "cost", Number(e.target.value))}
-                            className="border-2"
+                            className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
                           />
                         </div>
                         <div className="col-span-2">
@@ -625,7 +864,7 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                             placeholder="Qty"
                             value={part.quantity}
                             onChange={(e) => updatePart(index, "quantity", Number(e.target.value))}
-                            className="border-2"
+                            className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50"
                           />
                         </div>
                         <div className="col-span-3">
@@ -633,7 +872,7 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                             value={part.supplier} 
                             onValueChange={(value) => updatePart(index, "supplier", value)}
                           >
-                            <SelectTrigger className="border-2">
+                            <SelectTrigger className="bg-white/5 border border-white/10 text-white focus:ring-brand-orange/50 focus:border-brand-orange/50">
                               <SelectValue placeholder="Supplier" />
                             </SelectTrigger>
                             <SelectContent>
@@ -659,7 +898,7 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                     ))}
                     
                     <div className="flex justify-end">
-                      <div className="text-lg font-semibold">
+                      <div className="text-lg font-semibold text-white">
                         Total Parts Cost: ₹{calculatePartsCost()}
                       </div>
                     </div>
@@ -672,22 +911,22 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
 
         {/* Step 4: Additional Details */}
         {currentStep === 4 && (
-          <Card className="border-2">
-            <CardHeader className="bg-primary/5">
-              <CardTitle className="flex items-center gap-2">
-                <Smartphone className="w-5 h-5" />
+          <Card className="border border-white/10 bg-card overflow-visible">
+            <CardHeader className="border-b border-white/10">
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Smartphone className="w-5 h-5 text-brand-orange" />
                 Additional Details
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-muted-foreground">
                 Final information and special requirements
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="priority">Priority Level</Label>
+                  <Label htmlFor="priority" className="text-sm font-medium text-muted-foreground mb-1.5">Priority Level</Label>
                   <Select onValueChange={(value) => setValue("priority", value as any)}>
-                    <SelectTrigger className="border-2">
+                    <SelectTrigger className="bg-white/5 border border-white/10 text-white focus:ring-brand-orange/50 focus:border-brand-orange/50">
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                     <SelectContent>
@@ -699,12 +938,12 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="estimatedCompletion">Estimated Completion</Label>
+                  <Label htmlFor="estimatedCompletion" className="text-sm font-medium text-muted-foreground mb-1.5">Estimated Completion</Label>
                   <Input
                     id="estimatedCompletion"
                     type="date"
                     {...register("estimatedCompletion")}
-                    className="border-2"
+                    className="bg-white/5 border border-white/10 text-white focus:ring-brand-orange/50 focus:border-brand-orange/50"
                   />
                 </div>
               </div>
@@ -715,19 +954,97 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                     id="freeGlass"
                     {...register("freeGlass")}
                   />
-                  <Label htmlFor="freeGlass">Free tempered glass installation</Label>
+                  <Label htmlFor="freeGlass" className="text-foreground">Free tempered glass installation</Label>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="remarks">Remarks / Special Instructions</Label>
+                <Label htmlFor="remarks" className="text-sm font-medium text-muted-foreground mb-1.5">Remarks / Special Instructions</Label>
                 <Textarea
                   id="remarks"
                   {...register("remarks")}
                   placeholder="Any additional notes or special instructions..."
-                  className="border-2 min-h-[100px]"
+                  className="bg-white/5 border border-white/10 text-white placeholder-zinc-600 focus:ring-brand-orange/50 focus:border-brand-orange/50 min-h-[100px]"
                 />
               </div>
+
+              {/* Transaction Summary */}
+              <div className="border border-white/10 rounded-lg p-4 bg-white/5 mt-6">
+                <h3 className="font-medium text-white mb-3 flex items-center gap-2">
+                  <Calculator className="h-4 w-4 text-brand-orange" />
+                  Transaction Summary
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Customer:</span>
+                    <span className="font-medium text-white">{watchedValues.customerName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Phone:</span>
+                    <span className="font-medium text-white">{watchedValues.phoneNumber}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Device:</span>
+                    <span className="font-medium text-white">{watchedValues.deviceModel}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Repair Type:</span>
+                    <span className="font-medium text-white">{watchedValues.repairType === "others" ? watchedValues.customRepairType || "Custom" : watchedValues.repairType}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/10 pt-2 mt-2">
+                    <span className="font-semibold text-white">Total Cost:</span>
+                    <span className="font-semibold text-brand-orange-light">₹{(watchedValues.repairCost || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Payment Method:</span>
+                    <span className="font-medium text-white capitalize">{watchedValues.paymentMethod}</span>
+                  </div>
+                  {watchedValues.paymentMethod === "cash" && (watchedValues.amountGiven || 0) > (watchedValues.repairCost || 0) && (
+                    <div className="flex justify-between text-green-400">
+                      <span>Change:</span>
+                      <span className="font-medium">₹{Math.max(0, (watchedValues.amountGiven || 0) - (watchedValues.repairCost || 0)).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Verification Section */}
+              {transactionCreated && (
+                <div className="border border-brand-green/30 rounded-lg p-4 bg-brand-green/10 mt-4">
+                  <h3 className="font-medium mb-3 flex items-center gap-2 text-brand-green">
+                    <CheckCircle className="h-4 w-4" />
+                    Transaction Created Successfully
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="text-sm text-brand-green">
+                      <p>Transaction ID: {transactionCreated}</p>
+                      <p>Real-time updates enabled across all modules</p>
+                    </div>
+
+                    {watchedValues.paymentMethod !== "cash" && (
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+                          Payment Verification
+                        </Label>
+                        <PaymentStatusChecker
+                          transactionId={transactionCreated}
+                          expectedAmount={watchedValues.repairCost || 0}
+                          paymentMethod={watchedValues.paymentMethod}
+                          customerName={watchedValues.customerName}
+                          onPaymentConfirmed={(result) => {
+                            toast({
+                              title: "Payment Confirmed!",
+                              description: `Payment of ₹${result.amount.toLocaleString()} verified successfully.`,
+                            });
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+
             </CardContent>
           </Card>
         )}
@@ -738,26 +1055,34 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
             type="button"
             variant="outline"
             onClick={prevStep}
-            disabled={currentStep === 1}
-            className="min-w-[120px]"
+            disabled={currentStep === 1 || isSubmitting}
+            className="min-w-[120px] bg-white/5 hover:bg-white/10 border border-white/10 text-foreground"
           >
             Previous
           </Button>
 
           {currentStep < 4 ? (
             <Button
+              key="next-btn"
               type="button"
               onClick={nextStep}
-              className="min-w-[120px]"
+              className="min-w-[120px] bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg cursor-pointer min-h-[44px]"
             >
               Next
             </Button>
           ) : (
             <Button
+              key="submit-btn"
               type="submit"
-              className="min-w-[120px] bg-green-600 hover:bg-green-700"
+              className="min-w-[120px] bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg cursor-pointer min-h-[44px]"
+              disabled={isSubmitting}
             >
-              Create Transaction
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+                  Creating...
+                </span>
+              ) : "Create Transaction"}
             </Button>
           )}
         </div>

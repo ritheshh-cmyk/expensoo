@@ -103,14 +103,14 @@ export default function Dashboard() {
     };
     
     return statusColors[status.toLowerCase() as keyof typeof statusColors] || 
-           'bg-gray-100 text-gray-800 border-gray-200';
+           'bg-secondary text-foreground border-border';
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading dashboard...</span>
+        <span className="ml-2 text-muted-foreground">Loading dashboard...</span>
       </div>
     );
   }
@@ -120,8 +120,8 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
             Welcome back, {user?.full_name || user?.email}
           </p>
         </div>
@@ -234,10 +234,10 @@ export default function Dashboard() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-foreground">
                           {transaction.customer_name}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {transaction.type} • {new Date(transaction.created_at).toLocaleDateString()}
                         </p>
                       </div>
@@ -245,7 +245,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-semibold text-foreground">
                         {formatCurrency(transaction.amount)}
                       </p>
                       <p className="text-sm text-green-600">
@@ -263,7 +263,7 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No recent transactions found</p>
             </div>

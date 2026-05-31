@@ -289,10 +289,10 @@ export default function Dashboard() {
               <CardTitle className="text-sm font-medium">
                 Pending Repairs
               </CardTitle>
-              <Clock className="h-4 w-4 text-amber-600" />
+              <Clock className="h-4 w-4 text-brand-orange-dark" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-amber-600">
+              <div className="text-2xl font-bold text-brand-orange-dark">
                 {loading ? (
                   <div className="professional-skeleton w-12 h-6 rounded" />
                 ) : (

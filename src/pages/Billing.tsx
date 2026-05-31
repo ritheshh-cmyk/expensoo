@@ -102,10 +102,10 @@ export default function Billing() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      draft: { class: 'bg-gray-100 text-gray-800 border-gray-200', label: 'Draft' },
-      sent: { class: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Sent' },
-      paid: { class: 'bg-green-100 text-green-800 border-green-200', label: 'Paid' },
-      overdue: { class: 'bg-red-100 text-red-800 border-red-200', label: 'Overdue' },
+      draft:   { class: 'bg-secondary text-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border', label: 'Draft' },
+      sent:    { class: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800', label: 'Sent' },
+      paid:    { class: 'bg-green-100 text-green-800 border-green-200 dark:bg-brand-green/15 dark:text-brand-green dark:border-brand-green/20', label: 'Paid' },
+      overdue: { class: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800', label: 'Overdue' },
     };
     
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
@@ -128,8 +128,8 @@ export default function Billing() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Billing & Invoicing</h1>
-          <p className="text-gray-600 mt-1">Manage invoices and track payments</p>
+          <h1 className="text-3xl font-bold text-foreground">Billing & Invoicing</h1>
+          <p className="text-muted-foreground mt-1">Manage invoices and track payments</p>
         </div>
         <Button className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
@@ -190,7 +190,7 @@ export default function Billing() {
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder="Search invoices..."
                   value={searchTerm}
@@ -202,7 +202,7 @@ export default function Billing() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
@@ -217,24 +217,24 @@ export default function Billing() {
             {filteredInvoices.map((invoice) => {
               const statusConfig = getStatusBadge(invoice.status);
               return (
-                <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
                   <div className="flex-1">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{invoice.invoice_number}</h3>
-                        <p className="text-sm text-gray-600">{invoice.customer_name}</p>
-                        <p className="text-xs text-gray-500">{invoice.customer_email}</p>
+                        <h3 className="font-semibold text-foreground">{invoice.invoice_number}</h3>
+                        <p className="text-sm text-muted-foreground">{invoice.customer_name}</p>
+                        <p className="text-xs text-muted-foreground">{invoice.customer_email}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-lg text-gray-900">{formatCurrency(invoice.amount)}</p>
-                        <p className="text-sm text-gray-500">Due: {new Date(invoice.due_date).toLocaleDateString()}</p>
+                        <p className="font-bold text-lg text-foreground">{formatCurrency(invoice.amount)}</p>
+                        <p className="text-sm text-muted-foreground">Due: {new Date(invoice.due_date).toLocaleDateString()}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mt-3">
                       <Badge variant="outline" className={statusConfig.class}>
                         {statusConfig.label}
                       </Badge>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         Created: {new Date(invoice.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -263,7 +263,7 @@ export default function Billing() {
           </div>
           
           {filteredInvoices.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No invoices found matching your criteria</p>
             </div>
