@@ -99,16 +99,22 @@ export function EnhancedRBACProvider({ children }: { children: ReactNode }) {
   const isWorker = userRole === 'worker';
 
   const loadPermissions = async () => {
-    if (authLoading || !user) return;
-    
+    // If auth is still loading, wait — but don't leave loading=true forever
+    if (authLoading) return; // authLoading will flip → re-run via useEffect dep
+
+    if (!user) {
+      // No user → not loading permissions, just done
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await apiClient.makeRequest('/api/admin/permissions');
-      
+
       if (response.success && response.data) {
         setPermissions(response.data);
       } else {
-        // Use default permissions if none exist in database
         setPermissions(defaultPermissions);
       }
     } catch (error) {

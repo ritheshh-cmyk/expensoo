@@ -1,40 +1,41 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
- * IdleWarning — shows a floating countdown when the session is about to expire.
- * 
- * The session lifetime is set in AuthContext (SESSION_DURATION_MS = 15 min).
- * We warn the user 2 minutes before expiry.
- * 
- * AuthContext stores `loginTime` in localStorage when the user signs in.
- * We read that value to calculate how much time is left.
+ * IdleWarning — shows a floating countdown ONLY for admin users when the
+ * session is about to expire (< 2 minutes remaining).
+ *
+ * Reads `session_started_at` written by AuthContext on every login.
+ * SESSION_DURATION_MS must match the value in AuthContext (15 min).
  */
 
-const SESSION_MS = 15 * 60 * 1000;   // 15 minutes — must match AuthContext
+const SESSION_MS    = 15 * 60 * 1000;  // must match AuthContext SESSION_DURATION_MS
 const WARN_BEFORE_MS = 2 * 60 * 1000; // warn 2 minutes before expiry
+const SESSION_KEY   = 'session_started_at'; // must match AuthContext SESSION_START_KEY
 
 export function IdleWarning() {
+  const { user } = useAuth();
   const [remaining, setRemaining] = useState<number | null>(null);
 
-  useEffect(() => {
-    const tick = () => {
-      // AuthContext may use 'loginTime', 'session_started_at', or similar key.
-      // Try both so we don't need to edit AuthContext.
-      const raw =
-        localStorage.getItem('loginTime') ??
-        localStorage.getItem('session_started_at') ??
-        sessionStorage.getItem('loginTime');
+  // Only admins see this warning — all other roles return null immediately
+  const isAdmin = user?.role === 'admin';
 
-      if (!raw) {
-        setRemaining(null);
-        return;
-      }
+  useEffect(() => {
+    // Non-admins: skip entirely — no timer needed
+    if (!isAdmin) {
+      setRemaining(null);
+      return;
+    }
+
+    const tick = () => {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) { setRemaining(null); return; }
 
       const loginAt = parseInt(raw, 10);
       if (isNaN(loginAt)) { setRemaining(null); return; }
 
       const elapsed = Date.now() - loginAt;
-      const left = SESSION_MS - elapsed;
+      const left    = SESSION_MS - elapsed;
 
       if (left > 0 && left <= WARN_BEFORE_MS) {
         setRemaining(Math.ceil(left / 1000));
@@ -43,25 +44,26 @@ export function IdleWarning() {
       }
     };
 
-    tick(); // run immediately
+    tick(); // run immediately on mount / role change
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [isAdmin]);
 
-  if (remaining === null) return null;
+  // Not admin or not in warning window — render nothing
+  if (!isAdmin || remaining === null) return null;
 
-  const mins = Math.floor(remaining / 60);
-  const secs = remaining % 60;
+  const mins       = Math.floor(remaining / 60);
+  const secs       = remaining % 60;
   const paddedSecs = String(secs).padStart(2, '0');
-  const isUrgent = remaining <= 60; // turn red in the last minute
+  const isUrgent   = remaining <= 60; // red in the last minute
 
   return (
     <div
       className={`
         fixed bottom-[72px] sm:bottom-6 left-1/2 -translate-x-1/2 z-50
-        flex items-center gap-2 px-4 py-2 rounded-full shadow-lg
+        flex items-center gap-2 px-4 py-2 rounded-full shadow-xl
         text-sm font-semibold select-none pointer-events-none
-        transition-colors duration-300
+        transition-colors duration-300 whitespace-nowrap
         ${isUrgent
           ? 'bg-red-500 text-white animate-pulse'
           : 'bg-amber-400 text-amber-900'}
@@ -70,9 +72,7 @@ export function IdleWarning() {
       aria-live="polite"
     >
       <span>⏰</span>
-      <span>
-        Session expires in {mins}:{paddedSecs}
-      </span>
+      <span>Admin session expires in {mins}:{paddedSecs}</span>
     </div>
   );
 }

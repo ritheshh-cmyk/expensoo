@@ -27,14 +27,15 @@ import {
 } from 'lucide-react';
 
 export default function AdminPage() {
-  const { user } = useAuth();
-  const { isAdmin, permissions, loading } = useEnhancedRBAC();
+  const { user, loading: authLoading } = useAuth();
+  const { permissions } = useEnhancedRBAC();
 
-  // Derive admin status directly from user.role as a reliable fallback
-  const isAdminUser = isAdmin || user?.role?.toLowerCase() === 'admin';
+  // ── Admin gate: trust ONLY AuthContext (ground truth) ──────────────────────
+  // Never gate on RBAC loading — it can be slow or fail. AuthContext is the
+  // single source of truth for user identity and role.
 
-  // Show spinner while RBAC is still loading — prevents flash of "Access Required"
-  if (loading) {
+  // Still loading auth state — show spinner
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full" />
@@ -42,7 +43,9 @@ export default function AdminPage() {
     );
   }
 
-  // Admin-only access check
+  // Auth resolved — check role directly (covers 'admin', 'Admin', 'ADMIN')
+  const isAdminUser = user?.role?.toLowerCase() === 'admin';
+
   if (!isAdminUser) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
