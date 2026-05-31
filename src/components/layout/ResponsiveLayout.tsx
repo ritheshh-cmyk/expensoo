@@ -147,17 +147,9 @@ export function ResponsiveLayout({
   };
 
   const getContentClasses = () => {
-    const classes = [
-      'flex-1',
-      'flex',
-      'flex-col',
-      'overflow-hidden'
-    ];
-
-    if (deviceInfo.isMobile) {
-      classes.push('min-h-0'); // Allow flex shrinking on mobile
-    }
-
+    // NOTE: Do NOT add overflow-hidden here — it kills trackpad scroll momentum
+    const classes = ['flex-1', 'flex', 'flex-col'];
+    if (deviceInfo.isMobile) classes.push('min-h-0');
     return cn(classes);
   };
 
@@ -232,8 +224,8 @@ export function ResponsiveLayout({
             </header>
           )}
 
-          {/* Main Content */}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Main Content — overflow-x-clip NOT hidden, preserves scroll momentum */}
+          <main className="flex-1 overflow-y-auto overflow-x-clip">
             <div className={cn(
               'container mx-auto',
               // Responsive padding

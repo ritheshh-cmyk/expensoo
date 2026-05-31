@@ -7,7 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import {
   Shield, Trash2, RefreshCw, UserPlus, KeyRound,
   ChevronDown, Check, X, Eye, EyeOff, Loader2,
-  Calendar, Clock, User, ShieldCheck,
+  Calendar, Clock, User, ShieldCheck, Pencil,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -181,16 +181,77 @@ function ResetPasswordForm({ userId, username, onDone }: { userId: number; usern
   );
 }
 
+// ── Inline Edit Username form ───────────────────────────────────────────────────────────
+function EditUsernameForm({
+  userId, currentUsername, onDone,
+}: { userId: number; currentUsername: string; onDone: (newName: string) => void }) {
+  const [value, setValue]   = useState(currentUsername);
+  const [busy, setBusy]     = useState(false);
+  const [err, setErr]       = useState('');
+
+  const submit = async () => {
+    setErr('');
+    const trimmed = value.trim();
+    if (!trimmed)                  { setErr('Username cannot be empty'); return; }
+    if (trimmed === currentUsername) { onDone(currentUsername); return; }
+    if (trimmed.length < 3)        { setErr('Min 3 characters'); return; }
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) { setErr('Only letters, numbers, underscores'); return; }
+    setBusy(true);
+    try {
+      const res = await fetch(`${BASE}/api/auth/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ username: trimmed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to update username');
+      toast({ title: '✅ Username updated', description: `Renamed to "${trimmed}"` });
+      onDone(trimmed);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+      <p className="text-xs font-semibold text-blue-800 flex items-center gap-1.5">
+        <Pencil className="h-3.5 w-3.5" /> Edit username
+      </p>
+      {err && <p className="text-xs text-red-500">{err}</p>}
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onDone(currentUsername); }}
+          className="h-9 text-sm flex-1"
+          placeholder="New username"
+          autoFocus
+        />
+        <Button size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-white" onClick={submit} disabled={busy}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-9" onClick={() => onDone(currentUsername)}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export function UserManagement() {
   const { user: me } = useAuth();
-  const [users, setUsers]           = useState<any[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
-  const [editRoleId, setEditRoleId] = useState<number | null>(null);
-  const [resetPwId, setResetPwId]   = useState<number | null>(null);
-  const [savingRole, setSavingRole] = useState<number | null>(null);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [users, setUsers]               = useState<any[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
+  const [editRoleId, setEditRoleId]     = useState<number | null>(null);
+  const [resetPwId, setResetPwId]       = useState<number | null>(null);
+  const [editUsernameId, setEditUsernameId] = useState<number | null>(null);
+  const [savingRole, setSavingRole]     = useState<number | null>(null);
+  const [expandedId, setExpandedId]     = useState<number | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true); setError(null);
@@ -244,6 +305,11 @@ export function UserManagement() {
     finally { setSavingRole(null); }
   };
 
+  const handleUsernameUpdate = (id: number, newUsername: string) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, username: newUsername } : u));
+    setEditUsernameId(null);
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4 flex-wrap pb-4">
@@ -285,10 +351,11 @@ export function UserManagement() {
           <div className="space-y-2">
             {users.map(user => {
               const meta      = roleMeta[user.role?.toLowerCase()] ?? roleMeta.worker;
-              const isSelf    = me?.id === String(user.id) || me?.username === user.username;
-              const isEditing = editRoleId === user.id;
-              const isReset   = resetPwId  === user.id;
-              const isExpanded = expandedId === user.id;
+              const isSelf       = me?.id === String(user.id) || me?.username === user.username;
+              const isEditing    = editRoleId === user.id;
+              const isReset      = resetPwId  === user.id;
+              const isEditingName = editUsernameId === user.id;
+              const isExpanded   = expandedId === user.id;
 
               return (
                 <div key={user.id} className="border rounded-xl overflow-hidden hover:border-primary/30 transition-colors">
@@ -328,7 +395,19 @@ export function UserManagement() {
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                         <div className="space-y-0.5">
                           <p className="text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" /> Username</p>
-                          <p className="font-medium">{user.username}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium">{user.username}</p>
+                            {!isSelf && (
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                                title="Edit username"
+                                onClick={e => { e.stopPropagation(); setEditUsernameId(isEditingName ? null : user.id); setEditRoleId(null); setResetPwId(null); }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div className="space-y-0.5">
                           <p className="text-muted-foreground flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Role</p>
@@ -404,6 +483,15 @@ export function UserManagement() {
                           </Button>
                         )}
                       </div>
+
+                      {/* Inline edit username form */}
+                      {isEditingName && (
+                        <EditUsernameForm
+                          userId={user.id}
+                          currentUsername={user.username}
+                          onDone={newName => handleUsernameUpdate(user.id, newName)}
+                        />
+                      )}
 
                       {/* Inline reset pw form */}
                       {isReset && (

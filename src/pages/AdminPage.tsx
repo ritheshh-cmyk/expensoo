@@ -1,162 +1,168 @@
-import { useRef } from 'react';
-import { AdminControlSystem } from '@/components/admin/AdminControlSystem';
-import { UserManagement } from '@/components/admin/UserManagement';
-import { AuditLogPanel } from '@/components/admin/AuditLogPanel';
-import { DataExportPanel } from '@/components/admin/DataExportPanel';
-import { SessionsPanel } from '@/components/admin/SessionsPanel';
-import { SystemStatsPanel } from '@/components/admin/SystemStatsPanel';
-import { ResponsiveContainer } from '@/components/layout/ResponsiveLayout';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { useState, lazy, Suspense, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
 import {
-  Shield, Users, Settings, Activity, BarChart3,
-  Download, Monitor, Clock, Zap,
+  Shield, Users, Activity, Download, Monitor,
+  Zap, BarChart3, ChevronRight, Loader2,
 } from 'lucide-react';
 
+// ── Lazy-load every heavy panel — only renders when its tab is active ──────────
+const UserManagement   = lazy(() => import('@/components/admin/UserManagement').then(m => ({ default: m.UserManagement })));
+const AdminControlSystem = lazy(() => import('@/components/admin/AdminControlSystem').then(m => ({ default: m.AdminControlSystem })));
+const AuditLogPanel    = lazy(() => import('@/components/admin/AuditLogPanel').then(m => ({ default: m.AuditLogPanel })));
+const DataExportPanel  = lazy(() => import('@/components/admin/DataExportPanel').then(m => ({ default: m.DataExportPanel })));
+const SessionsPanel    = lazy(() => import('@/components/admin/SessionsPanel').then(m => ({ default: m.SessionsPanel })));
+const SystemStatsPanel = lazy(() => import('@/components/admin/SystemStatsPanel').then(m => ({ default: m.SystemStatsPanel })));
+
+// ── Tab definitions ────────────────────────────────────────────────────────────
+const TABS = [
+  { id: 'overview',     label: 'Overview',    shortLabel: 'Stats',   icon: BarChart3, color: 'text-purple-500' },
+  { id: 'users',        label: 'Users',       shortLabel: 'Users',   icon: Users,     color: 'text-blue-500'   },
+  { id: 'permissions',  label: 'Permissions', shortLabel: 'Perms',   icon: Zap,       color: 'text-yellow-500' },
+  { id: 'audit',        label: 'Audit Log',   shortLabel: 'Audit',   icon: Activity,  color: 'text-indigo-500' },
+  { id: 'export',       label: 'Export',      shortLabel: 'Export',  icon: Download,  color: 'text-green-500'  },
+  { id: 'sessions',     label: 'Sessions',    shortLabel: 'Sessions',icon: Monitor,   color: 'text-cyan-500'   },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
+
+// ── Skeleton loader for panels ─────────────────────────────────────────────────
+function PanelSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse pt-2">
+      <div className="h-32 rounded-xl bg-muted/60" />
+      <div className="h-20 rounded-xl bg-muted/40" />
+      <div className="h-20 rounded-xl bg-muted/40" />
+      <div className="h-20 rounded-xl bg-muted/40" />
+    </div>
+  );
+}
+
+// ── Tab bar — horizontal scroll on mobile, wraps on desktop ───────────────────
+function TabBar({ active, onChange }: { active: TabId; onChange: (id: TabId) => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll active tab into view on mobile
+  useEffect(() => {
+    const el = scrollRef.current?.querySelector(`[data-tab="${active}"]`) as HTMLElement;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [active]);
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex gap-1 overflow-x-auto no-scrollbar pb-0.5 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap"
+      role="tablist"
+    >
+      {TABS.map(tab => {
+        const Icon = tab.icon;
+        const isActive = active === tab.id;
+        return (
+          <button
+            key={tab.id}
+            data-tab={tab.id}
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(tab.id)}
+            className={[
+              'flex items-center gap-2 shrink-0 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+              'min-h-[44px] min-w-[44px] active:scale-95 select-none',
+              isActive
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            ].join(' ')}
+          >
+            <Icon className={`h-4 w-4 shrink-0 ${isActive ? '' : tab.color}`} />
+            {/* Short label on small screens, full label on sm+ */}
+            <span className="sm:hidden">{tab.shortLabel}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
 
-  // Section refs for scroll-to navigation
-  const usersRef   = useRef<HTMLDivElement>(null);
-  const rbacRef    = useRef<HTMLDivElement>(null);
-  const auditRef   = useRef<HTMLDivElement>(null);
-  const exportRef  = useRef<HTMLDivElement>(null);
-  const sessionRef = useRef<HTMLDivElement>(null);
-
-  const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  // ── Admin gate: only AuthContext ─────────────────────────────────────────────
+  // ── Loading state ──────────────────────────────────────────────────────────
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
 
-  const isAdminUser = user?.role?.toLowerCase() === 'admin';
-
-  if (!isAdminUser) {
+  // ── Admin gate ─────────────────────────────────────────────────────────────
+  if (user?.role?.toLowerCase() !== 'admin') {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center space-y-4">
-          <Shield className="h-16 w-16 text-red-500 mx-auto" />
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="h-20 w-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
+            <Shield className="h-10 w-10 text-red-500" />
+          </div>
           <div>
             <h2 className="text-2xl font-bold">Admin Access Required</h2>
-            <p className="text-muted-foreground">Only administrators can access this page.</p>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Only administrators can access this page.
+            </p>
           </div>
+          <Badge variant="outline" className="gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-orange-400 inline-block" />
+            Logged in as: <strong>{user?.username}</strong> · {user?.role}
+          </Badge>
         </div>
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer maxWidth="full" padding="md">
-      <div className="space-y-10">
+    <div className="space-y-4 max-w-5xl mx-auto">
 
-        {/* ── Page Header ─────────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Administration</h1>
-            <p className="text-muted-foreground mt-1">
-              Full system control — users, permissions, sessions, exports, audit trail
-            </p>
+      {/* ── Page Header — compact on mobile ─────────────────────────────── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
+              Administration
+            </h1>
+            <Badge variant="outline" className="shrink-0 hidden sm:flex gap-1.5 text-xs">
+              <Shield className="h-3 w-3 text-red-500" />
+              {user?.username}
+            </Badge>
           </div>
-          <Badge variant="outline" className="flex items-center gap-2 w-fit shrink-0 py-1.5 px-3">
-            <Shield className="h-4 w-4 text-red-500" />
-            <span className="font-semibold">{user?.name ?? user?.username}</span>
-            <span className="text-muted-foreground">· Admin</span>
-          </Badge>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5 flex items-center gap-1">
+            <ChevronRight className="h-3 w-3" />
+            Full system control
+          </p>
         </div>
-
-        {/* ── Quick Action Nav ─────────────────────────────────────────────── */}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => scrollTo(usersRef)}>
-            <Users className="h-4 w-4 mr-1.5" /> Users
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => scrollTo(rbacRef)}>
-            <Settings className="h-4 w-4 mr-1.5" /> Permissions
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => scrollTo(auditRef)}>
-            <Activity className="h-4 w-4 mr-1.5" /> Audit Log
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => scrollTo(exportRef)}>
-            <Download className="h-4 w-4 mr-1.5" /> Export Data
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => scrollTo(sessionRef)}>
-            <Monitor className="h-4 w-4 mr-1.5" /> Sessions
-          </Button>
-        </div>
-
-        {/* ── Live System Stats (real backend data) ────────────────────────── */}
-        <SystemStatsPanel />
-
-        {/* ── User Management ──────────────────────────────────────────────── */}
-        <section ref={usersRef} className="scroll-mt-20">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="h-5 w-5 text-blue-500" />
-            <h2 className="text-xl font-semibold">User Management</h2>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Create accounts, change roles, force-reset passwords, delete users
-          </p>
-          <UserManagement />
-        </section>
-
-        {/* ── RBAC Permission Controls ──────────────────────────────────────── */}
-        <section ref={rbacRef} className="scroll-mt-20">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="h-5 w-5 text-yellow-500" />
-            <h2 className="text-xl font-semibold">Role Permissions</h2>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Control which pages and features Owner and Worker roles can access
-          </p>
-          <AdminControlSystem />
-        </section>
-
-        {/* ── Audit Log ─────────────────────────────────────────────────────── */}
-        <section ref={auditRef} className="scroll-mt-20">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock className="h-5 w-5 text-indigo-500" />
-            <h2 className="text-xl font-semibold">Audit Log</h2>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Last 200 security events — logins, role changes, password resets, deletions
-          </p>
-          <AuditLogPanel />
-        </section>
-
-        {/* ── Data Export ───────────────────────────────────────────────────── */}
-        <section ref={exportRef} className="scroll-mt-20">
-          <div className="flex items-center gap-2 mb-2">
-            <Download className="h-5 w-5 text-green-500" />
-            <h2 className="text-xl font-semibold">Data Export</h2>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Download users, transactions and suppliers as CSV for accounting/backup
-          </p>
-          <DataExportPanel />
-        </section>
-
-        {/* ── Active Sessions ───────────────────────────────────────────────── */}
-        <section ref={sessionRef} className="scroll-mt-20">
-          <div className="flex items-center gap-2 mb-2">
-            <Monitor className="h-5 w-5 text-cyan-500" />
-            <h2 className="text-xl font-semibold">Active Sessions</h2>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            All logged-in devices across all users — revoke any suspicious session instantly
-          </p>
-          <SessionsPanel />
-        </section>
-
-        {/* Bottom padding for mobile nav */}
-        <div className="h-6" />
+        {/* Mobile admin badge */}
+        <Badge variant="outline" className="sm:hidden shrink-0 gap-1 text-xs py-1 px-2">
+          <Shield className="h-3 w-3 text-red-500" />
+          Admin
+        </Badge>
       </div>
-    </ResponsiveContainer>
+
+      {/* ── Sticky tab bar — sticks below header on mobile ──────────────── */}
+      <div className="sticky top-[57px] z-10 bg-background/95 backdrop-blur-sm py-2 border-b -mx-4 px-4 sm:mx-0 sm:px-0 sm:relative sm:top-auto sm:z-auto sm:bg-transparent sm:backdrop-blur-none sm:border-b-0 sm:py-0">
+        <TabBar active={activeTab} onChange={setActiveTab} />
+      </div>
+
+      {/* ── Panel content — only active tab rendered ─────────────────────── */}
+      <div className="pb-20 lg:pb-6">
+        <Suspense fallback={<PanelSkeleton />}>
+          {activeTab === 'overview'    && <SystemStatsPanel />}
+          {activeTab === 'users'       && <UserManagement />}
+          {activeTab === 'permissions' && <AdminControlSystem />}
+          {activeTab === 'audit'       && <AuditLogPanel />}
+          {activeTab === 'export'      && <DataExportPanel />}
+          {activeTab === 'sessions'    && <SessionsPanel />}
+        </Suspense>
+      </div>
+    </div>
   );
 }

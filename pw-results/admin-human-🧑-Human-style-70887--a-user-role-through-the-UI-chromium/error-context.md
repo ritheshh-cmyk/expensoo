@@ -1,0 +1,765 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: admin-human.spec.ts >> 🧑 Human-style E2E — Admin Full Journey >> Step 5 — Admin changes a user role through the UI
+- Location: e2e\admin-human.spec.ts:172:3
+
+# Error details
+
+```
+Error: expect(locator).toBeVisible() failed
+
+Locator: locator('.border.rounded-xl').filter({ hasText: /e2etestuser/i }).first()
+Expected: visible
+Timeout: 10000ms
+Error: element(s) not found
+
+Call log:
+  - Expect "toBeVisible" with timeout 10000ms
+  - waiting for locator('.border.rounded-xl').filter({ hasText: /e2etestuser/i }).first()
+
+```
+
+```yaml
+- img
+- heading "CallMeMobiles" [level=1]
+- paragraph: Mobile Repair Tracker
+- navigation:
+  - list:
+    - listitem:
+      - link "Dashboard":
+        - /url: /dashboard
+        - img
+        - text: Dashboard
+    - listitem:
+      - link "Transactions":
+        - /url: /transactions
+        - img
+        - text: Transactions
+    - listitem:
+      - link "Suppliers":
+        - /url: /suppliers
+        - img
+        - text: Suppliers
+    - listitem:
+      - link "Expenditures":
+        - /url: /expenditures
+        - img
+        - text: Expenditures
+    - listitem:
+      - link "Bills":
+        - /url: /bills
+        - img
+        - text: Bills
+    - listitem:
+      - link "Reports":
+        - /url: /reports
+        - img
+        - text: Reports
+    - listitem:
+      - link "Settings":
+        - /url: /settings
+        - img
+        - text: Settings
+    - listitem:
+      - link "admin":
+        - /url: /admin
+        - img
+        - text: admin
+    - listitem:
+      - text: Logged in as admin
+      - button "Sign out":
+        - img
+        - text: Sign out
+- banner:
+  - heading "CallMeMobiles" [level=1]
+  - paragraph: Professional Repair Management
+  - text: System Online
+  - button:
+    - img
+  - button "Notifications":
+    - img
+    - text: Notifications
+  - button "admin admin":
+    - img
+    - text: admin
+    - img
+    - text: admin
+    - img
+- navigation:
+  - link:
+    - /url: /
+    - img
+  - img
+  - text: admin
+- main:
+  - heading "Administration" [level=1]
+  - paragraph: Full system control — users, permissions, sessions, exports, audit trail
+  - img
+  - text: admin · Admin
+  - button "Users":
+    - img
+    - text: Users
+  - button "Permissions":
+    - img
+    - text: Permissions
+  - button "Audit Log":
+    - img
+    - text: Audit Log
+  - button "Export Data":
+    - img
+    - text: Export Data
+  - button "Sessions":
+    - img
+    - text: Sessions
+  - img
+  - heading "Live System Stats" [level=2]
+  - text: · Updated 7:59:19 PM
+  - button "Refresh":
+    - img
+    - text: Refresh
+  - paragraph: Total Users
+  - paragraph: "5"
+  - paragraph: 1 admin · 1 owner · 3 worker
+  - img
+  - paragraph: Transactions
+  - paragraph: "6"
+  - paragraph: 0 today
+  - img
+  - paragraph: Total Revenue
+  - paragraph: ₹17.0K
+  - paragraph: ₹0 today
+  - img
+  - paragraph: Suppliers
+  - paragraph: "4"
+  - img
+  - paragraph: Active Sessions
+  - paragraph: "23"
+  - img
+  - paragraph: Audit Events
+  - paragraph: "32"
+  - img
+  - paragraph: Server Time
+  - paragraph: 7:59:18 PM
+  - paragraph: IST / UTC
+  - img
+  - img
+  - heading "User Management" [level=2]
+  - paragraph: Create accounts, change roles, force-reset passwords, delete users
+  - heading "User Management" [level=3]:
+    - img
+    - text: User Management
+  - paragraph: Full control — create, roles, passwords, delete
+  - button "Refresh":
+    - img
+    - text: Refresh
+  - button "Create User":
+    - img
+    - text: Create User
+  - text: "a admin (you) ID #1 Admin"
+  - img
+  - text: "r rajshekhar ID #2 Owner"
+  - img
+  - text: "s sravan ID #3 Worker"
+  - img
+  - text: "w worker_1780237385294 ID #4 Worker"
+  - img
+  - text: "w workerui_1780237445900 ID #5 Worker"
+  - img
+  - paragraph: 5 users total
+  - img
+  - heading "Role Permissions" [level=2]
+  - paragraph: Control which pages and features Owner and Worker roles can access
+  - heading "Admin Control System" [level=3]:
+    - img
+    - text: Admin Control System
+  - paragraph: Control access to pages and features for Owners and Workers
+  - button "Save Changes" [disabled]:
+    - img
+    - text: Save Changes
+  - button "Enable All Owner":
+    - img
+    - text: Enable All Owner
+  - button "Disable All Owner":
+    - img
+    - text: Disable All Owner
+  - button "Enable All Worker":
+    - img
+    - text: Enable All Worker
+  - button "Disable All Worker":
+    - img
+    - text: Disable All Worker
+  - text: 8 Owner Access 4 Worker Access 4 Categories 8 Total Features
+  - heading "Core Features" [level=3]
+  - paragraph: Manage access to core related features
+  - img
+  - text: "Dashboard Main business overview and analytics Owner:"
+  - switch [checked]
+  - img
+  - text: "Worker:"
+  - switch [checked]
+  - img
+  - img
+  - text: "Repairs Device repair management Owner:"
+  - switch [checked]
+  - img
+  - text: "Worker:"
+  - switch [checked]
+  - img
+  - img
+  - text: "Customers Customer management and history Owner:"
+  - switch [checked]
+  - img
+  - text: "Worker:"
+  - switch [checked]
+  - img
+  - heading "Operations Features" [level=3]
+  - paragraph: Manage access to operations related features
+  - img
+  - text: "Suppliers Supplier management and payments Owner:"
+  - switch [checked]
+  - img
+  - text: "Worker:"
+  - switch
+  - img
+  - img
+  - text: "Services Service types and pricing Owner:"
+  - switch [checked]
+  - img
+  - text: "Worker:"
+  - switch
+  - img
+  - heading "Finance Features" [level=3]
+  - paragraph: Manage access to finance related features
+  - img
+  - text: "Transactions Transaction history and management Owner:"
+  - switch [checked]
+  - img
+  - text: "Worker:"
+  - switch [checked]
+  - img
+  - img
+  - text: "Calculations Profit/loss calculations Owner:"
+  - switch [checked]
+  - img
+  - text: "Worker:"
+  - switch
+  - img
+  - heading "Analytics Features" [level=3]
+  - paragraph: Manage access to analytics related features
+  - img
+  - text: "Reports Business reports and analytics Owner:"
+  - switch [checked]
+  - img
+  - text: "Worker:"
+  - switch
+  - img
+  - heading "Reset Permissions" [level=3]
+  - paragraph: Restore default access controls for all roles
+  - button "Reset to Defaults":
+    - img
+    - text: Reset to Defaults
+  - img
+  - heading "Audit Log" [level=2]
+  - paragraph: Last 200 security events — logins, role changes, password resets, deletions
+  - heading "Audit Log" [level=3]:
+    - img
+    - text: Audit Log
+  - text: "Last updated: 7:59:19 PM"
+  - button "Refresh":
+    - img
+    - text: Refresh
+  - paragraph: Last 100 security events — login attempts, role changes, and deletions
+  - table:
+    - rowgroup:
+      - row "Timestamp Action Actor Target IP Status Details":
+        - columnheader "Timestamp"
+        - columnheader "Action"
+        - columnheader "Actor"
+        - columnheader "Target"
+        - columnheader "IP"
+        - columnheader "Status"
+        - columnheader "Details"
+    - rowgroup:
+      - row "5/31/2026, 7:59:17 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:59:17 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:57:51 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:57:51 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:57:29 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:57:29 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:57:14 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:57:14 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:57:08 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:57:08 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:56:03 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:56:03 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:54:32 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:54:32 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:54:17 PM LOGIN workerui_1780237445900 — ::1 Success Successful login":
+        - cell "5/31/2026, 7:54:17 PM"
+        - cell "LOGIN"
+        - cell "workerui_1780237445900"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:54:06 PM CREATE USER admin workerui_1780237445900 ::1 Success Created user 'workerui_1780237445900' with role 'worker'":
+        - cell "5/31/2026, 7:54:06 PM"
+        - cell "CREATE USER"
+        - cell "admin"
+        - cell "workerui_1780237445900"
+        - cell "::1"
+        - cell "Success"
+        - cell "Created user 'workerui_1780237445900' with role 'worker'"
+      - row "5/31/2026, 7:54:05 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:54:05 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:56 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:56 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:42 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:42 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:21 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:21 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:21 PM LOGIN FAILED testuser_1780237381257 — ::1 Failed Failed login attempt — user not found":
+        - cell "5/31/2026, 7:53:21 PM"
+        - cell "LOGIN FAILED"
+        - cell "testuser_1780237381257"
+        - cell "—"
+        - cell "::1"
+        - cell "Failed"
+        - cell "Failed login attempt — user not found"
+      - row "5/31/2026, 7:53:20 PM DELETE USER admin testuser_1780237381257 ::1 Success User 'testuser_1780237381257' permanently deleted":
+        - cell "5/31/2026, 7:53:20 PM"
+        - cell "DELETE USER"
+        - cell "admin"
+        - cell "testuser_1780237381257"
+        - cell "::1"
+        - cell "Success"
+        - cell "User 'testuser_1780237381257' permanently deleted"
+      - row "5/31/2026, 7:53:19 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:19 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:18 PM LOGIN testuser_1780237381257 — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:18 PM"
+        - cell "LOGIN"
+        - cell "testuser_1780237381257"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:17 PM UPDATE ROLE admin testuser_1780237381257 ::1 Success Role changed to 'owner'":
+        - cell "5/31/2026, 7:53:17 PM"
+        - cell "UPDATE ROLE"
+        - cell "admin"
+        - cell "testuser_1780237381257"
+        - cell "::1"
+        - cell "Success"
+        - cell "Role changed to 'owner'"
+      - row "5/31/2026, 7:53:14 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:14 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:14 PM LOGIN FAILED testuser_1780237381257 — ::1 Failed Failed login attempt — wrong password":
+        - cell "5/31/2026, 7:53:14 PM"
+        - cell "LOGIN FAILED"
+        - cell "testuser_1780237381257"
+        - cell "—"
+        - cell "::1"
+        - cell "Failed"
+        - cell "Failed login attempt — wrong password"
+      - row "5/31/2026, 7:53:13 PM LOGIN testuser_1780237381257 — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:13 PM"
+        - cell "LOGIN"
+        - cell "testuser_1780237381257"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:12 PM CHANGE PWD admin testuser_1780237381257 ::1 Success Admin force-reset user password":
+        - cell "5/31/2026, 7:53:12 PM"
+        - cell "CHANGE PWD"
+        - cell "admin"
+        - cell "testuser_1780237381257"
+        - cell "::1"
+        - cell "Success"
+        - cell "Admin force-reset user password"
+      - row "5/31/2026, 7:53:11 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:11 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:09 PM LOGIN testuser_1780237381257 — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:09 PM"
+        - cell "LOGIN"
+        - cell "testuser_1780237381257"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:08 PM CREATE USER admin testuser_1780237381257 ::1 Success Created user 'testuser_1780237381257' with role 'worker'":
+        - cell "5/31/2026, 7:53:08 PM"
+        - cell "CREATE USER"
+        - cell "admin"
+        - cell "testuser_1780237381257"
+        - cell "::1"
+        - cell "Success"
+        - cell "Created user 'testuser_1780237381257' with role 'worker'"
+      - row "5/31/2026, 7:53:07 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:07 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:06 PM LOGIN FAILED worker_1780237386217 — ::1 Failed Failed login attempt — user not found":
+        - cell "5/31/2026, 7:53:06 PM"
+        - cell "LOGIN FAILED"
+        - cell "worker_1780237386217"
+        - cell "—"
+        - cell "::1"
+        - cell "Failed"
+        - cell "Failed login attempt — user not found"
+      - row "5/31/2026, 7:53:05 PM CREATE USER admin worker_1780237385294 ::1 Success Created user 'worker_1780237385294' with role 'worker'":
+        - cell "5/31/2026, 7:53:05 PM"
+        - cell "CREATE USER"
+        - cell "admin"
+        - cell "worker_1780237385294"
+        - cell "::1"
+        - cell "Success"
+        - cell "Created user 'worker_1780237385294' with role 'worker'"
+      - row "5/31/2026, 7:53:04 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:04 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:03 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:03 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:53:02 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:53:02 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+      - row "5/31/2026, 7:52:44 PM LOGIN admin — ::1 Success Successful login":
+        - cell "5/31/2026, 7:52:44 PM"
+        - cell "LOGIN"
+        - cell "admin"
+        - cell "—"
+        - cell "::1"
+        - cell "Success"
+        - cell "Successful login"
+  - img
+  - heading "Data Export" [level=2]
+  - paragraph: Download users, transactions and suppliers as CSV for accounting/backup
+  - heading "Data Export" [level=3]:
+    - img
+    - text: Data Export
+  - paragraph: Export system data to CSV for accounting and backup purposes
+  - img
+  - text: Users All user accounts and roles
+  - button "Export CSV":
+    - img
+    - text: Export CSV
+  - img
+  - text: Transactions All transaction records
+  - button "Export CSV":
+    - img
+    - text: Export CSV
+  - img
+  - text: Suppliers Supplier data with contact info
+  - button "Export CSV":
+    - img
+    - text: Export CSV
+  - paragraph: ⚠️ Exported data is sensitive. Store securely and comply with data protection regulations.
+  - img
+  - heading "Active Sessions" [level=2]
+  - paragraph: All logged-in devices across all users — revoke any suspicious session instantly
+  - heading "Active Sessions" [level=3]:
+    - img
+    - text: Active Sessions
+  - paragraph: All currently active user sessions across devices — revoke any suspicious ones
+  - button "Refresh":
+    - img
+    - text: Refresh
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: testuser_1780237381257
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: testuser_1780237381257
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: testuser_1780237381257
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 6m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 5m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 5m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 5m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 5m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: workerui_1780237445900
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 5m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 4m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 3m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 2m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 2m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 1m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active 1m ago ● Active
+  - button "Revoke session":
+    - img
+  - img
+  - text: admin
+  - img
+  - text: ::1 💻 Desktop
+  - img
+  - text: Active just now ● Active
+  - button "Revoke session":
+    - img
+  - paragraph: 23 active sessions • Sessions auto-expire after 24 hours of inactivity
+- region "Notifications (F8)":
+  - list
+```

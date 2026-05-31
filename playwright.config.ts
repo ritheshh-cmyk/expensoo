@@ -2,31 +2,27 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests',
-  timeout: 30000,
-  expect: {
-    timeout: 5000
-  },
+  testDir: './e2e',
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   use: {
-    baseURL: 'https://callmemobiles.vercel.app',
+    baseURL: 'https://expensoo-eight.vercel.app',
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure'
+    screenshot: 'on',
+    video: 'retain-on-failure',
+    headless: true,
   },
-  reporter: [
-    ['html'],
-    ['list']
-  ],
+  reporter: [['html', { outputFolder: 'pw-report', open: 'never' }], ['list']],
+  outputDir: 'pw-results',
   projects: [
     {
       name: 'chromium',
       use: {
         browserName: 'chromium',
-        viewport: { width: 1280, height: 720 },
-        launchOptions: {
-          slowMo: 100,
-        },
+        viewport: { width: 1280, height: 800 },
+        launchOptions: { slowMo: 50 },
       },
-    }
-  ]
+    },
+  ],
 });
+

@@ -1,0 +1,1231 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: admin-human.spec.ts >> 🧑 Human-style E2E — Admin Full Journey >> Step 4 — Admin creates a new user through the form
+- Location: e2e\admin-human.spec.ts:125:3
+
+# Error details
+
+```
+Test timeout of 90000ms exceeded.
+```
+
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e8]:
+        - img [ref=e10]
+        - generic [ref=e12]:
+          - heading "CallMeMobiles" [level=1] [ref=e13]
+          - paragraph [ref=e14]: Mobile Repair Tracker
+      - navigation [ref=e15]:
+        - list [ref=e16]:
+          - listitem [ref=e17]:
+            - link "Dashboard" [ref=e18] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e19]
+              - text: Dashboard
+          - listitem [ref=e24]:
+            - link "Transactions" [ref=e25] [cursor=pointer]:
+              - /url: /transactions
+              - img [ref=e26]
+              - text: Transactions
+          - listitem [ref=e28]:
+            - link "Suppliers" [ref=e29] [cursor=pointer]:
+              - /url: /suppliers
+              - img [ref=e30]
+              - text: Suppliers
+          - listitem [ref=e35]:
+            - link "Expenditures" [ref=e36] [cursor=pointer]:
+              - /url: /expenditures
+              - img [ref=e37]
+              - text: Expenditures
+          - listitem [ref=e40]:
+            - link "Bills" [ref=e41] [cursor=pointer]:
+              - /url: /bills
+              - img [ref=e42]
+              - text: Bills
+          - listitem [ref=e45]:
+            - link "Reports" [ref=e46] [cursor=pointer]:
+              - /url: /reports
+              - img [ref=e47]
+              - text: Reports
+          - listitem [ref=e50]:
+            - link "Settings" [ref=e51] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e52]
+              - text: Settings
+          - listitem [ref=e55]:
+            - link "admin" [ref=e56] [cursor=pointer]:
+              - /url: /admin
+              - img [ref=e57]
+              - text: admin
+          - listitem [ref=e59]:
+            - generic [ref=e60]:
+              - generic [ref=e61]: Logged in as
+              - generic [ref=e62]: admin
+            - button "Sign out" [ref=e63] [cursor=pointer]:
+              - img [ref=e64]
+              - text: Sign out
+    - generic [ref=e67]:
+      - banner [ref=e68]:
+        - generic [ref=e69]:
+          - generic [ref=e71]:
+            - heading "CallMeMobiles" [level=1] [ref=e72]
+            - paragraph [ref=e73]: Professional Repair Management
+          - generic [ref=e75]: System Online
+          - generic [ref=e77]:
+            - button [ref=e79] [cursor=pointer]:
+              - img [ref=e80]
+            - button "Notifications" [ref=e82] [cursor=pointer]:
+              - img [ref=e83]
+              - generic [ref=e86]: Notifications
+            - button "admin admin" [ref=e88] [cursor=pointer]:
+              - img [ref=e90]
+              - generic [ref=e93]:
+                - generic [ref=e94]: admin
+                - generic [ref=e95]:
+                  - img [ref=e96]
+                  - text: admin
+              - img [ref=e98]
+      - navigation [ref=e102]:
+        - link [ref=e103] [cursor=pointer]:
+          - /url: /
+          - img [ref=e104]
+        - generic [ref=e107]:
+          - img [ref=e108]
+          - generic [ref=e110]: admin
+      - main [ref=e111]:
+        - generic [ref=e115]:
+          - generic [ref=e116]:
+            - generic [ref=e117]:
+              - heading "Administration" [level=1] [ref=e118]
+              - paragraph [ref=e119]: Full system control — users, permissions, sessions, exports, audit trail
+            - generic [ref=e120]:
+              - img [ref=e121]
+              - generic [ref=e123]: admin
+              - generic [ref=e124]: · Admin
+          - generic [ref=e125]:
+            - button "Users" [ref=e126] [cursor=pointer]:
+              - img [ref=e127]
+              - text: Users
+            - button "Permissions" [ref=e132] [cursor=pointer]:
+              - img [ref=e133]
+              - text: Permissions
+            - button "Audit Log" [ref=e136] [cursor=pointer]:
+              - img [ref=e137]
+              - text: Audit Log
+            - button "Export Data" [ref=e139] [cursor=pointer]:
+              - img [ref=e140]
+              - text: Export Data
+            - button "Sessions" [ref=e143] [cursor=pointer]:
+              - img [ref=e144]
+              - text: Sessions
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - generic [ref=e148]:
+                - img [ref=e149]
+                - heading "Live System Stats" [level=2] [ref=e151]
+                - generic [ref=e152]: · Updated 7:58:58 PM
+              - button "Refresh" [ref=e153] [cursor=pointer]:
+                - img [ref=e154]
+                - text: Refresh
+            - generic [ref=e159]:
+              - generic [ref=e162]:
+                - generic [ref=e163]:
+                  - paragraph [ref=e164]: Total Users
+                  - paragraph [ref=e165]: "5"
+                  - paragraph [ref=e166]: 1 admin · 1 owner · 3 worker
+                - img [ref=e168]
+              - generic [ref=e175]:
+                - generic [ref=e176]:
+                  - paragraph [ref=e177]: Transactions
+                  - paragraph [ref=e178]: "6"
+                  - paragraph [ref=e179]: 0 today
+                - img [ref=e181]
+              - generic [ref=e186]:
+                - generic [ref=e187]:
+                  - paragraph [ref=e188]: Total Revenue
+                  - paragraph [ref=e189]: ₹17.0K
+                  - paragraph [ref=e190]: ₹0 today
+                - img [ref=e192]
+              - generic [ref=e197]:
+                - generic [ref=e198]:
+                  - paragraph [ref=e199]: Suppliers
+                  - paragraph [ref=e200]: "4"
+                - img [ref=e202]
+              - generic [ref=e208]:
+                - generic [ref=e209]:
+                  - paragraph [ref=e210]: Active Sessions
+                  - paragraph [ref=e211]: "22"
+                - img [ref=e213]
+              - generic [ref=e217]:
+                - generic [ref=e218]:
+                  - paragraph [ref=e219]: Audit Events
+                  - paragraph [ref=e220]: "31"
+                - img [ref=e222]
+              - generic [ref=e227]:
+                - generic [ref=e228]:
+                  - paragraph [ref=e229]: Server Time
+                  - paragraph [ref=e230]: 7:58:58 PM
+                  - paragraph [ref=e231]: IST / UTC
+                - img [ref=e233]
+          - generic [ref=e236]:
+            - generic [ref=e237]:
+              - img [ref=e238]
+              - heading "User Management" [level=2] [ref=e243]
+            - paragraph [ref=e244]: Create accounts, change roles, force-reset passwords, delete users
+            - generic [ref=e245]:
+              - generic [ref=e246]:
+                - generic [ref=e247]:
+                  - heading "User Management" [level=3] [ref=e248]:
+                    - img [ref=e249]
+                    - text: User Management
+                  - paragraph [ref=e251]: Full control — create, roles, passwords, delete
+                - button "Refresh" [ref=e253] [cursor=pointer]:
+                  - img [ref=e254]
+                  - text: Refresh
+              - generic [ref=e259]:
+                - generic [ref=e260]:
+                  - paragraph [ref=e261]:
+                    - img [ref=e262]
+                    - text: New User
+                  - generic [ref=e265]:
+                    - textbox "Username" [ref=e266]: e2etestuser
+                    - generic [ref=e267]:
+                      - 'textbox "Password (8+ chars, num, #)" [active] [ref=e268]': Test@9999
+                      - button [ref=e269] [cursor=pointer]:
+                        - img [ref=e270]
+                    - combobox [ref=e273]:
+                      - option "Worker"
+                      - option "Owner" [selected]
+                      - option "Admin"
+                  - generic [ref=e274]:
+                    - button "Create" [ref=e275] [cursor=pointer]:
+                      - img [ref=e276]
+                      - text: Create
+                    - button "Cancel" [ref=e278] [cursor=pointer]:
+                      - img [ref=e279]
+                      - text: Cancel
+                - generic [ref=e282]:
+                  - generic [ref=e284] [cursor=pointer]:
+                    - generic [ref=e285]:
+                      - generic [ref=e286]: a
+                      - generic [ref=e287]:
+                        - generic [ref=e288]:
+                          - text: admin
+                          - generic [ref=e289]: (you)
+                        - generic [ref=e290]: "ID #1"
+                    - generic [ref=e291]:
+                      - generic [ref=e292]: Admin
+                      - img [ref=e294]
+                  - generic [ref=e297] [cursor=pointer]:
+                    - generic [ref=e298]:
+                      - generic [ref=e299]: r
+                      - generic [ref=e300]:
+                        - generic [ref=e301]: rajshekhar
+                        - generic [ref=e302]: "ID #2"
+                    - generic [ref=e303]:
+                      - generic [ref=e304]: Owner
+                      - img [ref=e306]
+                  - generic [ref=e309] [cursor=pointer]:
+                    - generic [ref=e310]:
+                      - generic [ref=e311]: s
+                      - generic [ref=e312]:
+                        - generic [ref=e313]: sravan
+                        - generic [ref=e314]: "ID #3"
+                    - generic [ref=e315]:
+                      - generic [ref=e316]: Worker
+                      - img [ref=e318]
+                  - generic [ref=e321] [cursor=pointer]:
+                    - generic [ref=e322]:
+                      - generic [ref=e323]: w
+                      - generic [ref=e324]:
+                        - generic [ref=e325]: worker_1780237385294
+                        - generic [ref=e326]: "ID #4"
+                    - generic [ref=e327]:
+                      - generic [ref=e328]: Worker
+                      - img [ref=e330]
+                  - generic [ref=e333] [cursor=pointer]:
+                    - generic [ref=e334]:
+                      - generic [ref=e335]: w
+                      - generic [ref=e336]:
+                        - generic [ref=e337]: workerui_1780237445900
+                        - generic [ref=e338]: "ID #5"
+                    - generic [ref=e339]:
+                      - generic [ref=e340]: Worker
+                      - img [ref=e342]
+                - paragraph [ref=e344]: 5 users total
+          - generic [ref=e345]:
+            - generic [ref=e346]:
+              - img [ref=e347]
+              - heading "Role Permissions" [level=2] [ref=e349]
+            - paragraph [ref=e350]: Control which pages and features Owner and Worker roles can access
+            - generic [ref=e351]:
+              - generic [ref=e352]:
+                - generic [ref=e354]:
+                  - generic [ref=e355]:
+                    - heading "Admin Control System" [level=3] [ref=e356]:
+                      - img [ref=e357]
+                      - text: Admin Control System
+                    - paragraph [ref=e359]: Control access to pages and features for Owners and Workers
+                  - generic [ref=e360]:
+                    - button "Save Changes" [disabled]:
+                      - img
+                      - text: Save Changes
+                - generic [ref=e361]:
+                  - generic [ref=e362]:
+                    - button "Enable All Owner" [ref=e363] [cursor=pointer]:
+                      - img [ref=e364]
+                      - text: Enable All Owner
+                    - button "Disable All Owner" [ref=e368] [cursor=pointer]:
+                      - img [ref=e369]
+                      - text: Disable All Owner
+                    - button "Enable All Worker" [ref=e374] [cursor=pointer]:
+                      - img [ref=e375]
+                      - text: Enable All Worker
+                    - button "Disable All Worker" [ref=e379] [cursor=pointer]:
+                      - img [ref=e380]
+                      - text: Disable All Worker
+                  - generic [ref=e385]:
+                    - generic [ref=e386]:
+                      - generic [ref=e387]: "8"
+                      - generic [ref=e388]: Owner Access
+                    - generic [ref=e389]:
+                      - generic [ref=e390]: "4"
+                      - generic [ref=e391]: Worker Access
+                    - generic [ref=e392]:
+                      - generic [ref=e393]: "4"
+                      - generic [ref=e394]: Categories
+                    - generic [ref=e395]:
+                      - generic [ref=e396]: "8"
+                      - generic [ref=e397]: Total Features
+              - generic [ref=e398]:
+                - generic [ref=e399]:
+                  - generic [ref=e400]:
+                    - heading "Core Features" [level=3] [ref=e401]
+                    - paragraph [ref=e402]: Manage access to core related features
+                  - generic [ref=e404]:
+                    - generic [ref=e405]:
+                      - generic [ref=e406]:
+                        - img [ref=e407]
+                        - generic [ref=e412]:
+                          - generic [ref=e413]: Dashboard
+                          - generic [ref=e414]: Main business overview and analytics
+                      - generic [ref=e415]:
+                        - generic [ref=e416]:
+                          - generic [ref=e417]: "Owner:"
+                          - switch [checked] [ref=e418] [cursor=pointer]
+                          - img [ref=e419]
+                        - generic [ref=e422]:
+                          - generic [ref=e423]: "Worker:"
+                          - switch [checked] [ref=e424] [cursor=pointer]
+                          - img [ref=e425]
+                    - generic [ref=e428]:
+                      - generic [ref=e429]:
+                        - img [ref=e430]
+                        - generic [ref=e432]:
+                          - generic [ref=e433]: Repairs
+                          - generic [ref=e434]: Device repair management
+                      - generic [ref=e435]:
+                        - generic [ref=e436]:
+                          - generic [ref=e437]: "Owner:"
+                          - switch [checked] [ref=e438] [cursor=pointer]
+                          - img [ref=e439]
+                        - generic [ref=e442]:
+                          - generic [ref=e443]: "Worker:"
+                          - switch [checked] [ref=e444] [cursor=pointer]
+                          - img [ref=e445]
+                    - generic [ref=e448]:
+                      - generic [ref=e449]:
+                        - img [ref=e450]
+                        - generic [ref=e455]:
+                          - generic [ref=e456]: Customers
+                          - generic [ref=e457]: Customer management and history
+                      - generic [ref=e458]:
+                        - generic [ref=e459]:
+                          - generic [ref=e460]: "Owner:"
+                          - switch [checked] [ref=e461] [cursor=pointer]
+                          - img [ref=e462]
+                        - generic [ref=e465]:
+                          - generic [ref=e466]: "Worker:"
+                          - switch [checked] [ref=e467] [cursor=pointer]
+                          - img [ref=e468]
+                - generic [ref=e471]:
+                  - generic [ref=e472]:
+                    - heading "Operations Features" [level=3] [ref=e473]
+                    - paragraph [ref=e474]: Manage access to operations related features
+                  - generic [ref=e476]:
+                    - generic [ref=e477]:
+                      - generic [ref=e478]:
+                        - img [ref=e479]
+                        - generic [ref=e483]:
+                          - generic [ref=e484]: Suppliers
+                          - generic [ref=e485]: Supplier management and payments
+                      - generic [ref=e486]:
+                        - generic [ref=e487]:
+                          - generic [ref=e488]: "Owner:"
+                          - switch [checked] [ref=e489] [cursor=pointer]
+                          - img [ref=e490]
+                        - generic [ref=e493]:
+                          - generic [ref=e494]: "Worker:"
+                          - switch [ref=e495] [cursor=pointer]
+                          - img [ref=e496]
+                    - generic [ref=e501]:
+                      - generic [ref=e502]:
+                        - img [ref=e503]
+                        - generic [ref=e505]:
+                          - generic [ref=e506]: Services
+                          - generic [ref=e507]: Service types and pricing
+                      - generic [ref=e508]:
+                        - generic [ref=e509]:
+                          - generic [ref=e510]: "Owner:"
+                          - switch [checked] [ref=e511] [cursor=pointer]
+                          - img [ref=e512]
+                        - generic [ref=e515]:
+                          - generic [ref=e516]: "Worker:"
+                          - switch [ref=e517] [cursor=pointer]
+                          - img [ref=e518]
+                - generic [ref=e523]:
+                  - generic [ref=e524]:
+                    - heading "Finance Features" [level=3] [ref=e525]
+                    - paragraph [ref=e526]: Manage access to finance related features
+                  - generic [ref=e528]:
+                    - generic [ref=e529]:
+                      - generic [ref=e530]:
+                        - img [ref=e531]
+                        - generic [ref=e533]:
+                          - generic [ref=e534]: Transactions
+                          - generic [ref=e535]: Transaction history and management
+                      - generic [ref=e536]:
+                        - generic [ref=e537]:
+                          - generic [ref=e538]: "Owner:"
+                          - switch [checked] [ref=e539] [cursor=pointer]
+                          - img [ref=e540]
+                        - generic [ref=e543]:
+                          - generic [ref=e544]: "Worker:"
+                          - switch [checked] [ref=e545] [cursor=pointer]
+                          - img [ref=e546]
+                    - generic [ref=e549]:
+                      - generic [ref=e550]:
+                        - img [ref=e551]
+                        - generic [ref=e553]:
+                          - generic [ref=e554]: Calculations
+                          - generic [ref=e555]: Profit/loss calculations
+                      - generic [ref=e556]:
+                        - generic [ref=e557]:
+                          - generic [ref=e558]: "Owner:"
+                          - switch [checked] [ref=e559] [cursor=pointer]
+                          - img [ref=e560]
+                        - generic [ref=e563]:
+                          - generic [ref=e564]: "Worker:"
+                          - switch [ref=e565] [cursor=pointer]
+                          - img [ref=e566]
+                - generic [ref=e571]:
+                  - generic [ref=e572]:
+                    - heading "Analytics Features" [level=3] [ref=e573]
+                    - paragraph [ref=e574]: Manage access to analytics related features
+                  - generic [ref=e577]:
+                    - generic [ref=e578]:
+                      - img [ref=e579]
+                      - generic [ref=e581]:
+                        - generic [ref=e582]: Reports
+                        - generic [ref=e583]: Business reports and analytics
+                    - generic [ref=e584]:
+                      - generic [ref=e585]:
+                        - generic [ref=e586]: "Owner:"
+                        - switch [checked] [ref=e587] [cursor=pointer]
+                        - img [ref=e588]
+                      - generic [ref=e591]:
+                        - generic [ref=e592]: "Worker:"
+                        - switch [ref=e593] [cursor=pointer]
+                        - img [ref=e594]
+              - generic [ref=e601]:
+                - generic [ref=e602]:
+                  - heading "Reset Permissions" [level=3] [ref=e603]
+                  - paragraph [ref=e604]: Restore default access controls for all roles
+                - button "Reset to Defaults" [ref=e605] [cursor=pointer]:
+                  - img [ref=e606]
+                  - text: Reset to Defaults
+          - generic [ref=e611]:
+            - generic [ref=e612]:
+              - img [ref=e613]
+              - heading "Audit Log" [level=2] [ref=e616]
+            - paragraph [ref=e617]: Last 200 security events — logins, role changes, password resets, deletions
+            - generic [ref=e618]:
+              - generic [ref=e619]:
+                - generic [ref=e620]:
+                  - heading "Audit Log" [level=3] [ref=e621]:
+                    - img [ref=e622]
+                    - text: Audit Log
+                  - generic [ref=e625]:
+                    - generic [ref=e626]: "Last updated: 7:57:59 PM"
+                    - button "Refresh" [ref=e627] [cursor=pointer]:
+                      - img [ref=e628]
+                      - text: Refresh
+                - paragraph [ref=e633]: Last 100 security events — login attempts, role changes, and deletions
+              - table [ref=e636]:
+                - rowgroup [ref=e637]:
+                  - row "Timestamp Action Actor Target IP Status Details" [ref=e638]:
+                    - columnheader "Timestamp" [ref=e639]
+                    - columnheader "Action" [ref=e640]
+                    - columnheader "Actor" [ref=e641]
+                    - columnheader "Target" [ref=e642]
+                    - columnheader "IP" [ref=e643]
+                    - columnheader "Status" [ref=e644]
+                    - columnheader "Details" [ref=e645]
+                - rowgroup [ref=e646]:
+                  - row "5/31/2026, 7:57:51 PM LOGIN admin — ::1 Success Successful login" [ref=e647]:
+                    - cell "5/31/2026, 7:57:51 PM" [ref=e648]
+                    - cell "LOGIN" [ref=e649]:
+                      - generic [ref=e650]: LOGIN
+                    - cell "admin" [ref=e651]
+                    - cell "—" [ref=e652]
+                    - cell "::1" [ref=e653]
+                    - cell "Success" [ref=e654]:
+                      - generic [ref=e655]: Success
+                    - cell "Successful login" [ref=e657]
+                  - row "5/31/2026, 7:57:29 PM LOGIN admin — ::1 Success Successful login" [ref=e658]:
+                    - cell "5/31/2026, 7:57:29 PM" [ref=e659]
+                    - cell "LOGIN" [ref=e660]:
+                      - generic [ref=e661]: LOGIN
+                    - cell "admin" [ref=e662]
+                    - cell "—" [ref=e663]
+                    - cell "::1" [ref=e664]
+                    - cell "Success" [ref=e665]:
+                      - generic [ref=e666]: Success
+                    - cell "Successful login" [ref=e668]
+                  - row "5/31/2026, 7:57:14 PM LOGIN admin — ::1 Success Successful login" [ref=e669]:
+                    - cell "5/31/2026, 7:57:14 PM" [ref=e670]
+                    - cell "LOGIN" [ref=e671]:
+                      - generic [ref=e672]: LOGIN
+                    - cell "admin" [ref=e673]
+                    - cell "—" [ref=e674]
+                    - cell "::1" [ref=e675]
+                    - cell "Success" [ref=e676]:
+                      - generic [ref=e677]: Success
+                    - cell "Successful login" [ref=e679]
+                  - row "5/31/2026, 7:57:08 PM LOGIN admin — ::1 Success Successful login" [ref=e680]:
+                    - cell "5/31/2026, 7:57:08 PM" [ref=e681]
+                    - cell "LOGIN" [ref=e682]:
+                      - generic [ref=e683]: LOGIN
+                    - cell "admin" [ref=e684]
+                    - cell "—" [ref=e685]
+                    - cell "::1" [ref=e686]
+                    - cell "Success" [ref=e687]:
+                      - generic [ref=e688]: Success
+                    - cell "Successful login" [ref=e690]
+                  - row "5/31/2026, 7:56:03 PM LOGIN admin — ::1 Success Successful login" [ref=e691]:
+                    - cell "5/31/2026, 7:56:03 PM" [ref=e692]
+                    - cell "LOGIN" [ref=e693]:
+                      - generic [ref=e694]: LOGIN
+                    - cell "admin" [ref=e695]
+                    - cell "—" [ref=e696]
+                    - cell "::1" [ref=e697]
+                    - cell "Success" [ref=e698]:
+                      - generic [ref=e699]: Success
+                    - cell "Successful login" [ref=e701]
+                  - row "5/31/2026, 7:54:32 PM LOGIN admin — ::1 Success Successful login" [ref=e702]:
+                    - cell "5/31/2026, 7:54:32 PM" [ref=e703]
+                    - cell "LOGIN" [ref=e704]:
+                      - generic [ref=e705]: LOGIN
+                    - cell "admin" [ref=e706]
+                    - cell "—" [ref=e707]
+                    - cell "::1" [ref=e708]
+                    - cell "Success" [ref=e709]:
+                      - generic [ref=e710]: Success
+                    - cell "Successful login" [ref=e712]
+                  - row "5/31/2026, 7:54:17 PM LOGIN workerui_1780237445900 — ::1 Success Successful login" [ref=e713]:
+                    - cell "5/31/2026, 7:54:17 PM" [ref=e714]
+                    - cell "LOGIN" [ref=e715]:
+                      - generic [ref=e716]: LOGIN
+                    - cell "workerui_1780237445900" [ref=e717]
+                    - cell "—" [ref=e718]
+                    - cell "::1" [ref=e719]
+                    - cell "Success" [ref=e720]:
+                      - generic [ref=e721]: Success
+                    - cell "Successful login" [ref=e723]
+                  - row "5/31/2026, 7:54:06 PM CREATE USER admin workerui_1780237445900 ::1 Success Created user 'workerui_1780237445900' with role 'worker'" [ref=e724]:
+                    - cell "5/31/2026, 7:54:06 PM" [ref=e725]
+                    - cell "CREATE USER" [ref=e726]:
+                      - generic [ref=e727]: CREATE USER
+                    - cell "admin" [ref=e728]
+                    - cell "workerui_1780237445900" [ref=e729]
+                    - cell "::1" [ref=e730]
+                    - cell "Success" [ref=e731]:
+                      - generic [ref=e732]: Success
+                    - cell "Created user 'workerui_1780237445900' with role 'worker'" [ref=e734]
+                  - row "5/31/2026, 7:54:05 PM LOGIN admin — ::1 Success Successful login" [ref=e735]:
+                    - cell "5/31/2026, 7:54:05 PM" [ref=e736]
+                    - cell "LOGIN" [ref=e737]:
+                      - generic [ref=e738]: LOGIN
+                    - cell "admin" [ref=e739]
+                    - cell "—" [ref=e740]
+                    - cell "::1" [ref=e741]
+                    - cell "Success" [ref=e742]:
+                      - generic [ref=e743]: Success
+                    - cell "Successful login" [ref=e745]
+                  - row "5/31/2026, 7:53:56 PM LOGIN admin — ::1 Success Successful login" [ref=e746]:
+                    - cell "5/31/2026, 7:53:56 PM" [ref=e747]
+                    - cell "LOGIN" [ref=e748]:
+                      - generic [ref=e749]: LOGIN
+                    - cell "admin" [ref=e750]
+                    - cell "—" [ref=e751]
+                    - cell "::1" [ref=e752]
+                    - cell "Success" [ref=e753]:
+                      - generic [ref=e754]: Success
+                    - cell "Successful login" [ref=e756]
+                  - row "5/31/2026, 7:53:42 PM LOGIN admin — ::1 Success Successful login" [ref=e757]:
+                    - cell "5/31/2026, 7:53:42 PM" [ref=e758]
+                    - cell "LOGIN" [ref=e759]:
+                      - generic [ref=e760]: LOGIN
+                    - cell "admin" [ref=e761]
+                    - cell "—" [ref=e762]
+                    - cell "::1" [ref=e763]
+                    - cell "Success" [ref=e764]:
+                      - generic [ref=e765]: Success
+                    - cell "Successful login" [ref=e767]
+                  - row "5/31/2026, 7:53:21 PM LOGIN admin — ::1 Success Successful login" [ref=e768]:
+                    - cell "5/31/2026, 7:53:21 PM" [ref=e769]
+                    - cell "LOGIN" [ref=e770]:
+                      - generic [ref=e771]: LOGIN
+                    - cell "admin" [ref=e772]
+                    - cell "—" [ref=e773]
+                    - cell "::1" [ref=e774]
+                    - cell "Success" [ref=e775]:
+                      - generic [ref=e776]: Success
+                    - cell "Successful login" [ref=e778]
+                  - row "5/31/2026, 7:53:21 PM LOGIN FAILED testuser_1780237381257 — ::1 Failed Failed login attempt — user not found" [ref=e779]:
+                    - cell "5/31/2026, 7:53:21 PM" [ref=e780]
+                    - cell "LOGIN FAILED" [ref=e781]:
+                      - generic [ref=e782]: LOGIN FAILED
+                    - cell "testuser_1780237381257" [ref=e783]
+                    - cell "—" [ref=e784]
+                    - cell "::1" [ref=e785]
+                    - cell "Failed" [ref=e786]:
+                      - generic [ref=e787]: Failed
+                    - cell "Failed login attempt — user not found" [ref=e789]
+                  - row "5/31/2026, 7:53:20 PM DELETE USER admin testuser_1780237381257 ::1 Success User 'testuser_1780237381257' permanently deleted" [ref=e790]:
+                    - cell "5/31/2026, 7:53:20 PM" [ref=e791]
+                    - cell "DELETE USER" [ref=e792]:
+                      - generic [ref=e793]: DELETE USER
+                    - cell "admin" [ref=e794]
+                    - cell "testuser_1780237381257" [ref=e795]
+                    - cell "::1" [ref=e796]
+                    - cell "Success" [ref=e797]:
+                      - generic [ref=e798]: Success
+                    - cell "User 'testuser_1780237381257' permanently deleted" [ref=e800]
+                  - row "5/31/2026, 7:53:19 PM LOGIN admin — ::1 Success Successful login" [ref=e801]:
+                    - cell "5/31/2026, 7:53:19 PM" [ref=e802]
+                    - cell "LOGIN" [ref=e803]:
+                      - generic [ref=e804]: LOGIN
+                    - cell "admin" [ref=e805]
+                    - cell "—" [ref=e806]
+                    - cell "::1" [ref=e807]
+                    - cell "Success" [ref=e808]:
+                      - generic [ref=e809]: Success
+                    - cell "Successful login" [ref=e811]
+                  - row "5/31/2026, 7:53:18 PM LOGIN testuser_1780237381257 — ::1 Success Successful login" [ref=e812]:
+                    - cell "5/31/2026, 7:53:18 PM" [ref=e813]
+                    - cell "LOGIN" [ref=e814]:
+                      - generic [ref=e815]: LOGIN
+                    - cell "testuser_1780237381257" [ref=e816]
+                    - cell "—" [ref=e817]
+                    - cell "::1" [ref=e818]
+                    - cell "Success" [ref=e819]:
+                      - generic [ref=e820]: Success
+                    - cell "Successful login" [ref=e822]
+                  - row "5/31/2026, 7:53:17 PM UPDATE ROLE admin testuser_1780237381257 ::1 Success Role changed to 'owner'" [ref=e823]:
+                    - cell "5/31/2026, 7:53:17 PM" [ref=e824]
+                    - cell "UPDATE ROLE" [ref=e825]:
+                      - generic [ref=e826]: UPDATE ROLE
+                    - cell "admin" [ref=e827]
+                    - cell "testuser_1780237381257" [ref=e828]
+                    - cell "::1" [ref=e829]
+                    - cell "Success" [ref=e830]:
+                      - generic [ref=e831]: Success
+                    - cell "Role changed to 'owner'" [ref=e833]
+                  - row "5/31/2026, 7:53:14 PM LOGIN admin — ::1 Success Successful login" [ref=e834]:
+                    - cell "5/31/2026, 7:53:14 PM" [ref=e835]
+                    - cell "LOGIN" [ref=e836]:
+                      - generic [ref=e837]: LOGIN
+                    - cell "admin" [ref=e838]
+                    - cell "—" [ref=e839]
+                    - cell "::1" [ref=e840]
+                    - cell "Success" [ref=e841]:
+                      - generic [ref=e842]: Success
+                    - cell "Successful login" [ref=e844]
+                  - row "5/31/2026, 7:53:14 PM LOGIN FAILED testuser_1780237381257 — ::1 Failed Failed login attempt — wrong password" [ref=e845]:
+                    - cell "5/31/2026, 7:53:14 PM" [ref=e846]
+                    - cell "LOGIN FAILED" [ref=e847]:
+                      - generic [ref=e848]: LOGIN FAILED
+                    - cell "testuser_1780237381257" [ref=e849]
+                    - cell "—" [ref=e850]
+                    - cell "::1" [ref=e851]
+                    - cell "Failed" [ref=e852]:
+                      - generic [ref=e853]: Failed
+                    - cell "Failed login attempt — wrong password" [ref=e855]
+                  - row "5/31/2026, 7:53:13 PM LOGIN testuser_1780237381257 — ::1 Success Successful login" [ref=e856]:
+                    - cell "5/31/2026, 7:53:13 PM" [ref=e857]
+                    - cell "LOGIN" [ref=e858]:
+                      - generic [ref=e859]: LOGIN
+                    - cell "testuser_1780237381257" [ref=e860]
+                    - cell "—" [ref=e861]
+                    - cell "::1" [ref=e862]
+                    - cell "Success" [ref=e863]:
+                      - generic [ref=e864]: Success
+                    - cell "Successful login" [ref=e866]
+                  - row "5/31/2026, 7:53:12 PM CHANGE PWD admin testuser_1780237381257 ::1 Success Admin force-reset user password" [ref=e867]:
+                    - cell "5/31/2026, 7:53:12 PM" [ref=e868]
+                    - cell "CHANGE PWD" [ref=e869]:
+                      - generic [ref=e870]: CHANGE PWD
+                    - cell "admin" [ref=e871]
+                    - cell "testuser_1780237381257" [ref=e872]
+                    - cell "::1" [ref=e873]
+                    - cell "Success" [ref=e874]:
+                      - generic [ref=e875]: Success
+                    - cell "Admin force-reset user password" [ref=e877]
+                  - row "5/31/2026, 7:53:11 PM LOGIN admin — ::1 Success Successful login" [ref=e878]:
+                    - cell "5/31/2026, 7:53:11 PM" [ref=e879]
+                    - cell "LOGIN" [ref=e880]:
+                      - generic [ref=e881]: LOGIN
+                    - cell "admin" [ref=e882]
+                    - cell "—" [ref=e883]
+                    - cell "::1" [ref=e884]
+                    - cell "Success" [ref=e885]:
+                      - generic [ref=e886]: Success
+                    - cell "Successful login" [ref=e888]
+                  - row "5/31/2026, 7:53:09 PM LOGIN testuser_1780237381257 — ::1 Success Successful login" [ref=e889]:
+                    - cell "5/31/2026, 7:53:09 PM" [ref=e890]
+                    - cell "LOGIN" [ref=e891]:
+                      - generic [ref=e892]: LOGIN
+                    - cell "testuser_1780237381257" [ref=e893]
+                    - cell "—" [ref=e894]
+                    - cell "::1" [ref=e895]
+                    - cell "Success" [ref=e896]:
+                      - generic [ref=e897]: Success
+                    - cell "Successful login" [ref=e899]
+                  - row "5/31/2026, 7:53:08 PM CREATE USER admin testuser_1780237381257 ::1 Success Created user 'testuser_1780237381257' with role 'worker'" [ref=e900]:
+                    - cell "5/31/2026, 7:53:08 PM" [ref=e901]
+                    - cell "CREATE USER" [ref=e902]:
+                      - generic [ref=e903]: CREATE USER
+                    - cell "admin" [ref=e904]
+                    - cell "testuser_1780237381257" [ref=e905]
+                    - cell "::1" [ref=e906]
+                    - cell "Success" [ref=e907]:
+                      - generic [ref=e908]: Success
+                    - cell "Created user 'testuser_1780237381257' with role 'worker'" [ref=e910]
+                  - row "5/31/2026, 7:53:07 PM LOGIN admin — ::1 Success Successful login" [ref=e911]:
+                    - cell "5/31/2026, 7:53:07 PM" [ref=e912]
+                    - cell "LOGIN" [ref=e913]:
+                      - generic [ref=e914]: LOGIN
+                    - cell "admin" [ref=e915]
+                    - cell "—" [ref=e916]
+                    - cell "::1" [ref=e917]
+                    - cell "Success" [ref=e918]:
+                      - generic [ref=e919]: Success
+                    - cell "Successful login" [ref=e921]
+                  - row "5/31/2026, 7:53:06 PM LOGIN FAILED worker_1780237386217 — ::1 Failed Failed login attempt — user not found" [ref=e922]:
+                    - cell "5/31/2026, 7:53:06 PM" [ref=e923]
+                    - cell "LOGIN FAILED" [ref=e924]:
+                      - generic [ref=e925]: LOGIN FAILED
+                    - cell "worker_1780237386217" [ref=e926]
+                    - cell "—" [ref=e927]
+                    - cell "::1" [ref=e928]
+                    - cell "Failed" [ref=e929]:
+                      - generic [ref=e930]: Failed
+                    - cell "Failed login attempt — user not found" [ref=e932]
+                  - row "5/31/2026, 7:53:05 PM CREATE USER admin worker_1780237385294 ::1 Success Created user 'worker_1780237385294' with role 'worker'" [ref=e933]:
+                    - cell "5/31/2026, 7:53:05 PM" [ref=e934]
+                    - cell "CREATE USER" [ref=e935]:
+                      - generic [ref=e936]: CREATE USER
+                    - cell "admin" [ref=e937]
+                    - cell "worker_1780237385294" [ref=e938]
+                    - cell "::1" [ref=e939]
+                    - cell "Success" [ref=e940]:
+                      - generic [ref=e941]: Success
+                    - cell "Created user 'worker_1780237385294' with role 'worker'" [ref=e943]
+                  - row "5/31/2026, 7:53:04 PM LOGIN admin — ::1 Success Successful login" [ref=e944]:
+                    - cell "5/31/2026, 7:53:04 PM" [ref=e945]
+                    - cell "LOGIN" [ref=e946]:
+                      - generic [ref=e947]: LOGIN
+                    - cell "admin" [ref=e948]
+                    - cell "—" [ref=e949]
+                    - cell "::1" [ref=e950]
+                    - cell "Success" [ref=e951]:
+                      - generic [ref=e952]: Success
+                    - cell "Successful login" [ref=e954]
+                  - row "5/31/2026, 7:53:03 PM LOGIN admin — ::1 Success Successful login" [ref=e955]:
+                    - cell "5/31/2026, 7:53:03 PM" [ref=e956]
+                    - cell "LOGIN" [ref=e957]:
+                      - generic [ref=e958]: LOGIN
+                    - cell "admin" [ref=e959]
+                    - cell "—" [ref=e960]
+                    - cell "::1" [ref=e961]
+                    - cell "Success" [ref=e962]:
+                      - generic [ref=e963]: Success
+                    - cell "Successful login" [ref=e965]
+                  - row "5/31/2026, 7:53:02 PM LOGIN admin — ::1 Success Successful login" [ref=e966]:
+                    - cell "5/31/2026, 7:53:02 PM" [ref=e967]
+                    - cell "LOGIN" [ref=e968]:
+                      - generic [ref=e969]: LOGIN
+                    - cell "admin" [ref=e970]
+                    - cell "—" [ref=e971]
+                    - cell "::1" [ref=e972]
+                    - cell "Success" [ref=e973]:
+                      - generic [ref=e974]: Success
+                    - cell "Successful login" [ref=e976]
+                  - row "5/31/2026, 7:52:44 PM LOGIN admin — ::1 Success Successful login" [ref=e977]:
+                    - cell "5/31/2026, 7:52:44 PM" [ref=e978]
+                    - cell "LOGIN" [ref=e979]:
+                      - generic [ref=e980]: LOGIN
+                    - cell "admin" [ref=e981]
+                    - cell "—" [ref=e982]
+                    - cell "::1" [ref=e983]
+                    - cell "Success" [ref=e984]:
+                      - generic [ref=e985]: Success
+                    - cell "Successful login" [ref=e987]
+          - generic [ref=e988]:
+            - generic [ref=e989]:
+              - img [ref=e990]
+              - heading "Data Export" [level=2] [ref=e993]
+            - paragraph [ref=e994]: Download users, transactions and suppliers as CSV for accounting/backup
+            - generic [ref=e995]:
+              - generic [ref=e996]:
+                - heading "Data Export" [level=3] [ref=e997]:
+                  - img [ref=e998]
+                  - text: Data Export
+                - paragraph [ref=e1001]: Export system data to CSV for accounting and backup purposes
+              - generic [ref=e1002]:
+                - generic [ref=e1003]:
+                  - generic [ref=e1004]:
+                    - generic [ref=e1005]:
+                      - img [ref=e1006]
+                      - generic [ref=e1011]:
+                        - generic [ref=e1012]: Users
+                        - generic [ref=e1013]: All user accounts and roles
+                    - button "Export CSV" [ref=e1014] [cursor=pointer]:
+                      - img [ref=e1015]
+                      - text: Export CSV
+                  - generic [ref=e1018]:
+                    - generic [ref=e1019]:
+                      - img [ref=e1020]
+                      - generic [ref=e1022]:
+                        - generic [ref=e1023]: Transactions
+                        - generic [ref=e1024]: All transaction records
+                    - button "Export CSV" [ref=e1025] [cursor=pointer]:
+                      - img [ref=e1026]
+                      - text: Export CSV
+                  - generic [ref=e1029]:
+                    - generic [ref=e1030]:
+                      - img [ref=e1031]
+                      - generic [ref=e1035]:
+                        - generic [ref=e1036]: Suppliers
+                        - generic [ref=e1037]: Supplier data with contact info
+                    - button "Export CSV" [ref=e1038] [cursor=pointer]:
+                      - img [ref=e1039]
+                      - text: Export CSV
+                - paragraph [ref=e1042]: ⚠️ Exported data is sensitive. Store securely and comply with data protection regulations.
+          - generic [ref=e1043]:
+            - generic [ref=e1044]:
+              - img [ref=e1045]
+              - heading "Active Sessions" [level=2] [ref=e1047]
+            - paragraph [ref=e1048]: All logged-in devices across all users — revoke any suspicious session instantly
+            - generic [ref=e1049]:
+              - generic [ref=e1050]:
+                - generic [ref=e1051]:
+                  - heading "Active Sessions" [level=3] [ref=e1052]:
+                    - img [ref=e1053]
+                    - text: Active Sessions
+                  - paragraph [ref=e1055]: All currently active user sessions across devices — revoke any suspicious ones
+                - button "Refresh" [ref=e1056] [cursor=pointer]:
+                  - img [ref=e1057]
+                  - text: Refresh
+              - generic [ref=e1062]:
+                - generic [ref=e1063]:
+                  - generic [ref=e1064]:
+                    - generic [ref=e1065]:
+                      - img [ref=e1067]
+                      - generic [ref=e1069]:
+                        - generic [ref=e1070]: admin
+                        - generic [ref=e1071]:
+                          - generic [ref=e1072]:
+                            - img [ref=e1073]
+                            - text: ::1
+                          - generic [ref=e1076]: 💻 Desktop
+                          - generic [ref=e1077]:
+                            - img [ref=e1078]
+                            - text: Active 5m ago
+                    - generic [ref=e1081]:
+                      - generic [ref=e1082]: ● Active
+                      - button "Revoke session" [ref=e1083] [cursor=pointer]:
+                        - img [ref=e1084]
+                  - generic [ref=e1087]:
+                    - generic [ref=e1088]:
+                      - img [ref=e1090]
+                      - generic [ref=e1092]:
+                        - generic [ref=e1093]: admin
+                        - generic [ref=e1094]:
+                          - generic [ref=e1095]:
+                            - img [ref=e1096]
+                            - text: ::1
+                          - generic [ref=e1099]: 💻 Desktop
+                          - generic [ref=e1100]:
+                            - img [ref=e1101]
+                            - text: Active 4m ago
+                    - generic [ref=e1104]:
+                      - generic [ref=e1105]: ● Active
+                      - button "Revoke session" [ref=e1106] [cursor=pointer]:
+                        - img [ref=e1107]
+                  - generic [ref=e1110]:
+                    - generic [ref=e1111]:
+                      - img [ref=e1113]
+                      - generic [ref=e1115]:
+                        - generic [ref=e1116]: admin
+                        - generic [ref=e1117]:
+                          - generic [ref=e1118]:
+                            - img [ref=e1119]
+                            - text: ::1
+                          - generic [ref=e1122]: 💻 Desktop
+                          - generic [ref=e1123]:
+                            - img [ref=e1124]
+                            - text: Active 4m ago
+                    - generic [ref=e1127]:
+                      - generic [ref=e1128]: ● Active
+                      - button "Revoke session" [ref=e1129] [cursor=pointer]:
+                        - img [ref=e1130]
+                  - generic [ref=e1133]:
+                    - generic [ref=e1134]:
+                      - img [ref=e1136]
+                      - generic [ref=e1138]:
+                        - generic [ref=e1139]: admin
+                        - generic [ref=e1140]:
+                          - generic [ref=e1141]:
+                            - img [ref=e1142]
+                            - text: ::1
+                          - generic [ref=e1145]: 💻 Desktop
+                          - generic [ref=e1146]:
+                            - img [ref=e1147]
+                            - text: Active 4m ago
+                    - generic [ref=e1150]:
+                      - generic [ref=e1151]: ● Active
+                      - button "Revoke session" [ref=e1152] [cursor=pointer]:
+                        - img [ref=e1153]
+                  - generic [ref=e1156]:
+                    - generic [ref=e1157]:
+                      - img [ref=e1159]
+                      - generic [ref=e1161]:
+                        - generic [ref=e1162]: admin
+                        - generic [ref=e1163]:
+                          - generic [ref=e1164]:
+                            - img [ref=e1165]
+                            - text: ::1
+                          - generic [ref=e1168]: 💻 Desktop
+                          - generic [ref=e1169]:
+                            - img [ref=e1170]
+                            - text: Active 4m ago
+                    - generic [ref=e1173]:
+                      - generic [ref=e1174]: ● Active
+                      - button "Revoke session" [ref=e1175] [cursor=pointer]:
+                        - img [ref=e1176]
+                  - generic [ref=e1179]:
+                    - generic [ref=e1180]:
+                      - img [ref=e1182]
+                      - generic [ref=e1184]:
+                        - generic [ref=e1185]: testuser_1780237381257
+                        - generic [ref=e1186]:
+                          - generic [ref=e1187]:
+                            - img [ref=e1188]
+                            - text: ::1
+                          - generic [ref=e1191]: 💻 Desktop
+                          - generic [ref=e1192]:
+                            - img [ref=e1193]
+                            - text: Active 4m ago
+                    - generic [ref=e1196]:
+                      - generic [ref=e1197]: ● Active
+                      - button "Revoke session" [ref=e1198] [cursor=pointer]:
+                        - img [ref=e1199]
+                  - generic [ref=e1202]:
+                    - generic [ref=e1203]:
+                      - img [ref=e1205]
+                      - generic [ref=e1207]:
+                        - generic [ref=e1208]: admin
+                        - generic [ref=e1209]:
+                          - generic [ref=e1210]:
+                            - img [ref=e1211]
+                            - text: ::1
+                          - generic [ref=e1214]: 💻 Desktop
+                          - generic [ref=e1215]:
+                            - img [ref=e1216]
+                            - text: Active 4m ago
+                    - generic [ref=e1219]:
+                      - generic [ref=e1220]: ● Active
+                      - button "Revoke session" [ref=e1221] [cursor=pointer]:
+                        - img [ref=e1222]
+                  - generic [ref=e1225]:
+                    - generic [ref=e1226]:
+                      - img [ref=e1228]
+                      - generic [ref=e1230]:
+                        - generic [ref=e1231]: testuser_1780237381257
+                        - generic [ref=e1232]:
+                          - generic [ref=e1233]:
+                            - img [ref=e1234]
+                            - text: ::1
+                          - generic [ref=e1237]: 💻 Desktop
+                          - generic [ref=e1238]:
+                            - img [ref=e1239]
+                            - text: Active 4m ago
+                    - generic [ref=e1242]:
+                      - generic [ref=e1243]: ● Active
+                      - button "Revoke session" [ref=e1244] [cursor=pointer]:
+                        - img [ref=e1245]
+                  - generic [ref=e1248]:
+                    - generic [ref=e1249]:
+                      - img [ref=e1251]
+                      - generic [ref=e1253]:
+                        - generic [ref=e1254]: admin
+                        - generic [ref=e1255]:
+                          - generic [ref=e1256]:
+                            - img [ref=e1257]
+                            - text: ::1
+                          - generic [ref=e1260]: 💻 Desktop
+                          - generic [ref=e1261]:
+                            - img [ref=e1262]
+                            - text: Active 4m ago
+                    - generic [ref=e1265]:
+                      - generic [ref=e1266]: ● Active
+                      - button "Revoke session" [ref=e1267] [cursor=pointer]:
+                        - img [ref=e1268]
+                  - generic [ref=e1271]:
+                    - generic [ref=e1272]:
+                      - img [ref=e1274]
+                      - generic [ref=e1276]:
+                        - generic [ref=e1277]: testuser_1780237381257
+                        - generic [ref=e1278]:
+                          - generic [ref=e1279]:
+                            - img [ref=e1280]
+                            - text: ::1
+                          - generic [ref=e1283]: 💻 Desktop
+                          - generic [ref=e1284]:
+                            - img [ref=e1285]
+                            - text: Active 4m ago
+                    - generic [ref=e1288]:
+                      - generic [ref=e1289]: ● Active
+                      - button "Revoke session" [ref=e1290] [cursor=pointer]:
+                        - img [ref=e1291]
+                  - generic [ref=e1294]:
+                    - generic [ref=e1295]:
+                      - img [ref=e1297]
+                      - generic [ref=e1299]:
+                        - generic [ref=e1300]: admin
+                        - generic [ref=e1301]:
+                          - generic [ref=e1302]:
+                            - img [ref=e1303]
+                            - text: ::1
+                          - generic [ref=e1306]: 💻 Desktop
+                          - generic [ref=e1307]:
+                            - img [ref=e1308]
+                            - text: Active 4m ago
+                    - generic [ref=e1311]:
+                      - generic [ref=e1312]: ● Active
+                      - button "Revoke session" [ref=e1313] [cursor=pointer]:
+                        - img [ref=e1314]
+                  - generic [ref=e1317]:
+                    - generic [ref=e1318]:
+                      - img [ref=e1320]
+                      - generic [ref=e1322]:
+                        - generic [ref=e1323]: admin
+                        - generic [ref=e1324]:
+                          - generic [ref=e1325]:
+                            - img [ref=e1326]
+                            - text: ::1
+                          - generic [ref=e1329]: 💻 Desktop
+                          - generic [ref=e1330]:
+                            - img [ref=e1331]
+                            - text: Active 4m ago
+                    - generic [ref=e1334]:
+                      - generic [ref=e1335]: ● Active
+                      - button "Revoke session" [ref=e1336] [cursor=pointer]:
+                        - img [ref=e1337]
+                  - generic [ref=e1340]:
+                    - generic [ref=e1341]:
+                      - img [ref=e1343]
+                      - generic [ref=e1345]:
+                        - generic [ref=e1346]: admin
+                        - generic [ref=e1347]:
+                          - generic [ref=e1348]:
+                            - img [ref=e1349]
+                            - text: ::1
+                          - generic [ref=e1352]: 💻 Desktop
+                          - generic [ref=e1353]:
+                            - img [ref=e1354]
+                            - text: Active 4m ago
+                    - generic [ref=e1357]:
+                      - generic [ref=e1358]: ● Active
+                      - button "Revoke session" [ref=e1359] [cursor=pointer]:
+                        - img [ref=e1360]
+                  - generic [ref=e1363]:
+                    - generic [ref=e1364]:
+                      - img [ref=e1366]
+                      - generic [ref=e1368]:
+                        - generic [ref=e1369]: admin
+                        - generic [ref=e1370]:
+                          - generic [ref=e1371]:
+                            - img [ref=e1372]
+                            - text: ::1
+                          - generic [ref=e1375]: 💻 Desktop
+                          - generic [ref=e1376]:
+                            - img [ref=e1377]
+                            - text: Active 4m ago
+                    - generic [ref=e1380]:
+                      - generic [ref=e1381]: ● Active
+                      - button "Revoke session" [ref=e1382] [cursor=pointer]:
+                        - img [ref=e1383]
+                  - generic [ref=e1386]:
+                    - generic [ref=e1387]:
+                      - img [ref=e1389]
+                      - generic [ref=e1391]:
+                        - generic [ref=e1392]: admin
+                        - generic [ref=e1393]:
+                          - generic [ref=e1394]:
+                            - img [ref=e1395]
+                            - text: ::1
+                          - generic [ref=e1398]: 💻 Desktop
+                          - generic [ref=e1399]:
+                            - img [ref=e1400]
+                            - text: Active 3m ago
+                    - generic [ref=e1403]:
+                      - generic [ref=e1404]: ● Active
+                      - button "Revoke session" [ref=e1405] [cursor=pointer]:
+                        - img [ref=e1406]
+                  - generic [ref=e1409]:
+                    - generic [ref=e1410]:
+                      - img [ref=e1412]
+                      - generic [ref=e1414]:
+                        - generic [ref=e1415]: workerui_1780237445900
+                        - generic [ref=e1416]:
+                          - generic [ref=e1417]:
+                            - img [ref=e1418]
+                            - text: ::1
+                          - generic [ref=e1421]: 💻 Desktop
+                          - generic [ref=e1422]:
+                            - img [ref=e1423]
+                            - text: Active 3m ago
+                    - generic [ref=e1426]:
+                      - generic [ref=e1427]: ● Active
+                      - button "Revoke session" [ref=e1428] [cursor=pointer]:
+                        - img [ref=e1429]
+                  - generic [ref=e1432]:
+                    - generic [ref=e1433]:
+                      - img [ref=e1435]
+                      - generic [ref=e1437]:
+                        - generic [ref=e1438]: admin
+                        - generic [ref=e1439]:
+                          - generic [ref=e1440]:
+                            - img [ref=e1441]
+                            - text: ::1
+                          - generic [ref=e1444]: 💻 Desktop
+                          - generic [ref=e1445]:
+                            - img [ref=e1446]
+                            - text: Active 3m ago
+                    - generic [ref=e1449]:
+                      - generic [ref=e1450]: ● Active
+                      - button "Revoke session" [ref=e1451] [cursor=pointer]:
+                        - img [ref=e1452]
+                  - generic [ref=e1455]:
+                    - generic [ref=e1456]:
+                      - img [ref=e1458]
+                      - generic [ref=e1460]:
+                        - generic [ref=e1461]: admin
+                        - generic [ref=e1462]:
+                          - generic [ref=e1463]:
+                            - img [ref=e1464]
+                            - text: ::1
+                          - generic [ref=e1467]: 💻 Desktop
+                          - generic [ref=e1468]:
+                            - img [ref=e1469]
+                            - text: Active 1m ago
+                    - generic [ref=e1472]:
+                      - generic [ref=e1473]: ● Active
+                      - button "Revoke session" [ref=e1474] [cursor=pointer]:
+                        - img [ref=e1475]
+                  - generic [ref=e1478]:
+                    - generic [ref=e1479]:
+                      - img [ref=e1481]
+                      - generic [ref=e1483]:
+                        - generic [ref=e1484]: admin
+                        - generic [ref=e1485]:
+                          - generic [ref=e1486]:
+                            - img [ref=e1487]
+                            - text: ::1
+                          - generic [ref=e1490]: 💻 Desktop
+                          - generic [ref=e1491]:
+                            - img [ref=e1492]
+                            - text: Active just now
+                    - generic [ref=e1495]:
+                      - generic [ref=e1496]: ● Active
+                      - button "Revoke session" [ref=e1497] [cursor=pointer]:
+                        - img [ref=e1498]
+                  - generic [ref=e1501]:
+                    - generic [ref=e1502]:
+                      - img [ref=e1504]
+                      - generic [ref=e1506]:
+                        - generic [ref=e1507]: admin
+                        - generic [ref=e1508]:
+                          - generic [ref=e1509]:
+                            - img [ref=e1510]
+                            - text: ::1
+                          - generic [ref=e1513]: 💻 Desktop
+                          - generic [ref=e1514]:
+                            - img [ref=e1515]
+                            - text: Active just now
+                    - generic [ref=e1518]:
+                      - generic [ref=e1519]: ● Active
+                      - button "Revoke session" [ref=e1520] [cursor=pointer]:
+                        - img [ref=e1521]
+                  - generic [ref=e1524]:
+                    - generic [ref=e1525]:
+                      - img [ref=e1527]
+                      - generic [ref=e1529]:
+                        - generic [ref=e1530]: admin
+                        - generic [ref=e1531]:
+                          - generic [ref=e1532]:
+                            - img [ref=e1533]
+                            - text: ::1
+                          - generic [ref=e1536]: 💻 Desktop
+                          - generic [ref=e1537]:
+                            - img [ref=e1538]
+                            - text: Active just now
+                    - generic [ref=e1541]:
+                      - generic [ref=e1542]: ● Active
+                      - button "Revoke session" [ref=e1543] [cursor=pointer]:
+                        - img [ref=e1544]
+                  - generic [ref=e1547]:
+                    - generic [ref=e1548]:
+                      - img [ref=e1550]
+                      - generic [ref=e1552]:
+                        - generic [ref=e1553]: admin
+                        - generic [ref=e1554]:
+                          - generic [ref=e1555]:
+                            - img [ref=e1556]
+                            - text: ::1
+                          - generic [ref=e1559]: 💻 Desktop
+                          - generic [ref=e1560]:
+                            - img [ref=e1561]
+                            - text: Active just now
+                    - generic [ref=e1564]:
+                      - generic [ref=e1565]: ● Active
+                      - button "Revoke session" [ref=e1566] [cursor=pointer]:
+                        - img [ref=e1567]
+                - paragraph [ref=e1570]: 22 active sessions • Sessions auto-expire after 24 hours of inactivity
+  - region "Notifications (F8)":
+    - list
+```

@@ -567,3 +567,76 @@ input, textarea, select {
     transform: none !important;
   }
 }
+
+/* ============================================================
+   MOBILE — CRITICAL FIXES
+   ============================================================ */
+
+/* Hide scrollbar but keep scroll functional — used on tab bars */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile tap / long-press behaviour */
+@media (pointer: coarse) {
+  /* Remove blue flash on tap (iOS) */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Prevent text selection on UI elements */
+  button, [role="button"], nav a, label {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  /* Ensure all interactive elements hit 44px minimum */
+  button:not([class*="h-"]),
+  [role="tab"]:not([class*="h-"]) {
+    min-height: 44px;
+  }
+}
+
+/* Fix bottom safe-area for iPhone notch / Dynamic Island */
+.bottom-nav-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+/* Mobile bottom nav height constant — used as padding reference */
+:root {
+  --mobile-nav-height: 4rem;       /* 64px */
+  --mobile-nav-safe: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+}
+
+/* Main content bottom padding on mobile (accounts for bottom nav) */
+@media (max-width: 1023px) {
+  main {
+    padding-bottom: var(--mobile-nav-safe) !important;
+  }
+}
+
+/* Prevent content shifting when dialogs open */
+html.modal-open body {
+  overflow: hidden;
+  padding-right: var(--scrollbar-width, 0px);
+}
+
+/* ============================================================
+   PERFORMANCE HINTS
+   ============================================================ */
+
+/* Off-screen page sections load lazily */
+.content-lazy {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 300px;
+}
+
+/* GPU-accelerated slide animations */
+.will-change-transform {
+  will-change: transform;
+}
+.will-change-opacity {
+  will-change: opacity;
+}
