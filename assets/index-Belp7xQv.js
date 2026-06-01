@@ -1,1 +1,0 @@
-import{r as e,w as u}from"./index-D_5JKdaw.js";var s=globalThis!=null&&globalThis.document?e.useLayoutEffect:()=>{},c=u[" useId ".trim().toString()]||(()=>{}),n=0;function f(t){const[a,r]=e.useState(c());return s(()=>{r(o=>o??String(n++))},[t]),t||(a?`radix-${a}`:"")}export{f as u};
