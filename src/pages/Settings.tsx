@@ -272,10 +272,10 @@ export default function Settings() {
 
       <Tabs defaultValue="password" className="space-y-6">
         {/* Navigation Tabs Bar */}
-        <TabsList className={`grid w-full grid-cols-${tabCount} bg-muted/30 border border-border p-1 rounded-2xl min-h-[50px]`}>
+        <TabsList className={`flex overflow-x-auto sm:grid w-full sm:grid-cols-${tabCount} bg-muted/30 border border-border p-1 rounded-2xl min-h-[50px] no-scrollbar gap-1 sm:gap-0`}>
           <TabsTrigger
             value="password"
-            className="flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-brand-orange data-[state=active]:text-black text-xs sm:text-sm font-semibold transition-all cursor-pointer py-2.5"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-brand-orange data-[state=active]:text-black text-xs sm:text-sm font-semibold transition-all cursor-pointer py-2.5 px-4 shrink-0 whitespace-nowrap"
           >
             <KeyRound className="h-4 w-4 shrink-0" />
             <span>{t("change-password")}</span>
@@ -283,7 +283,7 @@ export default function Settings() {
 
           <TabsTrigger
             value="appearance"
-            className="flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-brand-orange data-[state=active]:text-black text-xs sm:text-sm font-semibold transition-all cursor-pointer py-2.5"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-brand-orange data-[state=active]:text-black text-xs sm:text-sm font-semibold transition-all cursor-pointer py-2.5 px-4 shrink-0 whitespace-nowrap"
           >
             <Monitor className="h-4 w-4 shrink-0" />
             <span>{t("appearance")}</span>
@@ -291,7 +291,7 @@ export default function Settings() {
 
           <TabsTrigger
             value="system"
-            className="flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-brand-orange data-[state=active]:text-black text-xs sm:text-sm font-semibold transition-all cursor-pointer py-2.5"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-brand-orange data-[state=active]:text-black text-xs sm:text-sm font-semibold transition-all cursor-pointer py-2.5 px-4 shrink-0 whitespace-nowrap"
           >
             <SettingsIcon className="h-4 w-4 shrink-0" />
             <span>{t("system")}</span>
@@ -300,7 +300,7 @@ export default function Settings() {
           {isAdmin && (
             <TabsTrigger
               value="backend"
-              className="flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-brand-orange data-[state=active]:text-black text-xs sm:text-sm font-semibold transition-all cursor-pointer py-2.5"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl data-[state=active]:bg-brand-orange data-[state=active]:text-black text-xs sm:text-sm font-semibold transition-all cursor-pointer py-2.5 px-4 shrink-0 whitespace-nowrap"
             >
               <Server className="h-4 w-4 shrink-0" />
               <span>{t("backend")}</span>

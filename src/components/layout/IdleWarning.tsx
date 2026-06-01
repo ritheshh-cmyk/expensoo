@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
  */
 
 const SESSION_MS    = 15 * 60 * 1000;  // must match AuthContext SESSION_DURATION_MS
-const WARN_BEFORE_MS = 2 * 60 * 1000; // warn 2 minutes before expiry
+const WARN_BEFORE_MS = 30 * 1000; // warn 30 seconds before expiry
 const SESSION_KEY   = 'session_started_at'; // must match AuthContext SESSION_START_KEY
 
 export function IdleWarning() {
@@ -55,12 +55,12 @@ export function IdleWarning() {
   const mins       = Math.floor(remaining / 60);
   const secs       = remaining % 60;
   const paddedSecs = String(secs).padStart(2, '0');
-  const isUrgent   = remaining <= 60; // red in the last minute
+  const isUrgent   = remaining <= 30; // always urgent since it's <= 30s
 
   return (
     <div
       className={`
-        fixed bottom-[72px] sm:bottom-6 left-1/2 -translate-x-1/2 z-50
+        fixed top-4 left-1/2 -translate-x-1/2 z-50
         flex items-center gap-2 px-4 py-2 rounded-full shadow-xl
         text-sm font-semibold select-none pointer-events-none
         transition-colors duration-300 whitespace-nowrap

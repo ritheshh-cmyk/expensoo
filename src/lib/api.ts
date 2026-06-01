@@ -58,6 +58,13 @@ class ApiClient {
     return this.config.baseUrl || '(Vite proxy → localhost:5000)';
   }
 
+  /** Returns connection status */
+  getConnectionStatus(): { online: boolean } {
+    return {
+      online: typeof window !== 'undefined' && typeof navigator !== 'undefined' ? navigator.onLine : true
+    };
+  }
+
   private debug(...args: any[]) {
     if (this.config.debug) {
       console.log(...args);
@@ -360,7 +367,7 @@ class ApiClient {
         // Correct field names matching backend Zod schema
         freeGlassInstallation: Boolean(data.freeGlassInstallation ?? data.freeGlass ?? false),
         requiresInventory: Boolean(data.requiresInventory ?? false),
-        partsCost: partsArray.length > 0 ? totalPartsCost : undefined,
+        partsCost: partsArray.length > 0 ? String(totalPartsCost) : undefined,
         supplierName: data.supplierName || undefined,
         externalPurchases: extPurchases || data.externalPurchases || undefined,
         shop_id: data.shop_id || undefined,
