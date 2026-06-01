@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Smartphone, Tablet, Monitor, RefreshCw, ShieldAlert, Globe, Clock, X } from 'lucide-react';
 
 interface Session {
   id: string;

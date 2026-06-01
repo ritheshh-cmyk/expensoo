@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -100,6 +107,8 @@ export default function BillingPage() {
     discount_amount: 0,
     tax_percentage: 18
   });
+  
+  const [existingCustomers, setExistingCustomers] = useState<{name: string, phone: string}[]>([]);
 
   const canCreateBills = hasFeatureAccess('createBills', user?.role);
   const canEditBills = hasFeatureAccess('editBills', user?.role);
@@ -107,7 +116,26 @@ export default function BillingPage() {
 
   useEffect(() => {
     loadBills();
+    loadCustomers();
   }, []);
+
+  const loadCustomers = async () => {
+    try {
+      const res = await apiClient.request('/api/transactions?limit=1000');
+      if (res.success && res.data) {
+        const txs = res.data.data || res.data;
+        const customersMap = new Map();
+        txs.forEach((t: any) => {
+          if (t.customerName && t.mobileNumber && !customersMap.has(t.mobileNumber)) {
+            customersMap.set(t.mobileNumber, { name: t.customerName, phone: t.mobileNumber });
+          }
+        });
+        setExistingCustomers(Array.from(customersMap.values()));
+      }
+    } catch (err) {
+      console.error('Failed to load customers:', err);
+    }
+  };
 
   const loadBills = async () => {
     try {
@@ -326,7 +354,26 @@ export default function BillingPage() {
                 <div className="space-y-6">
                   {/* Customer Information */}
                   <div className="space-y-4">
-                    <h3 className="font-semibold">Customer Information</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold">Customer Information</h3>
+                      {existingCustomers.length > 0 && (
+                        <div className="w-[300px]">
+                          <Select onValueChange={(val) => {
+                            const cust = existingCustomers.find(c => c.phone === val);
+                            if (cust) setNewBill({...newBill, customer_name: cust.name, customer_phone: cust.phone});
+                          }}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select existing customer" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {existingCustomers.map(c => (
+                                <SelectItem key={c.phone} value={c.phone}>{c.name} ({c.phone})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <Label htmlFor="customer_name">Customer Name</Label>
