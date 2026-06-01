@@ -80,6 +80,7 @@ interface Part {
   cost: number;
   quantity: number;
   supplier?: string; // Enhanced with supplier tracking
+  isCustom?: boolean;
 }
 
 interface MultiStepTransactionFormProps {
@@ -428,6 +429,15 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
     }
   };
 
+  const onFormError = (errors: any) => {
+    console.error("Form validation errors:", errors);
+    toast({
+      title: "Validation Error",
+      description: "Please check all fields and try again.",
+      variant: "destructive",
+    });
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
 
@@ -495,7 +505,7 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onFormSubmit, onFormError)} className="space-y-6">
         {/* Step 1: Customer Details */}
         {currentStep === 1 && (
           <Card className="border border-border bg-card">
@@ -737,10 +747,29 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                               <input
                                 type="checkbox"
                                 className="rounded"
+                                checked={parts.some(p => p.name === partType || (partType === 'Other Parts' && p.isCustom))}
                                 onChange={(e) => {
-                                  if (e.target.checked && parts.length === 0) {
-                                    // Auto-add a part row pre-filled with this type
-                                    setParts([{ name: partType, cost: 0, quantity: 1, supplier: selectedSupplier }]);
+                                  if (e.target.checked) {
+                                    if (!requiresParts) {
+                                      setRequiresParts(true);
+                                      setValue("requiresParts", true);
+                                    }
+                                    if (partType === "Other Parts") {
+                                      const customName = window.prompt("What type of part?", "");
+                                      if (customName && customName.trim() !== "") {
+                                        setParts(prev => [...prev, { name: customName.trim(), cost: 0, quantity: 1, supplier: selectedSupplier, isCustom: true }]);
+                                      } else {
+                                        e.target.checked = false; // Prompt cancelled
+                                      }
+                                    } else {
+                                      setParts(prev => [...prev, { name: partType, cost: 0, quantity: 1, supplier: selectedSupplier }]);
+                                    }
+                                  } else {
+                                    if (partType === "Other Parts") {
+                                      setParts(prev => prev.filter(p => !p.isCustom));
+                                    } else {
+                                      setParts(prev => prev.filter(p => p.name !== partType));
+                                    }
                                   }
                                 }}
                               />
