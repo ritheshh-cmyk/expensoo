@@ -26,7 +26,7 @@ class ApiClient {
 
   constructor() {
     const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
-    const prodUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
+    const prodUrl = 'https://backendmobile-4swg.onrender.com';
     // In dev: VITE_BACKEND_URL='' → use '' so /api/* goes through Vite proxy → localhost:5000
     // In prod build: VITE_BACKEND_URL='' → fall back to hardcoded prodUrl
     const baseUrl = envBaseUrl !== undefined && envBaseUrl !== ''
