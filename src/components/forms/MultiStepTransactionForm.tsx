@@ -755,12 +755,7 @@ export function MultiStepTransactionForm({ onSubmit }: MultiStepTransactionFormP
                                       setValue("requiresParts", true);
                                     }
                                     if (partType === "Other Parts") {
-                                      const customName = window.prompt("What type of part?", "");
-                                      if (customName && customName.trim() !== "") {
-                                        setParts(prev => [...prev, { name: customName.trim(), cost: 0, quantity: 1, supplier: selectedSupplier, isCustom: true }]);
-                                      } else {
-                                        e.target.checked = false; // Prompt cancelled
-                                      }
+                                      setParts(prev => [...prev, { name: "Custom Part", cost: 0, quantity: 1, supplier: selectedSupplier, isCustom: true }]);
                                     } else {
                                       setParts(prev => [...prev, { name: partType, cost: 0, quantity: 1, supplier: selectedSupplier }]);
                                     }
