@@ -16,7 +16,7 @@ export default function EditTransaction() {
     const fetchTransaction = async () => {
       try {
         // Only fetch data if user is authenticated and token is available
-        const token = localStorage.getItem("callmemobiles_token");
+        const token = localStorage.getItem("auth_token");
         if (!token) {
           setError("Authentication required");
           setLoading(false);
@@ -24,13 +24,17 @@ export default function EditTransaction() {
         }
 
         setLoading(true);
-        // RobustApiClient does not have getTransaction, so fetch all and filter
-        let txns: any = await apiClient.getTransactions();
-        if (!Array.isArray(txns)) {
-          txns = Object.values(txns);
+        const res = await apiClient.getTransactions();
+        if (res.success && Array.isArray(res.data)) {
+          const found = res.data.find((t: any) => String(t.id) === String(id));
+          if (found) {
+            setTransaction(found);
+          } else {
+            setError("Transaction not found.");
+          }
+        } else {
+          setError(res.error || "Failed to fetch transaction.");
         }
-        const txnsArr: any[] = txns;
-        setTransaction(txnsArr.find((t) => t.id === id));
       } catch (err) {
         setError("Failed to fetch transaction.");
         console.error(err);
@@ -71,11 +75,7 @@ export default function EditTransaction() {
   }
 
   const handleSubmit = (data: any) => {
-    console.log("Updated transaction data:", data);
-    toast({
-      title: "Transaction Updated",
-      description: `Transaction ${id} has been updated successfully.`,
-    });
+    console.log("Transaction successfully updated:", data);
     navigate("/transactions");
   };
 

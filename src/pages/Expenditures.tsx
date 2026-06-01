@@ -83,32 +83,43 @@ export default function Expenditures() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   // All expenditure data is loaded from backend and updated via socket.io
   const [expenditures, setExpenditures] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    const fetchExpenditures = async () => {
+    const fetchData = async () => {
       try {
-        const response = await apiClient.getExpenditures();
+        const [expRes, txnRes] = await Promise.all([
+          apiClient.getExpenditures(),
+          apiClient.getTransactions()
+        ]);
         if (!cancelled) {
-          // getExpenditures returns ApiResponse — extract .data array
-          if (response.success && Array.isArray(response.data)) {
-            setExpenditures(response.data);
+          if (expRes.success && Array.isArray(expRes.data)) {
+            setExpenditures(expRes.data);
           } else {
             setExpenditures([]);
           }
+          if (txnRes.success && Array.isArray(txnRes.data)) {
+            setTransactions(txnRes.data);
+          } else {
+            setTransactions([]);
+          }
         }
       } catch (err) {
-        console.error('Failed to fetch expenditures:', err);
-        if (!cancelled) setExpenditures([]);
+        console.error('Failed to fetch data:', err);
+        if (!cancelled) {
+          setExpenditures([]);
+          setTransactions([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
-    fetchExpenditures();
+    fetchData();
 
     // Real-time updates
     const wsUrl =
@@ -121,20 +132,31 @@ export default function Expenditures() {
     const update = async () => {
       if (cancelled) return;
       try {
-        const response = await apiClient.getExpenditures();
-        if (!cancelled && response.success && Array.isArray(response.data)) {
-          setExpenditures(response.data);
+        const [expRes, txnRes] = await Promise.all([
+          apiClient.getExpenditures(),
+          apiClient.getTransactions()
+        ]);
+        if (!cancelled) {
+          if (expRes.success && Array.isArray(expRes.data)) setExpenditures(expRes.data);
+          if (txnRes.success && Array.isArray(txnRes.data)) setTransactions(txnRes.data);
         }
       } catch { /* non-fatal */ }
     };
     socket.on('expenditureCreated', update);
     socket.on('expenditureUpdated', update);
     socket.on('expenditureDeleted', update);
+    socket.on('transactionCreated', update);
+    socket.on('transactionUpdated', update);
+    socket.on('transactionDeleted', update);
+    
     return () => {
       cancelled = true;
       socket.off('expenditureCreated', update);
       socket.off('expenditureUpdated', update);
       socket.off('expenditureDeleted', update);
+      socket.off('transactionCreated', update);
+      socket.off('transactionUpdated', update);
+      socket.off('transactionDeleted', update);
       socket.disconnect();
     };
   }, []);
@@ -176,6 +198,15 @@ export default function Expenditures() {
       return d.toString().startsWith(currentYearMonth);
     })
     .reduce((sum, exp) => sum + Number(exp.amount ?? 0), 0);
+
+  const monthlyRevenue = transactions
+    .filter((txn) => {
+      const d = txn.createdAt ?? txn.date ?? '';
+      return d.toString().startsWith(currentYearMonth);
+    })
+    .reduce((sum, txn) => sum + (Number(txn.repairCost || txn.amountGiven) || 0), 0);
+    
+  const monthlyProfit = monthlyRevenue - monthlyExpenses;
 
   const categories = [...new Set(expenditures.map((exp) => exp.category))];
   const paymentMethods = [
@@ -287,6 +318,48 @@ export default function Expenditures() {
           }[name] || "#6B7280",
       }));
 
+  const processChartData = () => {
+    const dataMap: Record<string, { month: string, expenses: number, revenue: number, profit: number, dateObj: Date }> = {};
+    
+    // Process expenditures (expenses)
+    expenditures.forEach(exp => {
+      const dateStr = exp.date ?? exp.createdAt;
+      if (!dateStr) return;
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return;
+      const monthKey = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+      
+      if (!dataMap[monthKey]) {
+        dataMap[monthKey] = { month: monthKey, expenses: 0, revenue: 0, profit: 0, dateObj: date };
+      }
+      dataMap[monthKey].expenses += Number(exp.amount || 0);
+    });
+
+    // Process transactions (revenue)
+    transactions.forEach(txn => {
+      const dateStr = txn.date ?? txn.createdAt ?? txn.created_at;
+      if (!dateStr) return;
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return;
+      const monthKey = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+      
+      if (!dataMap[monthKey]) {
+        dataMap[monthKey] = { month: monthKey, expenses: 0, revenue: 0, profit: 0, dateObj: date };
+      }
+      dataMap[monthKey].revenue += Number(txn.repairCost || txn.amountGiven || 0);
+    });
+
+    // Calculate profit and sort chronologically
+    return Object.values(dataMap)
+      .map(item => ({
+        ...item,
+        profit: item.revenue - item.expenses
+      }))
+      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+  };
+
+  const monthlyChartData = processChartData();
+
   return (
     <div className="space-y-6">
         {/* Header */}
@@ -381,7 +454,7 @@ export default function Expenditures() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {showProfits
-                  ? `₹${(Number(monthlyExpenses) || 0).toLocaleString()}`
+                  ? `₹${(Number(monthlyProfit) || 0).toLocaleString()}`
                   : `₹${Math.round((Number(totalExpenses) || 0) / (expenditures.length || 1)).toLocaleString()}`}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -422,6 +495,8 @@ export default function Expenditures() {
                   </Pie>
                   <Tooltip
                     formatter={(value) => `₹${typeof value === "number" ? value.toLocaleString() : "0"}`}
+                    contentStyle={{ backgroundColor: 'var(--background, #18181b)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'var(--foreground, #fff)' }}
+                    itemStyle={{ color: 'var(--foreground, #fff)' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -437,7 +512,7 @@ export default function Expenditures() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={[]}>
+                <BarChart data={monthlyChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
@@ -507,7 +582,7 @@ export default function Expenditures() {
               </Select>
             </div>
 
-            <div className="overflow-x-auto rounded-md border">
+            <div className="hidden md:block overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -611,6 +686,61 @@ export default function Expenditures() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+
+            {/* Mobile Card View (hidden md+) */}
+            <div className="md:hidden grid gap-4 mt-4">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center p-8 text-muted-foreground bg-card border rounded-lg">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent mb-2" />
+                  <span className="text-sm">Loading expenditures...</span>
+                </div>
+              ) : filteredExpenditures.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 text-muted-foreground bg-card border rounded-lg">
+                  <Receipt className="h-8 w-8 opacity-40 mb-2" />
+                  <span className="text-sm font-medium">No expenditures found</span>
+                </div>
+              ) : (
+                filteredExpenditures.map((expenditure) => (
+                  <div key={expenditure.id} className="border border-border/50 rounded-lg p-4 space-y-3 bg-card shadow-sm">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-foreground truncate">{expenditure.description}</div>
+                        {(expenditure.recipient || expenditure.supplier) && (
+                          <div className="text-sm text-muted-foreground truncate">{expenditure.recipient || expenditure.supplier}</div>
+                        )}
+                      </div>
+                      <div className="font-bold text-lg text-foreground shrink-0">
+                        ₹{(Number(expenditure.amount) || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <Badge className={getCategoryColor(expenditure.category)}>{expenditure.category}</Badge>
+                      <div className="flex items-center gap-1 text-muted-foreground text-xs font-medium">
+                        {getPaymentMethodIcon(expenditure.paymentMethod)}
+                        <span>{getPaymentMethodLabel(expenditure.paymentMethod)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {(() => {
+                           const raw = expenditure.date ?? expenditure.createdAt;
+                           if (!raw) return '—';
+                           const d = new Date(raw);
+                           return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN');
+                         })()}
+                      </div>
+                      <div className="flex gap-1">
+                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleUpdateExpenditure(expenditure.id, expenditure)}><Edit className="h-4 w-4" /></Button>
+                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteExpenditure(expenditure.id)}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

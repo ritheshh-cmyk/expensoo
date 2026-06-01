@@ -126,6 +126,7 @@ export default function Transactions() {
       columnHelper.display({
         id: "sno",
         header: t("sno"),
+        meta: { className: "hidden lg:table-cell" },
         cell: ({ row }) => (
           <div className="text-sm font-medium text-muted-foreground w-10 text-center">
             {row.index + 1}
@@ -155,6 +156,7 @@ export default function Transactions() {
         },
       }),
       columnHelper.accessor("date", {
+        meta: { className: "hidden md:table-cell" },
         header: ({ column }) => (
           <Button
             variant="ghost"
@@ -190,6 +192,7 @@ export default function Transactions() {
       }),
       columnHelper.accessor("device", {
         header: t("device-col"),
+        meta: { className: "hidden lg:table-cell" },
         cell: ({ row }) => (
           <div>
             <div className="font-medium text-foreground">{row.getValue("device")}</div>
@@ -221,6 +224,7 @@ export default function Transactions() {
 
       columnHelper.accessor("paymentMethod", {
         header: t("payment-method"),
+        meta: { className: "hidden lg:table-cell" },
         cell: ({ row }) => (
           <div className="text-sm text-foreground">
             {t(row.getValue("paymentMethod"))}
@@ -599,7 +603,10 @@ export default function Transactions() {
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                      className={cn(
+                        "px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider",
+                        (header.column.columnDef.meta as any)?.className
+                      )}
                     >
                       {header.isPlaceholder
                         ? null
@@ -621,7 +628,13 @@ export default function Transactions() {
                     className="border-b border-border/50 hover:bg-muted/40 transition-colors duration-150 cursor-pointer"
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3 text-sm text-foreground">
+                      <td 
+                        key={cell.id} 
+                        className={cn(
+                          "px-4 py-3 text-sm text-foreground",
+                          (cell.column.columnDef.meta as any)?.className
+                        )}
+                      >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),

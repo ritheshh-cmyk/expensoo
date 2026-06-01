@@ -376,91 +376,97 @@ export default function Reports() {
           <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
             <h3 className="text-base font-semibold text-foreground mb-1">Revenue &amp; Profit Trend</h3>
             <p className="text-xs text-muted-foreground mb-4">Monthly performance over time</p>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#71717a', fontSize: 12 }} />
-                <Tooltip
-                  formatter={(value) => `₹${typeof value === 'number' ? value.toLocaleString() : '0'}`}
-                  labelFormatter={(label) => `Month: ${label}`}
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                />
-                <Legend />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stackId="1"
-                  stroke="#f59e0b"
-                  fill="#f59e0b"
-                  fillOpacity={0.3}
-                  name="Revenue"
-                />
-                {showProfits && (
+            <div className="h-[240px] md:h-[300px] w-full mt-4">
+              <ResponsiveContainer width="99%" height="100%">
+                <AreaChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 10, dy: 10 }} tickMargin={10} minTickGap={15} />
+                  <YAxis tick={{ fill: '#71717a', fontSize: 10, dx: -10 }} tickFormatter={(value) => value >= 1000 ? `${(value/1000).toFixed(0)}k` : value} />
+                  <Tooltip
+                    formatter={(value) => `₹${typeof value === 'number' ? value.toLocaleString() : '0'}`}
+                    labelFormatter={(label) => `Month: ${label}`}
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                  />
+                  <Legend />
                   <Area
                     type="monotone"
-                    dataKey="profit"
-                    stackId="2"
-                    stroke="#10B981"
-                    fill="#10B981"
+                    dataKey="revenue"
+                    stackId="1"
+                    stroke="#f59e0b"
+                    fill="#f59e0b"
                     fillOpacity={0.3}
-                    name="Profit"
+                    name="Revenue"
                   />
-                )}
-              </AreaChart>
-            </ResponsiveContainer>
+                  {showProfits && (
+                    <Area
+                      type="monotone"
+                      dataKey="profit"
+                      stackId="2"
+                      stroke="#10B981"
+                      fill="#10B981"
+                      fillOpacity={0.3}
+                      name="Profit"
+                    />
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           {/* Repair Types */}
           <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
             <h3 className="text-base font-semibold text-foreground mb-1">Repair Types Distribution</h3>
             <p className="text-xs text-muted-foreground mb-4">Breakdown by repair category</p>
-            <ResponsiveContainer width="100%" height={300}>
-              <RechartsPieChart>
-                <Pie
-                  data={repairTypesData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#f59e0b"
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}%`}
-                >
-                  {repairTypesData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={['#f59e0b', '#10B981', '#8B5CF6', '#EF4444', '#06b6d4'][index % 5]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => `${value}%`}
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                />
-              </RechartsPieChart>
-            </ResponsiveContainer>
+            <div className="h-[240px] md:h-[300px] w-full mt-4">
+              <ResponsiveContainer width="99%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={repairTypesData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    fill="#f59e0b"
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}%`}
+                  >
+                    {repairTypesData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#f59e0b', '#10B981', '#8B5CF6', '#EF4444', '#06b6d4'][index % 5]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => `${value}%`}
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           {/* Device Brands */}
           <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
             <h3 className="text-base font-semibold text-foreground mb-1">Device Brand Performance</h3>
             <p className="text-xs text-muted-foreground mb-4">Revenue and repair count by brand</p>
-            <ResponsiveContainer width="100%" height={300}>
-              <RechartsBarChart data={deviceBrandsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="brand" tick={{ fill: '#71717a', fontSize: 12 }} />
-                <YAxis tick={{ fill: '#71717a', fontSize: 12 }} />
-                <Tooltip
-                  formatter={(value, name) => [
-                    name === "revenue" ? `₹${typeof value === 'number' ? value.toLocaleString() : '0'}` : value,
-                    name === "revenue" ? "Revenue" : "Repairs",
-                  ]}
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                />
-                <Legend />
-                <Bar dataKey="repairs" fill="#f59e0b" name="Repairs" />
-                {showProfits && (
-                  <Bar dataKey="revenue" fill="#10B981" name="Revenue" />
-                )}
-              </RechartsBarChart>
-            </ResponsiveContainer>
+            <div className="h-[240px] md:h-[300px] w-full mt-4">
+              <ResponsiveContainer width="99%" height="100%">
+                <RechartsBarChart data={deviceBrandsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="brand" tick={{ fill: '#71717a', fontSize: 10, dy: 10 }} tickMargin={10} minTickGap={15} />
+                  <YAxis tick={{ fill: '#71717a', fontSize: 10, dx: -10 }} />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      name === "revenue" ? `₹${typeof value === 'number' ? value.toLocaleString() : '0'}` : value,
+                      name === "revenue" ? "Revenue" : "Repairs",
+                    ]}
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="repairs" fill="#f59e0b" name="Repairs" />
+                  {showProfits && (
+                    <Bar dataKey="revenue" fill="#10B981" name="Revenue" />
+                  )}
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           {/* Customer Analytics */}

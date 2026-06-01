@@ -8,7 +8,8 @@ export default function NewTransaction() {
 
   const handleSubmit = async (createdTransaction: any) => {
     // MultiStepTransactionForm already handled backend save and success toasts.
-    // We simply redirect the user back to the main transactions view.
+    // Allow the success screen in MultiStepTransactionForm to render
+    // User will click "Go to Transactions" explicitly.
     navigate("/transactions");
   };
 

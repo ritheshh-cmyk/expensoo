@@ -1,3 +1,4 @@
+import { io } from "socket.io-client";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,9 @@ export default function Dashboard() {
     const next = !showProfits;
     setShowProfits(next);
     localStorage.setItem("showProfits", String(next));
+    if (next) {
+      fetchDashboardData(false);
+    }
   };
 
   const fetchDashboardData = async (showToast = false) => {
@@ -87,7 +91,6 @@ export default function Dashboard() {
       ]);
 
       // ── dashboard metrics ─────────────────────────────────────────────────
-      // getDashboardStats() returns { success, data: { totals, today, week } }
       const dashData = dash?.data ?? dash;
       if (dashData?.totals) {
         const t = dashData.totals;
@@ -101,7 +104,6 @@ export default function Dashboard() {
           pendingTransactions: Number(t.pendingTransactions) || 0,
         });
       }
-
 
       // ── recent transactions ───────────────────────────────────────────────
       const raw: any[] = Array.isArray(txns)
@@ -118,15 +120,44 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("[Dashboard] fetch error:", err);
-      if (showToast) {
-        toast({ title: "Refresh failed", variant: "destructive" });
-      }
+      toast({
+        title: "Sync Warning",
+        description: "Could not refresh dashboard data. Displaying cached information.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { fetchDashboardData(); }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const wsUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL ||
+                  import.meta.env.VITE_PRODUCTION_BACKEND_URL ||
+                  'https://expensoo-app-gu3wg.ondigitalocean.app';
+    const socket = io(wsUrl, { transports: ['websocket'] });
+    socket.on('connect_error', (err) => console.warn('Socket error:', err.message));
+    
+    const update = () => fetchDashboardData();
+    socket.on('transactionCreated', update);
+    socket.on('transactionUpdated', update);
+    socket.on('transactionDeleted', update);
+    socket.on('expenditureCreated', update);
+    socket.on('expenditureUpdated', update);
+    socket.on('expenditureDeleted', update);
+
+    return () => {
+      socket.off('transactionCreated', update);
+      socket.off('transactionUpdated', update);
+      socket.off('transactionDeleted', update);
+      socket.off('expenditureCreated', update);
+      socket.off('expenditureUpdated', update);
+      socket.off('expenditureDeleted', update);
+      socket.disconnect();
+    };
+  }, [user]);
 
   const isOwnerOrAdmin = hasAccess(["admin", "owner"]);
 
@@ -169,6 +200,8 @@ export default function Dashboard() {
             <Button
               variant="outline"
               size="sm"
+              id="toggle-profits-btn"
+              data-testid="profits-toggle"
               onClick={toggleProfits}
               className="min-h-[44px] px-4"
               style={{ touchAction: "manipulation" }}
@@ -180,68 +213,68 @@ export default function Dashboard() {
       </div>
 
       {/* ── stat cards ─────────────────────────────────────────────────── */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Today Revenue */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CardHeader className="p-3 sm:p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
               {t("today-revenue")}
             </CardTitle>
-            <div className="rounded-full bg-brand-green-50 dark:bg-brand-green/15 p-2">
-              <DollarSign className="h-4 w-4 text-brand-green dark:text-brand-green" />
+            <div className="rounded-full bg-brand-green-50 dark:bg-brand-green/15 p-1.5 sm:p-2 shrink-0">
+              <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-brand-green dark:text-brand-green" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-brand-green font-heading">
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-lg xs:text-xl sm:text-2xl font-bold text-brand-green font-heading truncate">
               ₹{formatCurrency(dashboardData.todayRevenue)}
             </div>
-            {isOwnerOrAdmin && showProfits && dashboardData.todayProfit > 0 && (
-              <p className="text-xs text-muted-foreground mt-0.5">
+            {isOwnerOrAdmin && showProfits && (
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
                 {t("profit")}: ₹{formatCurrency(dashboardData.todayProfit)}
               </p>
             )}
-            <p className="text-xs text-muted-foreground mt-1">{t("today-earnings")}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">{t("today-earnings")}</p>
           </CardContent>
         </Card>
 
         {/* Pending Repairs */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CardHeader className="p-3 sm:p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
               {t("pending-repairs")}
             </CardTitle>
-            <div className="rounded-full bg-brand-orange-50 dark:bg-brand-orange/15 p-2">
-              <Clock className="h-4 w-4 text-brand-orange dark:text-brand-orange" />
+            <div className="rounded-full bg-brand-orange-50 dark:bg-brand-orange/15 p-1.5 sm:p-2 shrink-0">
+              <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-brand-orange dark:text-brand-orange" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-brand-orange font-heading">
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-lg xs:text-xl sm:text-2xl font-bold text-brand-orange font-heading truncate">
               {dashboardData.pendingTransactions}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{t("awaiting-completion")}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">{t("awaiting-completion")}</p>
           </CardContent>
         </Card>
 
         {/* Total Revenue */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+        <Card className="col-span-2 sm:col-span-1 lg:col-span-1">
+          <CardHeader className="p-3 sm:p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
               {t("total-revenue")}
             </CardTitle>
-            <div className="rounded-full bg-brand-blue-50 dark:bg-brand-blue/15 p-2">
-              <TrendingUp className="h-4 w-4 text-brand-blue dark:text-brand-blue" />
+            <div className="rounded-full bg-brand-blue-50 dark:bg-brand-blue/15 p-1.5 sm:p-2 shrink-0">
+              <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-brand-blue dark:text-brand-blue" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold font-heading">
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-lg xs:text-xl sm:text-2xl font-bold font-heading truncate">
               ₹{formatCurrency(dashboardData.totalRevenue)}
             </div>
-            {isOwnerOrAdmin && showProfits && dashboardData.totalProfit > 0 && (
-              <p className="text-xs text-muted-foreground mt-0.5">
+            {isOwnerOrAdmin && showProfits && (
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
                 {t("profit")}: ₹{formatCurrency(dashboardData.totalProfit)}
               </p>
             )}
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">
               {dashboardData.totalTransactions} {t("total-transactions-label")}
             </p>
           </CardContent>

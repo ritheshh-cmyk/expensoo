@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -42,6 +43,7 @@ import {
   Download,
   Send,
   MessageSquare,
+  MessageCircle,
   Printer,
   Eye,
   Edit,
@@ -52,6 +54,7 @@ import {
   FileText,
   Phone,
   Mail,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient } from '@/lib/api';
@@ -80,6 +83,7 @@ function BillStatusBadge({ status }: { status: string }) {
 }
 
 export default function Bills() {
+  const location = useLocation();
   const [bills, setBills] = useState<any[]>([]);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
@@ -99,6 +103,29 @@ export default function Bills() {
     discount: 0,
     notes: "",
   });
+
+  useEffect(() => {
+    if (location.state?.prefill) {
+      const { customerName, phoneNumber, repairCost, repairType, customRepairType } = location.state.prefill;
+      const desc = repairType === "others" ? customRepairType || "Repair Service" : repairType || "Repair Service";
+      
+      setFormData(prev => ({
+        ...prev,
+        customerName: customerName || "",
+        customerPhone: phoneNumber || "",
+        items: [{
+          description: desc,
+          quantity: 1,
+          rate: repairCost || 0,
+          amount: repairCost || 0
+        }]
+      }));
+      setShowCreateDialog(true);
+      
+      // Clear the state so it doesn't trigger again on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const filteredBills = bills.filter((bill) => {
     const matchesSearch =
@@ -172,6 +199,18 @@ export default function Bills() {
   const handleDownloadPDF = (bill: any) => {
     // Mock PDF download
     console.log("Downloading PDF for bill:", bill.id);
+  };
+
+  const handleSendWhatsApp = (bill: any) => {
+    let phone = (bill.customerPhone || '').replace(/\D/g, '');
+    if (!phone) {
+      toast({ title: "No phone number", description: "Customer phone number is missing." });
+      return;
+    }
+    const message = `🧾 *Invoice from Call Me Mobiles*\n\nDear ${bill.customerName},\n\nHere are your bill details:\nInvoice #: ${bill.id}\nDate: ${bill.date}\nAmount: ₹${bill.amount}\n\nThank you for your business!`;
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`, '_blank');
+    toast({ title: "WhatsApp Opened", description: `Opening WhatsApp for ${bill.customerName}` });
   };
 
   const handleSendSMS = async (bill: any) => {
@@ -373,8 +412,8 @@ export default function Bills() {
                       <div className="space-y-4">
                         {formData.items.map((item, index) => (
                           <Card key={index} className="p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                              <div className="md:col-span-2">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                              <div className="col-span-2 md:col-span-2">
                                 <Label>Description</Label>
                                 <Input
                                   placeholder="iPhone 14 Pro Screen Replacement"
@@ -388,10 +427,11 @@ export default function Bills() {
                                   }
                                 />
                               </div>
-                              <div>
+                              <div className="col-span-1">
                                 <Label>Quantity</Label>
                                 <Input
                                   type="number"
+                                  inputMode="decimal"
                                   min="1"
                                   value={item.quantity}
                                   onChange={(e) =>
@@ -403,10 +443,11 @@ export default function Bills() {
                                   }
                                 />
                               </div>
-                              <div>
+                              <div className="col-span-1">
                                 <Label>Rate (₹)</Label>
                                 <Input
                                   type="number"
+                                  inputMode="decimal"
                                   step="0.01"
                                   value={item.rate}
                                   onChange={(e) =>
@@ -418,7 +459,7 @@ export default function Bills() {
                                   }
                                 />
                               </div>
-                              <div className="flex items-end gap-2">
+                              <div className="col-span-2 md:col-span-1 flex items-end gap-2">
                                 <div className="flex-1">
                                   <Label>Amount</Label>
                                   <div className="h-10 flex items-center px-3 border rounded-md bg-muted">
@@ -430,9 +471,10 @@ export default function Bills() {
                                     type="button"
                                     variant="outline"
                                     size="icon"
+                                    className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                                     onClick={() => removeLineItem(index)}
                                   >
-                                    <MessageSquare className="h-4 w-4" />
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
                                 )}
                               </div>
@@ -628,7 +670,7 @@ export default function Bills() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-md p-5 hover:border-brand-orange/30 transition-colors duration-200">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <p className="text-sm font-medium text-muted-foreground">Total Bills</p>
@@ -752,14 +794,26 @@ export default function Bills() {
                         <Download className="h-4 w-4" />
                       </Button>
                       {bill.customerPhone && (
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
-                          onClick={() => handleSendSMS(bill)}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
+                            onClick={() => handleSendWhatsApp(bill)}
+                            title="Send via WhatsApp"
+                          >
+                            <MessageCircle className="h-4 w-4 text-emerald-500" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
+                            onClick={() => handleSendSMS(bill)}
+                            title="Send SMS"
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
