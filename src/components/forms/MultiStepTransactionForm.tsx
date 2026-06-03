@@ -74,6 +74,11 @@ const transactionSchema = z.object({
   remarks: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
   estimatedCompletion: z.string().optional(),
+
+  // Sales-specific fields
+  itemName: z.string().optional(),
+  ourCost: z.number().min(0, "Our cost must be 0 or greater").optional(),
+  soldPrice: z.number().min(0, "Sold price must be 0 or greater").optional(),
 });
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -90,13 +95,17 @@ interface MultiStepTransactionFormProps {
   onSubmit: (data: Record<string, unknown> | null) => void;
   onCancel?: () => void;
   initialData?: any;
+  /** When "sales" the form shows Sales Details in Step 2 instead of Repair Info */
+  mode?: "repair" | "sales";
 }
 
 const DRAFT_KEY = "txn_form_draft";
 
-export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: MultiStepTransactionFormProps) {
+export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, mode = "repair" }: MultiStepTransactionFormProps) {
+  const isSales = mode === "sales";
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
+  const [salesProfit, setSalesProfit] = useState(0);
   const [parts, setParts] = useState<Part[]>(() => {
     if (initialData?.partsCost && Array.isArray(initialData.partsCost)) {
       return initialData.partsCost.map((p: any) => ({
@@ -142,6 +151,8 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: Mu
       freeGlass: false,
       externalPurchase: false,
       priority: "medium",
+      ourCost: 0,
+      soldPrice: 0,
     },
   });
 
@@ -149,6 +160,9 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: Mu
   const paymentMethod = watch("paymentMethod");
   const repairCost = watch("repairCost");
   const watchedValues = watch();
+  // Sales: watch cost fields for live profit calculation
+  const watchedOurCost = watch("ourCost" as any) as number | undefined;
+  const watchedSoldPrice = watch("soldPrice" as any) as number | undefined;
 
 
 
@@ -157,6 +171,18 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: Mu
       setValue("amountGiven", Number(repairCost) || 0, { shouldValidate: true });
     }
   }, [paymentMethod, repairCost, setValue]);
+
+  // Sales mode: recalculate profit whenever ourCost or soldPrice changes
+  useEffect(() => {
+    if (isSales) {
+      const cost = Number(watchedOurCost) || 0;
+      const price = Number(watchedSoldPrice) || 0;
+      const profit = price - cost;
+      setSalesProfit(profit);
+      // Keep repairCost in sync with soldPrice for backend compatibility
+      setValue("repairCost", price, { shouldValidate: false });
+    }
+  }, [isSales, watchedOurCost, watchedSoldPrice, setValue]);
 
   // ── Draft persistence ───────────────────────────────────────────────────────
   // Check on mount whether a previous draft exists
@@ -231,17 +257,17 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: Mu
     {
       title: t("customer-details"),
       icon: User,
-      description: "Customer information and contact details",
+      description: isSales ? "Customer and contact details" : "Customer information and contact details",
     },
     {
-      title: t("repair-details"),
-      icon: Wrench,
-      description: "Repair type, cost and payment information",
+      title: isSales ? "Sales Details" : t("repair-details"),
+      icon: isSales ? ShoppingCart : Wrench,
+      description: isSales ? "Item, cost and sale price" : "Repair type, cost and payment information",
     },
     {
       title: t("parts-suppliers"),
       icon: Package,
-      description: "Parts required and supplier selection", // Updated description
+      description: isSales ? "Parts and sourcing information" : "Parts required and supplier selection",
     },
     {
       title: t("additional-details"),
@@ -258,12 +284,18 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: Mu
         fieldsToValidate = ["customerName", "phoneNumber", "deviceModel"];
         break;
       case 2:
-        fieldsToValidate = [
-          "repairType",
-          "repairCost",
-          "paymentMethod",
-          "amountGiven",
-        ];
+        if (isSales) {
+          // For sales mode validate item fields; repairType is auto-set
+          // soldPrice is stored in repairCost; ourCost as internalCost
+          fieldsToValidate = ["paymentMethod", "amountGiven"];
+        } else {
+          fieldsToValidate = [
+            "repairType",
+            "repairCost",
+            "paymentMethod",
+            "amountGiven",
+          ];
+        }
         break;
       case 3:
         // Validate supplier selection if parts are required
@@ -376,12 +408,19 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: Mu
         ...data,
         customerName: String(data.customerName || "").trim(),
         mobileNumber: String(data.phoneNumber || "").replace(/\D/g, ""),
-        deviceModel: String(data.deviceModel || "").trim(),
-        repairType: String(data.repairType === "others" ? data.customRepairType : data.repairType),
+        deviceModel: isSales
+          ? String((data as any).itemName || data.deviceModel || "").trim()
+          : String(data.deviceModel || "").trim(),
+        repairType: isSales
+          ? "sale"
+          : String(data.repairType === "others" ? data.customRepairType : data.repairType),
         paymentMethod: String(data.paymentMethod || "cash"),
-        repairCost: Number(data.repairCost) || 0,
+        repairCost: isSales ? Number((data as any).soldPrice) || 0 : Number(data.repairCost) || 0,
+        internalCost: isSales ? Number((data as any).ourCost) || 0 : undefined,
+        profit: isSales ? salesProfit : undefined,
+        actualCost: isSales ? Number((data as any).ourCost) || 0 : undefined,
         amountGiven: Number(data.amountGiven) || 0,
-        changeReturned: Math.max(0, (Number(data.amountGiven) || 0) - (Number(data.repairCost) || 0)),
+        changeReturned: Math.max(0, (Number(data.amountGiven) || 0) - (isSales ? Number((data as any).soldPrice) || 0 : Number(data.repairCost) || 0)),
         status: computedStatus,
         remarks: data.remarks || "",
         freeGlassInstallation: data.freeGlass || false,
@@ -488,12 +527,15 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: Mu
       freeGlass: false,
       externalPurchase: false,
       priority: 'medium',
+      ourCost: 0,
+      soldPrice: 0,
     });
     setParts([]);
     setSelectedSupplier('');
     setCurrentStep(1);
     setTransactionCreated(null);
     setCreatedTransactionData(null);
+    setSalesProfit(0);
     sessionStorage.removeItem(DRAFT_KEY);
   };
 
@@ -776,76 +818,153 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: Mu
               </Card>
             )}
 
-            {/* Step 2: Repair Details */}
+            {/* Step 2: Repair OR Sales Details */}
             {currentStep === 2 && (
               <Card className="border border-border bg-card overflow-visible">
                 <CardHeader className="border-b border-border">
                   <CardTitle className="flex items-center gap-2 text-foreground">
-                    <Wrench className="w-5 h-5 text-brand-orange" />
-                    Repair Information
+                    {isSales
+                      ? <ShoppingCart className="w-5 h-5 text-brand-orange" />
+                      : <Wrench className="w-5 h-5 text-brand-orange" />
+                    }
+                    {isSales ? "Sales Details" : "Repair Information"}
                   </CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    Specify repair type, cost and payment details
+                    {isSales
+                      ? "Enter item details and pricing to auto-calculate profit"
+                      : "Specify repair type, cost and payment details"
+                    }
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="repairType" className="text-sm font-medium text-muted-foreground mb-1.5">Repair Type *</Label>
-                      <Select onValueChange={(value) => setValue("repairType", value)}>
-                        <SelectTrigger className="bg-background border border-border text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
-                          <SelectValue placeholder="Select repair type" />
-                        </SelectTrigger>
-                        <SelectContent position="popper" side="bottom" align="start" sideOffset={4} className="z-[9999] bg-popover border border-border shadow-xl">
-                          <SelectItem value="screen-replacement">Screen Replacement</SelectItem>
-                          <SelectItem value="battery-replacement">Battery Replacement</SelectItem>
-                          <SelectItem value="charging-port">Charging Port Repair</SelectItem>
-                          <SelectItem value="speaker-repair">Speaker Repair</SelectItem>
-                          <SelectItem value="camera-repair">Camera Repair</SelectItem>
-                          <SelectItem value="water-damage">Water Damage Repair</SelectItem>
-                          <SelectItem value="software-issue">Software Issue</SelectItem>
-                          <SelectItem value="others">Others</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {errors.repairType && (
-                        <p className="text-red-400 text-sm">{errors.repairType.message}</p>
-                      )}
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="repairCost" className="text-sm font-medium text-muted-foreground mb-1.5">Repair Cost (₹) *</Label>
-                      <Input
-                        id="repairCost"
-                        type="number"
-                        inputMode="decimal"
-                        {...register("repairCost", { valueAsNumber: true })}
-                        placeholder="0"
-                        className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                      />
-                      {errors.repairCost && (
-                        <p className="text-red-400 text-sm">{errors.repairCost.message}</p>
-                      )}
-                    </div>
-                  </div>
+                  {/* ── SALES MODE FIELDS ── */}
+                  {isSales ? (
+                    <>
+                      {/* Item Name */}
+                      <div className="space-y-2">
+                        <Label htmlFor="itemName" className="text-sm font-medium text-muted-foreground mb-1.5">Item Name *</Label>
+                        <Input
+                          id="itemName"
+                          {...register("itemName" as any)}
+                          placeholder="e.g., iPhone 15 Pro Max 256GB, Samsung S24 Ultra"
+                          className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
+                        />
+                      </div>
 
-                  {/* Custom repair type input — shown only when 'Others' is selected */}
-                  {watchedValues.repairType === "others" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="customRepairType" className="text-sm font-medium text-muted-foreground mb-1.5">Specify Repair Type *</Label>
-                      <Input
-                        id="customRepairType"
-                        {...register("customRepairType")}
-                        placeholder="e.g., Motherboard repair, Mic replacement, Face ID fix..."
-                        className="bg-background border border-primary text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange"
-                        autoFocus
-                      />
-                      {errors.customRepairType && (
-                        <p className="text-red-400 text-sm">{errors.customRepairType.message}</p>
+                      {/* Our Cost + Sold Price + Profit */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="ourCost" className="text-sm font-medium text-muted-foreground mb-1.5">Our Cost (₹) *</Label>
+                          <Input
+                            id="ourCost"
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            {...register("ourCost" as any, { valueAsNumber: true })}
+                            placeholder="0"
+                            className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
+                          />
+                          <p className="text-xs text-muted-foreground">Your purchase / internal cost</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="soldPrice" className="text-sm font-medium text-muted-foreground mb-1.5">Sold Price / Customer Cost (₹) *</Label>
+                          <Input
+                            id="soldPrice"
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            {...register("soldPrice" as any, { valueAsNumber: true })}
+                            placeholder="0"
+                            className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
+                          />
+                          <p className="text-xs text-muted-foreground">Price charged to customer</p>
+                        </div>
+                      </div>
+
+                      {/* Live Profit Display */}
+                      <div className={cn(
+                        "flex items-center justify-between px-4 py-3 rounded-lg border",
+                        salesProfit >= 0
+                          ? "border-emerald-500/30 bg-emerald-500/10"
+                          : "border-red-500/30 bg-red-500/10"
+                      )}>
+                        <div className="flex items-center gap-2">
+                          <Calculator className={cn("w-4 h-4", salesProfit >= 0 ? "text-emerald-400" : "text-red-400")} />
+                          <span className="text-sm font-medium text-foreground">Profit (auto-calculated)</span>
+                        </div>
+                        <div className={cn(
+                          "text-lg font-bold",
+                          salesProfit >= 0 ? "text-emerald-400" : "text-red-400"
+                        )}>
+                          {salesProfit >= 0 ? "+" : ""}₹{salesProfit.toLocaleString()}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground -mt-3">Profit = Sold Price − Our Cost · Updates in real time</p>
+                    </>
+                  ) : (
+                    /* ── REPAIR MODE FIELDS (original, untouched) ── */
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="repairType" className="text-sm font-medium text-muted-foreground mb-1.5">Repair Type *</Label>
+                          <Select onValueChange={(value) => setValue("repairType", value)}>
+                            <SelectTrigger className="bg-background border border-border text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
+                              <SelectValue placeholder="Select repair type" />
+                            </SelectTrigger>
+                            <SelectContent position="popper" side="bottom" align="start" sideOffset={4} className="z-[9999] bg-popover border border-border shadow-xl">
+                              <SelectItem value="screen-replacement">Screen Replacement</SelectItem>
+                              <SelectItem value="battery-replacement">Battery Replacement</SelectItem>
+                              <SelectItem value="charging-port">Charging Port Repair</SelectItem>
+                              <SelectItem value="speaker-repair">Speaker Repair</SelectItem>
+                              <SelectItem value="camera-repair">Camera Repair</SelectItem>
+                              <SelectItem value="water-damage">Water Damage Repair</SelectItem>
+                              <SelectItem value="software-issue">Software Issue</SelectItem>
+                              <SelectItem value="others">Others</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {errors.repairType && (
+                            <p className="text-red-400 text-sm">{errors.repairType.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="repairCost" className="text-sm font-medium text-muted-foreground mb-1.5">Repair Cost (₹) *</Label>
+                          <Input
+                            id="repairCost"
+                            type="number"
+                            inputMode="decimal"
+                            {...register("repairCost", { valueAsNumber: true })}
+                            placeholder="0"
+                            className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
+                          />
+                          {errors.repairCost && (
+                            <p className="text-red-400 text-sm">{errors.repairCost.message}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Custom repair type input — shown only when 'Others' is selected */}
+                      {watchedValues.repairType === "others" && (
+                        <div className="space-y-2">
+                          <Label htmlFor="customRepairType" className="text-sm font-medium text-muted-foreground mb-1.5">Specify Repair Type *</Label>
+                          <Input
+                            id="customRepairType"
+                            {...register("customRepairType")}
+                            placeholder="e.g., Motherboard repair, Mic replacement, Face ID fix..."
+                            className="bg-background border border-primary text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange"
+                            autoFocus
+                          />
+                          {errors.customRepairType && (
+                            <p className="text-red-400 text-sm">{errors.customRepairType.message}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            This will appear as the repair type in reports and receipts.
+                          </p>
+                        </div>
                       )}
-                      <p className="text-xs text-muted-foreground">
-                        This will appear as the repair type in reports and receipts.
-                      </p>
-                    </div>
+                    </>
                   )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1234,18 +1353,43 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData }: Mu
                         <span className="text-muted-foreground">Phone:</span>
                         <span className="font-medium text-foreground">{watchedValues.phoneNumber}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Device:</span>
-                        <span className="font-medium text-foreground">{watchedValues.deviceModel}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Repair Type:</span>
-                        <span className="font-medium text-foreground">{watchedValues.repairType === "others" ? watchedValues.customRepairType || "Custom" : watchedValues.repairType}</span>
-                      </div>
-                      <div className="flex justify-between border-t border-border pt-2 mt-2">
-                        <span className="font-semibold text-foreground">Total Cost:</span>
-                        <span className="font-semibold text-brand-orange-light">₹{(watchedValues.repairCost || 0).toLocaleString()}</span>
-                      </div>
+                      {isSales ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Item:</span>
+                            <span className="font-medium text-foreground">{(watchedValues as any).itemName || watchedValues.deviceModel}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Our Cost:</span>
+                            <span className="font-medium text-foreground">₹{((watchedValues as any).ourCost || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Sold Price:</span>
+                            <span className="font-semibold text-brand-orange-light">₹{((watchedValues as any).soldPrice || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-border pt-2 mt-2">
+                            <span className="font-semibold text-foreground">Profit:</span>
+                            <span className={cn("font-bold text-lg", salesProfit >= 0 ? "text-emerald-400" : "text-red-400")}>
+                              {salesProfit >= 0 ? "+" : ""}₹{salesProfit.toLocaleString()}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Device:</span>
+                            <span className="font-medium text-foreground">{watchedValues.deviceModel}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Repair Type:</span>
+                            <span className="font-medium text-foreground">{watchedValues.repairType === "others" ? watchedValues.customRepairType || "Custom" : watchedValues.repairType}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-border pt-2 mt-2">
+                            <span className="font-semibold text-foreground">Total Cost:</span>
+                            <span className="font-semibold text-brand-orange-light">₹{(watchedValues.repairCost || 0).toLocaleString()}</span>
+                          </div>
+                        </>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Payment Method:</span>
                         <span className="font-medium text-white capitalize">{watchedValues.paymentMethod}</span>
