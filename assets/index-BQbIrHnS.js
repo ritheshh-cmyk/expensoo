@@ -1,0 +1,1 @@
+import{r as e,v as u}from"./index-0Mclx0My.js";var s=globalThis!=null&&globalThis.document?e.useLayoutEffect:()=>{},c=u[" useId ".trim().toString()]||(()=>{}),n=0;function f(t){const[a,r]=e.useState(c());return s(()=>{r(o=>o??String(n++))},[t]),t||(a?`radix-${a}`:"")}export{f as u};
