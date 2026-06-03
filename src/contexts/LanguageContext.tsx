@@ -25,6 +25,7 @@ const translations = {
     reports: "Reports",
     settings: "Settings",
     admin: "Administration",
+    sales: "New Sale",
 
     // Navigation & Header Extra
     "logged-in-as": "Logged in as",
@@ -385,6 +386,7 @@ const translations = {
     reports: "నివేదికలు",
     settings: "సెట్టింగ్‌లు",
     admin: "పరిపాలన",
+    sales: "కొత్త అమ్మకం",
 
     // Navigation & Header Extra
     "logged-in-as": "లాగిన్ అయిన యూజర్",

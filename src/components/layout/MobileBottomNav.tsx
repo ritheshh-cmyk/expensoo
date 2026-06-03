@@ -11,6 +11,7 @@ import {
   FileText,
   Settings,
   ShieldAlert,
+  ShoppingBag,
 } from "lucide-react";
 
 const mobileNavigation = [
@@ -25,6 +26,12 @@ const mobileNavigation = [
     name: "transactions",
     href: "/transactions",
     icon: CreditCard,
+    roles: ["admin", "owner", "worker"] as UserRole[],
+  },
+  {
+    name: "sales",
+    href: "/sales/new",
+    icon: ShoppingBag,
     roles: ["admin", "owner", "worker"] as UserRole[],
   },
   {

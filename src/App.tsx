@@ -19,6 +19,7 @@ const Reports      = React.lazy(() => import('./pages/Reports'));
 const Settings     = React.lazy(() => import('./pages/Settings'));
 const Profile      = React.lazy(() => import('./pages/Profile'));
 const AdminPage    = React.lazy(() => import('./pages/AdminPage'));
+const SalesTransaction = React.lazy(() => import('./pages/SalesTransaction'));
 
 // ── Suspense fallback — shown while a page chunk is downloading ───────────
 function PageLoader() {
@@ -84,6 +85,10 @@ function AppRoutes() {
 
       <Route path="/add-transaction" element={
         <ProtectedRoute><AppLayout><AnimatedPage><NewTransaction /></AnimatedPage></AppLayout></ProtectedRoute>
+      } />
+
+      <Route path="/sales/new" element={
+        <ProtectedRoute><AppLayout><AnimatedPage><SalesTransaction /></AnimatedPage></AppLayout></ProtectedRoute>
       } />
 
       <Route path="/suppliers" element={
