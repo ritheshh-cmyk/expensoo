@@ -1,1 +1,0 @@
-import{r as e,s}from"./index-ezaWyXsi.js";var u=globalThis!=null&&globalThis.document?e.useLayoutEffect:()=>{},c=s[" useId ".trim().toString()]||(()=>{}),n=0;function f(t){const[a,r]=e.useState(c());return u(()=>{r(o=>o??String(n++))},[t]),t||(a?`radix-${a}`:"")}export{f as u};
