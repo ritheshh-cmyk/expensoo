@@ -38,14 +38,15 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches safely, ensuring we keep active caches
 self.addEventListener('activate', (event) => {
   console.log('Service Worker: Activating...');
+  const ACTIVE_CACHES = [CACHE_NAME, API_CACHE_NAME, STATIC_CACHE_NAME];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+          if (!ACTIVE_CACHES.includes(cacheName)) {
             console.log('Service Worker: Deleting old cache', cacheName);
             return caches.delete(cacheName);
           }
