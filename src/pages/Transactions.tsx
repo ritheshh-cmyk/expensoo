@@ -105,7 +105,6 @@ interface Transaction {
 
 
 
-// Helper: parse created_by from multiple possible backend shapes
 function parseCreatedBy(raw: Record<string, unknown>): { user_id: string; display_name: string } | null {
   // Try snake_case (created_by) first, then camelCase (createdBy)
   const cb = (raw.created_by ?? raw.createdBy ?? raw.creator ?? null) as any;
@@ -115,16 +114,6 @@ function parseCreatedBy(raw: Record<string, unknown>): { user_id: string; displa
       display_name: String(cb.display_name || cb.displayName || cb.name || cb.username || ''),
     };
   }
-  // Fallback: use logged-in user from localStorage for display continuity
-  try {
-    const stored = localStorage.getItem('auth_user');
-    if (stored) {
-      const u = JSON.parse(stored);
-      const uid = String(u?.id || u?.user_id || u?.userId || '');
-      const name = String(u?.display_name || u?.displayName || u?.name || u?.username || '');
-      if (uid && name) return { user_id: uid, display_name: name };
-    }
-  } catch { /* non-fatal */ }
   return null;
 }
 

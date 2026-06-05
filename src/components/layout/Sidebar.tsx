@@ -121,7 +121,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <div className="flex h-16 shrink-0 items-center">
             <div className="flex items-center space-x-3">
               <div className="expenso-gradient w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-brand-orange/25">
-                <Smartphone className="h-6 w-6 text-white" />
+                <Smartphone strokeWidth={1.25} className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-brand-orange to-[#e8a07a] bg-clip-text text-transparent">
@@ -140,13 +140,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   <Link
                     to={item.href}
                     className={cn(
-                      "group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 min-h-[44px] text-sm font-medium",
+                      "group flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 min-h-[44px] text-sm font-medium",
                       isActive(item)
-                        ? "bg-brand-orange/15 text-brand-orange border-l-2 border-brand-orange pl-[10px]"
-                        : "text-white/70 hover:bg-white/5 hover:text-white border-l-2 border-transparent pl-[10px] focus-visible:ring-2 focus-visible:ring-brand-orange",
+                        ? "bg-white text-[#1a1918] shadow-md shadow-black/10"
+                        : "text-white/70 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-orange",
                     )}
                   >
                     <item.icon
+                      strokeWidth={1.25}
                       className={cn(
                         "h-5 w-5 shrink-0 transition-colors",
                         isActive(item)
@@ -170,9 +171,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <Button
                   onClick={logout}
                   variant="ghost"
-                  className="w-full justify-start gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 text-white/70 hover:bg-white/5 hover:text-white cursor-pointer min-h-[44px] transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange"
+                  className="w-full justify-start gap-3 px-4 py-3 rounded-xl text-sm font-medium leading-6 text-white/70 hover:bg-white/5 hover:text-white cursor-pointer min-h-[44px] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-brand-orange"
                 >
-                  <LogOut className="h-5 w-5 shrink-0" />
+                  <LogOut strokeWidth={1.25} className="h-5 w-5 shrink-0" />
                   {t("sign-out")}
                 </Button>
               </li>
@@ -192,7 +193,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <div className="flex h-16 shrink-0 items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="expenso-gradient w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-brand-orange/25">
-                <Smartphone className="h-6 w-6 text-white" />
+                <Smartphone strokeWidth={1.25} className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-brand-orange to-[#e8a07a] bg-clip-text text-transparent">
@@ -210,7 +211,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               aria-label="Close sidebar"
               className="h-11 w-11 shrink-0 electron-no-drag cursor-pointer hover:bg-white/5 text-white/70 hover:text-white transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange active:scale-95"
             >
-              <X className="h-5 w-5" />
+              <X strokeWidth={1.25} className="h-5 w-5" />
             </Button>
           </div>
           <nav className="flex flex-1 flex-col">
@@ -221,13 +222,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     to={item.href}
                     onClick={onClose}
                     className={cn(
-                      "group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 min-h-[44px] text-sm font-medium",
+                      "group flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 min-h-[44px] text-sm font-medium",
                       isActive(item)
-                        ? "bg-brand-orange/15 text-brand-orange border-l-2 border-brand-orange pl-[10px]"
-                        : "text-white/70 hover:bg-white/5 hover:text-white border-l-2 border-transparent pl-[10px] focus-visible:ring-2 focus-visible:ring-brand-orange",
+                        ? "bg-white text-[#1a1918] shadow-md shadow-black/10"
+                        : "text-white/70 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-orange",
                     )}
                   >
                     <item.icon
+                      strokeWidth={1.25}
                       className={cn(
                         "h-5 w-5 shrink-0 transition-colors",
                         isActive(item)
@@ -254,9 +256,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     onClose();
                   }}
                   variant="ghost"
-                  className="w-full justify-start gap-x-3 rounded-lg p-4 text-sm font-medium leading-6 text-white/70 hover:bg-white/5 hover:text-white cursor-pointer min-h-[44px] transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand-orange"
+                  className="w-full justify-start gap-3 px-4 py-3 rounded-xl text-sm font-medium leading-6 text-white/70 hover:bg-white/5 hover:text-white cursor-pointer min-h-[44px] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-brand-orange"
                 >
-                  <LogOut className="h-5 w-5 shrink-0" />
+                  <LogOut strokeWidth={1.25} className="h-5 w-5 shrink-0" />
                   {t("sign-out")}
                 </Button>
               </li>

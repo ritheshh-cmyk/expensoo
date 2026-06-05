@@ -1,60 +1,25 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "react-router-dom";
-import { Home, ArrowLeft } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Home, WifiOff } from 'lucide-react';
 
 export default function NotFound() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (user) {
-      navigate("/", { replace: true });
-    } else {
-      navigate("/login", { replace: true });
-    }
-  }, [user, navigate]);
-
-  // Fallback UI (should not be visible)
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="max-w-md w-full text-center">
-          <CardHeader>
-            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl">🔍</span>
-            </div>
-            <CardTitle className="text-2xl">Page Not Found</CardTitle>
-            <CardDescription className="text-base">
-              The page you're looking for doesn't exist or has been moved.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-2">
-              <Link to="/">
-                <Button className="w-full">
-                  <Home className="mr-2 h-4 w-4" />
-                  Go to Dashboard
-                </Button>
-              </Link>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => window.history.back()}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Go Back
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="flex flex-col items-center justify-center min-h-[80vh] p-4 text-center">
+      <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+        <AlertCircle className="w-10 h-10 text-muted-foreground" />
       </div>
+      <h1 className="text-4xl font-bold tracking-tight mb-2 text-foreground">404</h1>
+      <h2 className="text-2xl font-semibold mb-4 text-muted-foreground">Page Not Found</h2>
+      <p className="text-muted-foreground mb-8 max-w-md">
+        The page you are looking for doesn't exist, has been moved, or is temporarily unavailable.
+      </p>
+      <Button asChild>
+        <Link to="/dashboard" className="flex items-center gap-2">
+          <Home className="w-4 h-4" />
+          Back to Dashboard
+        </Link>
+      </Button>
+    </div>
   );
 }

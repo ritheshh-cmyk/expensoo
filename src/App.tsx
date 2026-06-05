@@ -24,6 +24,10 @@ const SalesTransaction = React.lazy(() => import('./pages/SalesTransaction'));
 const EditTransaction  = React.lazy(() => import('./pages/EditTransaction'));
 const Manual         = React.lazy(() => import('./pages/Manual'));
 const Unauthorized   = React.lazy(() => import('./pages/Unauthorized'));
+const NotFound       = React.lazy(() => import('./pages/NotFound'));
+
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { NetworkErrorPage } from './components/NetworkErrorPage';
 
 // ── Suspense fallback — shown while a page chunk is downloading ───────────
 function PageLoader() {
@@ -140,7 +144,7 @@ function AppRoutes() {
       } />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
     </Routes>
     </Suspense>
   );
@@ -149,18 +153,22 @@ function AppRoutes() {
 // ── Root App ──────────────────────────────────────────────────────────────────
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="callmemobiles-theme">
-      <AuthProvider>
-        <LanguageProvider>
-          <Router>
-            <div className="min-h-screen bg-background">
-              <AppRoutes />
-              <Toaster />
-            </div>
-          </Router>
-        </LanguageProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <NetworkErrorPage>
+        <ThemeProvider defaultTheme="system" storageKey="callmemobiles-theme">
+          <AuthProvider>
+            <LanguageProvider>
+              <Router>
+                <div className="min-h-screen bg-background">
+                  <AppRoutes />
+                  <Toaster />
+                </div>
+              </Router>
+            </LanguageProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </NetworkErrorPage>
+    </ErrorBoundary>
   );
 }
 
