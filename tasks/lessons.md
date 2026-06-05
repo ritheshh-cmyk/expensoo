@@ -10,3 +10,7 @@
 
 ## Windows Environment Configuration
 - **Set environment variables safely**: Standard PowerShell commands like `$env:VAR='val'` can fail in nested cmdlets or CLI tool calls. Prefer standard cmd syntax like `cmd /c "set VAR=val&& command"` for cross-environment consistency on Windows.
+
+## Context & Memory Management
+- **Proactively use agentmemory**: Every time you modify files, apply updates, or finalize a session, proactively use the `agentmemory` MCP server (specifically the `memory_save` tool) to log the session context, files touched, and architectural decisions. This ensures that context is durably persisted across sessions and reduces token bloat from repetitive scanning.
+- **Always adhere to global and local rules**: At the start of any task, check for and strictly follow global rules defined in `gemini.md` or `claude.md` from both the local repository context and any global/system context available. These rule files govern agent behavior and must be prioritized.

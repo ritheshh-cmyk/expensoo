@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -56,6 +56,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api";
+import { toast } from "@/components/ui/use-toast";
 
 const expenseCategories = [
   { value: "office", label: "Office Supplies", icon: Briefcase },
@@ -81,6 +83,15 @@ export default function Expenses() {
   const [filterType, setFilterType] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    apiClient.getExpenditures().then((res) => {
+      if (res.success) {
+        setTransactions(res.data);
+      }
+    });
+  }, [refreshKey]);
   const [formData, setFormData] = useState({
     type: "expense",
     description: "",
@@ -111,24 +122,30 @@ export default function Expenses() {
 
   const netBalance = totalIncome - totalExpenses;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newTransaction = {
-      id: Date.now(),
       ...formData,
       amount: parseFloat(formData.amount),
     };
-    setTransactions([newTransaction, ...transactions]);
-    setFormData({
-      type: "expense",
-      description: "",
-      amount: "",
-      category: "",
-      date: new Date(),
-      notes: "",
-      receipt: false,
-    });
-    setShowAddForm(false);
+
+    try {
+      await apiClient.createExpenditure(newTransaction);
+      setRefreshKey((prev) => prev + 1);
+      setFormData({
+        type: "expense",
+        description: "",
+        amount: "",
+        category: "",
+        date: new Date(),
+        notes: "",
+        receipt: false,
+      });
+      setShowAddForm(false);
+      toast({ title: "Success", description: "Expenditure added successfully" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to add expenditure", variant: "destructive" });
+    }
   };
 
   const getCategoryIcon = (category: string, type: string) => {

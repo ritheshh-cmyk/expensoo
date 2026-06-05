@@ -21,45 +21,40 @@ interface AuditLog {
 function actionVariant(action: string): { label: string; className: string } {
   switch (action) {
     case 'LOGIN':
-      return { 
-        label: 'LOGIN', 
-        className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' 
-      };
+      return { label: 'LOGIN', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' };
     case 'LOGIN_FAILED':
-      return { 
-        label: 'LOGIN FAILED', 
-        className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' 
-      };
+      return { label: 'LOGIN FAILED', className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' };
     case 'LOGOUT':
-      return { 
-        label: 'LOGOUT', 
-        className: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20' 
-      };
+      return { label: 'LOGOUT', className: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20' };
     case 'CREATE_USER':
-      return { 
-        label: 'CREATE USER', 
-        className: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' 
-      };
+      return { label: 'CREATE USER', className: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' };
     case 'DELETE_USER':
-      return { 
-        label: 'DELETE USER', 
-        className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' 
-      };
+      return { label: 'DELETE USER', className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' };
     case 'UPDATE_ROLE':
-      return { 
-        label: 'UPDATE ROLE', 
-        className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' 
-      };
+      return { label: 'UPDATE ROLE', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' };
     case 'CHANGE_PASSWORD':
-      return { 
-        label: 'CHANGE PWD', 
-        className: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20' 
-      };
+      return { label: 'CHANGE PWD', className: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20' };
+    // Transaction events
+    case 'TRANSACTION_CREATED':
+      return { label: 'TXN CREATED', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' };
+    case 'TRANSACTION_UPDATED':
+      return { label: 'TXN UPDATED', className: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20' };
+    case 'TRANSACTION_DELETED':
+      return { label: 'TXN DELETED', className: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' };
+    // Permissions / settings
+    case 'PERMISSION_UPDATED':
+      return { label: 'PERMISSIONS', className: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' };
+    case 'PROFILE_UPDATED':
+      return { label: 'PROFILE', className: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' };
+    // Data operations
+    case 'EXPORT_DATA':
+      return { label: 'EXPORT', className: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20' };
+    case 'BULK_DELETE':
+      return { label: 'BULK DELETE', className: 'bg-red-600/10 text-red-700 dark:text-red-300 border-red-600/20' };
+    case 'SUPPLIER_CREATED':
+      return { label: 'SUPPLIER', className: 'bg-lime-500/10 text-lime-600 dark:text-lime-400 border-lime-500/20' };
     default:
-      return { 
-        label: action, 
-        className: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20' 
-      };
+      return { label: action.replace(/_/g, ' '), className: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20' };
   }
 }
 
@@ -158,9 +153,6 @@ export function AuditLogPanel() {
             </Button>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {t('audit-log-desc')}
-        </p>
       </CardHeader>
 
       <CardContent>

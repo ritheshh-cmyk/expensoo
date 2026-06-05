@@ -192,8 +192,8 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
   const watchedOurCost = watch("ourCost" as any) as number | undefined;
   const watchedSoldPrice = watch("soldPrice" as any) as number | undefined;
 
-  // CP visible if allowed by permissions — user can hide it with the eye toggle if needed
-  const [showCp, setShowCp] = useState(canViewCost);
+  // CP always starts hidden (masked) regardless of permissions — user must explicitly Show it
+  const [showCp, setShowCp] = useState(false);
   // FEAT-01: Paid/Unpaid toggle
   const [isPaid, setIsPaid] = useState(() => {
     if (initialData) {
@@ -905,9 +905,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                     <User className="w-5 h-5 text-brand-orange" />
                     Customer Information
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    Enter customer details and device information
-                  </CardDescription>
+
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -965,12 +963,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                     }
                     {isSales ? "Sales Details" : "Repair Information"}
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    {isSales
-                      ? "Enter item details and pricing to auto-calculate profit"
-                      : "Specify repair type, cost and payment details"
-                    }
-                  </CardDescription>
+
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
 
@@ -1037,11 +1030,10 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                             placeholder="0"
                             className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
                           />
-                          <p className="text-xs text-muted-foreground">Your purchase / internal cost</p>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="soldPrice" className="text-sm font-medium text-muted-foreground mb-1.5">Selling Price / SP (₹) — Customer Price *</Label>
+                          <Label htmlFor="soldPrice" className="text-sm font-medium text-muted-foreground mb-1.5">Selling Price (₹) *</Label>
                           <Input
                             id="soldPrice"
                             type="number"
@@ -1051,7 +1043,6 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                             placeholder="0"
                             className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
                           />
-                          <p className="text-xs text-muted-foreground">Price charged to customer</p>
                         </div>
                       </div>
 
@@ -1064,7 +1055,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                       )}>
                         <div className="flex items-center gap-2">
                           <Calculator className={cn("w-4 h-4", calculatedProfit >= 0 ? "text-emerald-400" : "text-red-400")} />
-                          <span className="text-sm font-medium text-foreground">Profit (auto-calculated)</span>
+                          <span className="text-sm font-medium text-foreground">Profit</span>
                         </div>
                         <div className={cn(
                           "text-lg font-bold",
@@ -1073,7 +1064,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                           {calculatedProfit >= 0 ? "+" : ""}₹{calculatedProfit.toLocaleString()}
                         </div>
                       </div>
-                      <p className="text-xs text-muted-foreground -mt-3">Profit = Sold Price − (Our Cost + Parts) · Updates in real time</p>
+
                     </>
                   ) : (
                     /* ── REPAIR MODE FIELDS (original, untouched) ── */
@@ -1133,9 +1124,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                           {errors.customRepairType && (
                             <p className="text-red-400 text-sm">{errors.customRepairType.message}</p>
                           )}
-                          <p className="text-xs text-muted-foreground">
-                            This will appear as the repair type in reports and receipts.
-                          </p>
+
                         </div>
                       )}
                     </>
@@ -1207,9 +1196,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                     <Store className="w-5 h-5 text-brand-orange" />
                     {isSales ? "Supplier Information" : "Parts & Supplier Selection"}
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    {isSales ? "Select the supplier and confirm item details" : "Manage parts requirements and select suppliers"}
-                  </CardDescription>
+
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   {isSales ? (
@@ -1384,20 +1371,6 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                             placeholder="0"
                             className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
                           />
-                          <p className="text-xs text-muted-foreground">Internal / parts cost</p>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="internalSoldPrice" className="text-sm font-medium text-muted-foreground mb-1.5">Selling Price / SP (₹) — Customer Price</Label>
-                          <Input
-                            id="internalSoldPrice"
-                            type="number"
-                            inputMode="decimal"
-                            {...register("repairCost", { valueAsNumber: true })}
-                            placeholder="0"
-                            className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                          />
-                          <p className="text-xs text-muted-foreground">Price charged to customer</p>
                         </div>
                       </div>
                     </div>
@@ -1584,8 +1557,8 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                             {parts.some(p => !!p.supplier) && (
                               <div className="space-y-3 pt-2">
                                 <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-3 mb-1">
-                                  <div className="col-span-4">Part Name</div>
-                                  <div className="col-span-3 flex items-center gap-1">
+                                  <div className="col-span-5">Part Name</div>
+                                  <div className="col-span-4 flex items-center gap-1">
                                     <span>Cost (₹)</span>
                                     {canViewCost && (
                                       <button
@@ -1598,8 +1571,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                       </button>
                                     )}
                                   </div>
-                                  <div className="col-span-3">Selling Price (₹)</div>
-                                  <div className="col-span-1">Qty</div>
+                                  <div className="col-span-2">Qty</div>
                                   <div className="col-span-1">Action</div>
                                 </div>
 
@@ -1607,7 +1579,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                   if (!part.supplier) return null;
                                   return (
                                     <div key={index} className="grid grid-cols-12 gap-2 items-center p-3 border border-border rounded-lg bg-background">
-                                      <div className="col-span-4">
+                                      <div className="col-span-5">
                                         <Input
                                           placeholder="Part name"
                                           value={part.name}
@@ -1615,7 +1587,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                           className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
                                         />
                                       </div>
-                                      <div className="col-span-3">
+                                      <div className="col-span-4">
                                         <Input
                                           type={showCp ? "number" : "password"}
                                           inputMode="decimal"
@@ -1625,16 +1597,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                           className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
                                         />
                                       </div>
-                                      <div className="col-span-3">
-                                        <Input
-                                          type="number"
-                                          placeholder="Price"
-                                          value={part.price || 0}
-                                          onChange={(e) => updatePart(index, "price", Number(e.target.value))}
-                                          className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                                        />
-                                      </div>
-                                      <div className="col-span-1">
+                                      <div className="col-span-2">
                                         <Input
                                           type="number"
                                           placeholder="Qty"
@@ -1712,7 +1675,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                               <div className="space-y-3">
                                 <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-3 mb-1">
                                   <div className="col-span-5">Part Name</div>
-                                  <div className="col-span-3 flex items-center gap-1">
+                                  <div className="col-span-4 flex items-center gap-1">
                                     <span>Cost (₹)</span>
                                     {canViewCost && (
                                       <button
@@ -1725,8 +1688,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                       </button>
                                     )}
                                   </div>
-                                  <div className="col-span-3">Selling Price (₹)</div>
-                                  <div className="col-span-1">Qty</div>
+                                  <div className="col-span-2">Qty</div>
                                   <div className="col-span-1">Action</div>
                                 </div>
 
@@ -1742,7 +1704,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                           className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
                                         />
                                       </div>
-                                      <div className="col-span-3">
+                                      <div className="col-span-4">
                                         <Input
                                           type={showCp ? "number" : "password"}
                                           inputMode="decimal"
@@ -1752,16 +1714,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                           className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
                                         />
                                       </div>
-                                      <div className="col-span-3">
-                                        <Input
-                                          type="number"
-                                          placeholder="Price"
-                                          value={part.price || 0}
-                                          onChange={(e) => updatePart(index, "price", Number(e.target.value))}
-                                          className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                                        />
-                                      </div>
-                                      <div className="col-span-1">
+                                      <div className="col-span-2">
                                         <Input
                                           type="number"
                                           placeholder="Qty"
@@ -1795,10 +1748,10 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                           <Calculator className="h-4 w-4 text-brand-orange" />
                           Box 3: Cost Summary
                         </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                        <div className="grid grid-cols-1 gap-4 pt-2">
                           <div className="p-4 border border-border rounded-lg bg-background flex flex-col justify-between">
                             <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                              <span>Total Cost (CP)</span>
+                              <span>Total Parts Cost (CP)</span>
                               {canViewCost && (
                                 <button
                                   type="button"
@@ -1812,28 +1765,6 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                             </div>
                             <span className="text-xl font-bold text-foreground">
                               {showCp ? `₹${calculatePartsCost().toLocaleString()}` : "₹ ••••"}
-                            </span>
-                          </div>
-
-                          <div className="p-4 border border-border rounded-lg bg-background flex flex-col justify-between">
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Selling Price (SP)</span>
-                            <span className="text-xl font-bold text-brand-orange-light">
-                              ₹{calculatePartsPrice().toLocaleString()}
-                            </span>
-                          </div>
-
-                          <div className={cn(
-                            "p-4 border rounded-lg flex flex-col justify-between",
-                            (calculatePartsPrice() - calculatePartsCost()) >= 0
-                              ? "border-emerald-500/30 bg-emerald-500/10"
-                              : "border-red-500/30 bg-red-500/10"
-                          )}>
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Profit Delta</span>
-                            <span className={cn(
-                              "text-xl font-bold",
-                              (calculatePartsPrice() - calculatePartsCost()) >= 0 ? "text-emerald-400" : "text-red-400"
-                            )}>
-                              {(calculatePartsPrice() - calculatePartsCost()) >= 0 ? "+" : ""}₹{(calculatePartsPrice() - calculatePartsCost()).toLocaleString()}
                             </span>
                           </div>
                         </div>

@@ -1,19 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/api';
 import {
-  Settings,
-  Users,
   Shield,
+  Users,
   Eye,
   EyeOff,
-  Save,
   RefreshCw,
   UserCheck,
   UserX,
@@ -168,33 +165,31 @@ export function AdminControlSystem({ className }: AdminControlSystemProps) {
     setHasChanges(true);
   };
 
-  const savePermissions = async () => {
-    try {
-      setSaving(true);
-      const response = await apiClient.makeRequest('/api/admin/permissions', {
-        method: 'POST',
-        body: JSON.stringify({ permissions })
-      });
+  // Auto-save: debounce 400ms after last toggle
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const permissionsRef = useRef(permissions);
+  permissionsRef.current = permissions;
 
-      if (response.success) {
-        setHasChanges(false);
-        toast({
-          title: 'Permissions Updated',
-          description: 'Role-based access controls have been updated successfully.',
+  useEffect(() => {
+    if (!hasChanges) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(async () => {
+      try {
+        setSaving(true);
+        const response = await apiClient.makeRequest('/api/admin/permissions', {
+          method: 'POST',
+          body: JSON.stringify({ permissions: permissionsRef.current })
         });
-      } else {
-        throw new Error(response.error || 'Failed to save permissions');
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Save Failed',
-        description: error.message || 'Failed to update permissions. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
+        if (response.success) {
+          setHasChanges(false);
+          toast({ title: 'Permissions saved', description: 'Access controls updated automatically.' });
+        }
+      } catch { /* non-fatal */ }
+      finally { setSaving(false); }
+    }, 400);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissions, hasChanges]);
 
   const resetPermissions = () => {
     setPermissions(defaultPermissions);
@@ -253,31 +248,16 @@ export function AdminControlSystem({ className }: AdminControlSystemProps) {
             <div>
               <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                 <Shield className="h-5 w-5 sm:h-6 sm:w-6" />
-                Admin Control System
+                Permissions
               </CardTitle>
-              <CardDescription className="mt-1">
-                Control access to pages and features for Owners and Workers
-              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               {hasChanges && (
-                <Badge variant="secondary" className="hidden sm:inline-flex">
-                  Unsaved Changes
+                <Badge variant="secondary" className="hidden sm:inline-flex items-center gap-1">
+                  {saving ? <RefreshCw className="h-3 w-3 animate-spin" /> : null}
+                  {saving ? 'Saving…' : 'Unsaved'}
                 </Badge>
               )}
-              <Button
-                onClick={savePermissions}
-                disabled={!hasChanges || saving}
-                className="flex items-center gap-2"
-                size="sm"
-              >
-                {saving ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -359,9 +339,6 @@ export function AdminControlSystem({ className }: AdminControlSystemProps) {
           <Card key={category}>
             <CardHeader className="pb-4">
               <CardTitle className="text-base sm:text-lg">{category} Features</CardTitle>
-              <CardDescription>
-                Manage access to {category.toLowerCase()} related features
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">

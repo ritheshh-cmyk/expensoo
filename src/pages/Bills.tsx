@@ -90,6 +90,15 @@ export default function Bills() {
   const [previewBill, setPreviewBill] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    apiClient.getBills().then(res => {
+      if (res.success) {
+        setBills(res.data);
+      }
+    });
+  }, [refreshKey]);
 
   const [formData, setFormData] = useState({
     customerId: "",
@@ -249,7 +258,7 @@ export default function Bills() {
 
     try {
       const createdBill = await apiClient.createBill(newBill);
-      setBills([createdBill, ...bills]);
+      setRefreshKey(prev => prev + 1);
       setShowCreateDialog(false);
 
       // Reset form

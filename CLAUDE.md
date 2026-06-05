@@ -1,10 +1,10 @@
-﻿# Antigravity Global Rules & Protocols
+# Antigravity Global Rules & Protocols
 
 This file defines the core behavioral rules and default protocols for the Antigravity agent. These rules must be checked and adhered to at the start of every session and during task execution.
 
 ## 1. Plan Mode is the Default
 - **3+ Step Tasks:** Any task that requires 3 or more steps must start in plan mode.
-- **Context First:** Before creating any plan or spec, always query the context first using **`agentmemory-recall`** or **`memory_smart_search`** to retrieve relevant history, and verify codebase structure using the manifest.
+- **Context First:** Before creating any plan or spec, always query the context first using **`memory_recall`** or **`memory_smart_search`** to retrieve relevant history, and verify codebase structure using the manifest.
 - **Protocol:** Every time you enter the planning phase, always use the **`gsd-plan-phase`** (or corresponding **`gsd-spec-phase`** / **`gsd-progress`** planning) skill to structure, specify, and review the plan before execution.
 - **Spec Compliance:** Map all technical specifications, data structures, and API contracts using **`openspec`** before changing any code.
 - **Dynamic Re-planning:** If execution goes sideways, stops, or encounters unexpected errors, halt immediately and re-plan.
@@ -32,9 +32,9 @@ This file defines the core behavioral rules and default protocols for the Antigr
 ## 6. Codebase Mapping & Token Budgeting (Save Tokens)
 - **Manifest First:** Never read entire directories or files recursively. Instead, run **`context-optimizer`** to generate a `CONTEXT_MANIFEST.md` for the project. Always reason from the manifest first.
 - **Scoping & Limits:** Restrict file reads to a maximum of 3 files per turn (strict blast radius control).
-- **Search Over Scan:** Use **`agentmemory-recall`** / **`memory_smart_search`** or semantic tools to locate specific code blocks rather than bulk-grepping or listing deep directories.
+- **Search Over Scan:** Use **`memory_recall`** / **`memory_smart_search`** or semantic tools to locate specific code blocks rather than bulk-grepping or listing deep directories.
 - **HAM Scoping:** Follow directory-specific context files using **`hierarchical-agent-memory`** to avoid loading parent context when working in subdirectories.
-- **Memory Logging on Edits:** Every time you modify files or apply updates, proactively use the **`agentmemory-remember`** skill to record the exact changes, the files touched, and the rationale so that future agents can retrieve them instantly without file scanning.
+- **Memory Logging on Edits:** Every time you modify files or apply updates, proactively use the **`memory_save`** skill to record the exact changes, the files touched, and the rationale so that future agents can retrieve them instantly without file scanning.
 
 ---
 
@@ -72,7 +72,7 @@ When designing, modifying, or creating UI components, styles, layouts, or styles
 - **Optimization:** Use **`database-admin`**, **`neon-postgres`**, **`postgres-best-practices`**, and **`postgresql-optimization`** to design database models, query filters, indices, and transaction boundaries.
 
 ### 5. Context, Memory & Knowledge Management (`agentmemory` + context skills)
-- **Persistent Memory (agentmemory):** Use **`agentmemory-remember`** to save insights/decisions to long-term storage. Use **`agentmemory-recall`** to search past observations/sessions via hybrid BM25+vector+graph search. Use **`agentmemory-handoff`** to resume previous sessions. Use **`agentmemory-recap`** for session rollups. Use **`agentmemory-session-history`** for past session overview. Use **`agentmemory-forget`** to delete specific memories. Use **`agentmemory-commit-context`** to trace code back to the agent session that produced it. Use **`agentmemory-commit-history`** to list agent-linked commits.
+- **Persistent Memory (agentmemory):** Use **`memory_save`** to save insights/decisions to long-term storage. Use **`memory_recall`** to search past observations/sessions via hybrid BM25+vector+graph search. Use **`agentmemory-handoff`** to resume previous sessions. Use **`agentmemory-recap`** for session rollups. Use **`agentmemory-session-history`** for past session overview. Use **`agentmemory-forget`** to delete specific memories. Use **`agentmemory-commit-context`** to trace code back to the agent session that produced it. Use **`agentmemory-commit-history`** to list agent-linked commits.
 - **Context Optimization:** Use **`context-optimizer`** to generate `CONTEXT_MANIFEST.md` files for 5x-27x token reduction. Use **`context-optimization`** for token budgeting, caching, and partitioning strategies. Use **`context-manager`** for vector DB and knowledge graph context engineering.
 - **Session Continuity:** Use **`context-management-context-save`** to persist context between sessions. Use **`context-management-context-restore`** to restore context in new sessions. Use **`hierarchical-agent-memory`** for scoped directory-level context files that reduce token spend.
 - **Memory Architecture:** Use **`agent-memory-systems`** for designing short-term/long-term/vector store memory architectures. Use **`conversation-memory`** for persistent conversation memory patterns.

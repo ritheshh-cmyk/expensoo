@@ -1,9 +1,10 @@
 import { useState, useRef } from "react";
 import { PasswordStrengthMeter, validatePassword } from "@/components/ui/PasswordStrengthMeter";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +16,9 @@ import {
   Shield,
   LogOut,
   Loader2,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api";
@@ -36,9 +40,34 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Inline display-name editing
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(user?.name || user?.username || '');
+  const [savingName, setSavingName] = useState(false);
+
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = nameValue.trim();
+    if (!trimmed || trimmed === (user?.name || user?.username)) {
+      setEditingName(false);
+      return;
+    }
+    setSavingName(true);
+    try {
+      const res = await apiClient.updateProfile({ full_name: trimmed });
+      if (!res.success) throw new Error(res.message || 'Failed to update name');
+      updateUser({ name: trimmed });
+      toast({ title: 'Name updated', description: 'Your display name has been saved.' });
+      setEditingName(false);
+    } catch (err: any) {
+      toast({ title: 'Update Failed', description: err.message || 'Could not save name.', variant: 'destructive' });
+    } finally {
+      setSavingName(false);
+    }
   };
 
   // ── image processing ────────────────────────────────────────────────────────
@@ -137,9 +166,6 @@ export default function Profile() {
             <User className="h-5 w-5" />
             Profile Photo
           </CardTitle>
-          <CardDescription>
-            Upload a photo — it's saved on this device
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
 
@@ -239,7 +265,43 @@ export default function Profile() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground uppercase tracking-wide">Name</Label>
-              <p className="font-semibold text-foreground">{user?.name || user?.username || "—"}</p>
+              {editingName ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={nameValue}
+                    onChange={(e) => setNameValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') { setEditingName(false); setNameValue(user?.name || user?.username || ''); } }}
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSaveName}
+                    disabled={savingName}
+                    className="h-7 w-7 flex items-center justify-center rounded-md bg-brand-orange hover:bg-brand-orange-light text-black transition-colors"
+                    aria-label="Save name"
+                  >
+                    {savingName ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                  </button>
+                  <button
+                    onClick={() => { setEditingName(false); setNameValue(user?.name || user?.username || ''); }}
+                    className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-colors"
+                    aria-label="Cancel"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 group">
+                  <p className="font-semibold text-foreground">{user?.name || user?.username || '—'}</p>
+                  <button
+                    onClick={() => { setEditingName(true); setNameValue(user?.name || user?.username || ''); }}
+                    className="opacity-0 group-hover:opacity-100 h-6 w-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-all"
+                    aria-label="Edit name"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground uppercase tracking-wide">Username</Label>
@@ -269,7 +331,6 @@ export default function Profile() {
             <Shield className="h-5 w-5" />
             Update Credentials
           </CardTitle>
-          <CardDescription>Change your username or password</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={async (e) => {
@@ -389,9 +450,6 @@ export default function Profile() {
             <LogOut className="h-5 w-5" />
             Sign Out
           </CardTitle>
-          <CardDescription>
-            You'll be redirected to the login page
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Button

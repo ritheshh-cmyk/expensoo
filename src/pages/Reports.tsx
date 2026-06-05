@@ -138,7 +138,8 @@ export default function Reports() {
               monthlyStats.set(monthKey, { revenue: 0, profit: 0, repairs: 0 });
             }
             const monthData = monthlyStats.get(monthKey)!;
-            monthData.revenue += Number(transaction.repairCost ?? transaction.amount ?? 0);
+            const txRevenue = Number(transaction.cost ?? transaction.repairCost ?? transaction.repair_cost ?? transaction.soldPrice ?? transaction.sold_price ?? 0);
+            monthData.revenue += txRevenue;
             monthData.profit  += Number(transaction.profit  ?? 0);
             monthData.repairs += 1;
 
@@ -151,25 +152,23 @@ export default function Reports() {
             }
             const brandData = deviceBrandsMap.get(deviceBrand)!;
             brandData.repairs += 1;
-            brandData.revenue += Number(transaction.repairCost ?? transaction.amount ?? 0);
+            brandData.revenue += txRevenue;
 
-            const customerId = transaction.mobileNumber ?? transaction.mobile_number ?? transaction.customerName ?? null;
-            if (customerId) {
-              if (!customersMap.has(customerId)) {
-                customersMap.set(customerId, {
-                  name: transaction.customerName ?? transaction.customer_name ?? `Customer ${customerId}`,
-                  repairs: 0,
-                  revenue: 0,
-                  lastVisit: transaction.createdAt ?? transaction.created_at ?? transaction.date
-                });
-              }
-              const customerData = customersMap.get(customerId)!;
-              customerData.repairs += 1;
-              customerData.revenue += Number(transaction.repairCost ?? transaction.amount ?? 0);
-              const txnDate = new Date(transaction.createdAt ?? transaction.created_at ?? transaction.date);
-              if (txnDate > new Date(customerData.lastVisit)) {
-                customerData.lastVisit = transaction.createdAt ?? transaction.created_at ?? transaction.date;
-              }
+            const customerId = transaction.mobileNumber ?? transaction.mobile_number ?? transaction.customer ?? transaction.customerName ?? transaction.customer_name ?? 'Unknown';
+            if (!customersMap.has(customerId)) {
+              customersMap.set(customerId, {
+                name: transaction.customer ?? transaction.customerName ?? transaction.customer_name ?? `Customer ${customerId}`,
+                repairs: 0,
+                revenue: 0,
+                lastVisit: date.toISOString(),
+              });
+            }
+            const customerData = customersMap.get(customerId)!;
+            customerData.repairs += 1;
+            customerData.revenue += txRevenue;
+            const txnDate = new Date(transaction.createdAt ?? transaction.created_at ?? transaction.date);
+            if (txnDate > new Date(customerData.lastVisit)) {
+              customerData.lastVisit = transaction.createdAt ?? transaction.created_at ?? transaction.date;
             }
           });
           

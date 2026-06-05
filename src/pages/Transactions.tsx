@@ -181,6 +181,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [paymentFilter, setPaymentFilter] = useState("all");
 
@@ -479,7 +480,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
     };
   // BUG 2 FIX: filterCategory was missing from deps - switching between
   // Repairs and Sales tabs never re-ran the effect, showing stale data.
-  }, [filterCategory]);
+  }, [filterCategory, refreshKey]);
 
 
   // Add, update, delete handlers
@@ -490,6 +491,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
         throw new Error(response?.message || 'Failed to create transaction');
       }
       toast({ title: 'Transaction Added', description: 'New repair transaction recorded successfully.' });
+      setRefreshKey(prev => prev + 1);
       // Real-time event will also trigger a refetch
     } catch (error: any) {
       console.error('Failed to create transaction:', error);
@@ -504,6 +506,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
     try {
       await apiClient.updateTransaction(updatedTxn.id, updatedTxn);
       toast({ title: 'Updated', description: 'Transaction updated successfully.' });
+      setRefreshKey(prev => prev + 1);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -525,6 +528,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
     try {
       await apiClient.deleteTransaction(id);
       toast({ title: 'Deleted', description: 'Transaction deleted successfully.' });
+      setRefreshKey(prev => prev + 1);
     } catch (error: any) {
       // Rollback optimistic update by re-fetching
       console.error('Failed to delete transaction:', error);
