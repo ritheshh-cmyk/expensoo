@@ -104,6 +104,13 @@ export default function Dashboard() {
         apiClient.getTransactions(),
       ]);
 
+      if (dash && typeof dash === 'object' && 'success' in dash && !dash.success) {
+        throw new Error(`Dashboard API Error: ${dash.error || 'Unknown error'}`);
+      }
+      if (txns && typeof txns === 'object' && 'success' in txns && !txns.success) {
+        throw new Error(`Transactions API Error: ${txns.error || 'Unknown error'}`);
+      }
+
       // ── dashboard metrics ─────────────────────────────────────────────────
       const dashData = dash?.data ?? dash;
       if (dashData?.totals) {
@@ -170,11 +177,11 @@ export default function Dashboard() {
       if (showToast) {
         toast({ title: "Refreshed", description: "Dashboard data updated." });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Dashboard] fetch error:", err);
       toast({
         title: "Sync Warning",
-        description: "Could not refresh dashboard data. Displaying cached information.",
+        description: err.message || "Could not refresh dashboard data. Displaying cached information.",
         variant: "destructive"
       });
     } finally {

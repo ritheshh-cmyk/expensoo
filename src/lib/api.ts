@@ -26,7 +26,7 @@ class ApiClient {
 
   constructor() {
     const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
-    const prodUrl = 'https://backendmobile-4swg.onrender.com';
+    const prodUrl = import.meta.env.VITE_PRODUCTION_BACKEND_URL || 'https://expensoo-app-gu3wg.ondigitalocean.app';
     // In dev: VITE_BACKEND_URL='' → use '' so /api/* goes through Vite proxy → localhost:5000
     // In prod build: VITE_BACKEND_URL='' → fall back to hardcoded prodUrl
     const baseUrl = envBaseUrl !== undefined && envBaseUrl !== ''
@@ -245,7 +245,7 @@ class ApiClient {
 
   async updateProfile(data: any): Promise<ApiResponse> {
     this.debug('dY" Updating profile...', data);
-    return this.request('/api/auth/users/me', {
+    return this.request('/api/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
     });

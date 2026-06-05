@@ -85,6 +85,7 @@ function BillStatusBadge({ status }: { status: string }) {
 export default function Bills() {
   const location = useLocation();
   const [bills, setBills] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [previewBill, setPreviewBill] = useState<any>(null);
@@ -93,10 +94,13 @@ export default function Bills() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    setLoading(true);
     apiClient.getBills().then(res => {
       if (res.success) {
         setBills(res.data);
       }
+    }).finally(() => {
+      setLoading(false);
     });
   }, [refreshKey]);
 
@@ -755,81 +759,112 @@ export default function Bills() {
 
         {/* Bills List */}
         <div className="grid gap-4">
-          {filteredBills.map((bill) => (
-            <div key={bill.id} className="rounded-xl border border-border bg-background backdrop-blur-sm hover:border-brand-orange/30 transition-all duration-200">
-              <div className="p-6">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div key={`bill-skeleton-${idx}`} className="rounded-xl border border-border bg-background backdrop-blur-sm p-6 animate-pulse">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-brand-orange/10 rounded-lg flex items-center justify-center">
-                      <Receipt className="h-6 w-6 text-brand-orange-light" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-lg text-foreground">{bill.id}</h3>
-                        <BillStatusBadge status={bill.status} />
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-1">
-                        {bill.customerName}
-                      </p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>Date: {bill.date}</span>
-                        <span>Items: {bill.items.length}</span>
-                      </div>
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-12 h-12 bg-white/10 rounded-lg shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 bg-white/10 rounded w-1/4" />
+                      <div className="h-4 bg-white/5 rounded w-1/3" />
+                      <div className="h-3 bg-white/5 rounded w-1/2" />
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 sm:flex-col sm:items-end">
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-foreground">
-                        ₹{typeof bill.amount === "number" ? bill.amount.toLocaleString() : "0"}
-                      </p>
-                    </div>
-
+                  <div className="flex items-center gap-2 sm:flex-col sm:items-end space-y-2 shrink-0">
+                    <div className="h-6 bg-white/10 rounded w-16" />
                     <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
-                        onClick={() => handlePreview(bill)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
-                        onClick={() => handleDownloadPDF(bill)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      {bill.customerPhone && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
-                            onClick={() => handleSendWhatsApp(bill)}
-                            title="Send via WhatsApp"
-                          >
-                            <MessageCircle className="h-4 w-4 text-emerald-500" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
-                            onClick={() => handleSendSMS(bill)}
-                            title="Send SMS"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
+                      <div className="h-9 w-9 bg-white/10 rounded-lg" />
+                      <div className="h-9 w-9 bg-white/10 rounded-lg" />
+                      <div className="h-9 w-9 bg-white/10 rounded-lg" />
                     </div>
                   </div>
                 </div>
               </div>
+            ))
+          ) : filteredBills.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground border border-dashed border-border rounded-xl">
+              <Receipt className="h-12 w-12 opacity-40 mb-3" />
+              <p className="font-medium">No bills found</p>
+              <p className="text-sm mt-1">Generate your first invoice to get started</p>
             </div>
-          ))}
+          ) : (
+            filteredBills.map((bill) => (
+              <div key={bill.id} className="rounded-xl border border-border bg-background backdrop-blur-sm hover:border-brand-orange/30 transition-all duration-200">
+                <div className="p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-brand-orange/10 rounded-lg flex items-center justify-center">
+                        <Receipt className="h-6 w-6 text-brand-orange-light" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-lg text-foreground">{bill.id}</h3>
+                          <BillStatusBadge status={bill.status} />
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {bill.customerName}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>Date: {bill.date}</span>
+                          <span>Items: {bill.items.length}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 sm:flex-col sm:items-end">
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-foreground">
+                          ₹{typeof bill.amount === "number" ? bill.amount.toLocaleString() : "0"}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
+                          onClick={() => handlePreview(bill)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
+                          onClick={() => handleDownloadPDF(bill)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        {bill.customerPhone && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
+                              onClick={() => handleSendWhatsApp(bill)}
+                              title="Send via WhatsApp"
+                            >
+                              <MessageCircle className="h-4 w-4 text-emerald-500" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-9 w-9 bg-background border-border text-foreground hover:bg-muted/50 hover:border-white/20 cursor-pointer min-h-[44px]"
+                              onClick={() => handleSendSMS(bill)}
+                              title="Send SMS"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Bill Preview Dialog */}

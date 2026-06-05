@@ -58,7 +58,13 @@ export default function Profile() {
     }
     setSavingName(true);
     try {
-      const res = await apiClient.updateProfile({ full_name: trimmed });
+      // Only include fields defined in openapi.yaml (ProfileUpdate schema)
+      const payload = {
+        full_name: trimmed,
+        email: user?.email || '',
+      };
+      
+      const res = await apiClient.updateProfile(payload);
       if (!res.success) throw new Error(res.message || 'Failed to update name');
       updateUser({ name: trimmed });
       toast({ title: 'Name updated', description: 'Your display name has been saved.' });
@@ -338,13 +344,17 @@ export default function Profile() {
             const name = (formData.get("name") as string)?.trim();
             const username = (formData.get("username") as string)?.trim();
             const password = formData.get("password") as string;
-            const updates: any = {};
             
-            if (name && name !== user?.name) updates.full_name = name;
-            if (username && username !== user?.username) updates.username = username;
+            // Build payload matching openapi.yaml ProfileUpdate schema
+            const updates: any = {
+              full_name: name || user?.name || user?.username,
+              email: user?.email || '',
+            };
+            
             if (password) updates.password = password;
 
-            if (Object.keys(updates).length === 0) {
+            // Only submit if there's an actual change (excluding the default included fields)
+            if (!password && (!name || name === user?.name) && (!username || username === user?.username)) {
               toast({ title: "No changes", description: "You didn't make any changes." });
               return;
             }

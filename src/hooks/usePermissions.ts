@@ -47,9 +47,15 @@ export function usePermissions() {
       const role = user?.role?.toLowerCase();
       if (role === 'admin' || role === 'owner') return true;
 
-      // While permissions are still loading, optimistically allow to avoid
-      // a flash-redirect to /unauthorized on first render
-      if (loading || !permissionsLoaded) return true;
+      // While permissions are still loading, use role-based defaults immediately
+      // to prevent layout shifts (CLS) when permissions finish loading.
+      if (loading || !permissionsLoaded) {
+        if (role === 'worker') {
+          const [, permissionType] = action.split('.');
+          return permissionType === 'view';
+        }
+        return false;
+      }
 
       // We have real permissions from the API — use them
       if (permissions && permissions.length > 0) {

@@ -667,7 +667,32 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
 
         {/* === Mobile card list (hidden md+) === */}
         <div className="md:hidden">
-          {table.getRowModel().rows?.length ? (
+          {loading ? (
+            <div className="divide-y divide-border/50">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={`txn-mobile-skeleton-${idx}`} className="flex items-start gap-3 px-4 py-4 animate-pulse">
+                  <div className="shrink-0 w-9 h-9 rounded-full bg-white/10" />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 space-y-2 flex-1">
+                        <div className="h-4 bg-white/10 rounded w-2/3" />
+                        <div className="h-3 bg-white/5 rounded w-1/2" />
+                      </div>
+                      <div className="shrink-0 text-right space-y-2 flex flex-col items-end">
+                        <div className="h-4 bg-white/10 rounded w-14" />
+                        <div className="h-3.5 bg-white/5 rounded-full w-16" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                      <div className="h-3 bg-white/5 rounded w-16" />
+                      <div className="h-3 bg-white/5 rounded w-12" />
+                      <div className="h-3 bg-white/5 rounded w-14" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : table.getRowModel().rows?.length ? (
             <div className="divide-y divide-border/50">
               {table.getRowModel().rows.map((row) => {
                 const tx = row.original;
@@ -778,7 +803,54 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
               ))}
             </thead>
             <tbody>
-              {table.getRowModel().rows?.length ? (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={`txn-row-skeleton-${idx}`} className="border-b border-border/50 animate-pulse">
+                    {/* S.No */}
+                    <td className="px-4 py-4 hidden lg:table-cell">
+                      <div className="h-4 bg-white/10 rounded w-6 mx-auto" />
+                    </td>
+                    {/* Txn ID */}
+                    <td className="px-4 py-4">
+                      <div className="h-4 bg-white/10 rounded w-16" />
+                    </td>
+                    {/* Date */}
+                    <td className="px-4 py-4 hidden md:table-cell">
+                      <div className="h-4 bg-white/10 rounded w-20" />
+                    </td>
+                    {/* Customer */}
+                    <td className="px-4 py-4">
+                      <div className="space-y-2 max-w-[150px]">
+                        <div className="h-4 bg-white/10 rounded w-24" />
+                        <div className="h-3 bg-white/5 rounded w-16" />
+                      </div>
+                    </td>
+                    {/* Device */}
+                    <td className="px-4 py-4 hidden lg:table-cell">
+                      <div className="space-y-2 max-w-[150px]">
+                        <div className="h-4 bg-white/10 rounded w-28" />
+                        <div className="h-3 bg-white/5 rounded w-20" />
+                      </div>
+                    </td>
+                    {/* Cost */}
+                    <td className="px-4 py-4 text-right">
+                      <div className="h-4 bg-white/10 rounded w-16 ml-auto" />
+                    </td>
+                    {/* Payment */}
+                    <td className="px-4 py-4 hidden lg:table-cell">
+                      <div className="h-4 bg-white/10 rounded w-20" />
+                    </td>
+                    {/* Details */}
+                    <td className="px-4 py-4">
+                      <div className="h-8 w-8 rounded-full bg-white/10 mx-auto" />
+                    </td>
+                    {/* Actions */}
+                    <td className="px-4 py-4">
+                      <div className="h-8 w-8 rounded-full bg-white/10 mx-auto" />
+                    </td>
+                  </tr>
+                ))
+              ) : table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
                   <Fragment key={row.id}>
                     <tr

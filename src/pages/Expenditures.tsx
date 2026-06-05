@@ -611,14 +611,37 @@ export default function Expenditures() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="h-32 text-center">
-                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                          <span className="text-sm">Loading expenditures...</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    Array.from({ length: 5 }).map((_, idx) => (
+                      <TableRow key={`exp-row-skeleton-${idx}`} className="animate-pulse">
+                        <TableCell>
+                          <div className="h-4 bg-white/10 rounded w-20" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <div className="h-4 bg-white/10 rounded w-32" />
+                            <div className="h-3 bg-white/5 rounded w-24" />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-5 bg-white/10 rounded w-16" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 bg-white/10 rounded w-20" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 bg-white/10 rounded w-24" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 bg-white/10 rounded w-16" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <div className="h-8 w-8 rounded bg-white/10" />
+                            <div className="h-8 w-8 rounded bg-white/10" />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   ) : filteredExpenditures.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="h-32 text-center">
@@ -709,10 +732,21 @@ export default function Expenditures() {
             {/* Mobile Card View (hidden md+) */}
             <div className="md:hidden grid gap-4 mt-4">
               {loading ? (
-                <div className="flex flex-col items-center justify-center p-8 text-muted-foreground bg-card border rounded-lg">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent mb-2" />
-                  <span className="text-sm">Loading expenditures...</span>
-                </div>
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <div key={`exp-mobile-skeleton-${idx}`} className="border border-border/50 rounded-lg p-4 space-y-3 bg-card shadow-sm animate-pulse">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="h-4 bg-white/10 rounded w-2/3" />
+                        <div className="h-3 bg-white/5 rounded w-1/2" />
+                      </div>
+                      <div className="h-4 bg-white/10 rounded w-16 shrink-0" />
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-border/30">
+                      <div className="h-3 bg-white/5 rounded w-20" />
+                      <div className="h-3 bg-white/5 rounded w-24" />
+                    </div>
+                  </div>
+                ))
               ) : filteredExpenditures.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-muted-foreground bg-card border rounded-lg">
                   <Receipt className="h-8 w-8 opacity-40 mb-2" />
