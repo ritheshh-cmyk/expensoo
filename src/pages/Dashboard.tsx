@@ -366,27 +366,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Pending Repairs */}
-        <Card className="relative overflow-hidden border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent hover:shadow-md transition-shadow group">
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-red-500/10 blur-2xl group-hover:bg-red-500/20 transition-colors" />
-          <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pending Repairs
-            </CardTitle>
-            <div className="rounded-xl bg-red-500/10 p-2 shrink-0 group-hover:scale-110 transition-transform">
-              <Wallet className="h-4 w-4 text-red-500" />
-            </div>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-5 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight">
-              {pendingCount}
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-              <span className="font-medium text-red-500">{pendingCount}</span> repairs awaiting completion
-            </p>
-          </CardContent>
-        </Card>
-
         {/* Total Lifetime Revenue */}
         <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-transparent hover:shadow-md transition-shadow group">
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-primary/10 blur-2xl group-hover:bg-primary/20 transition-colors" />
@@ -411,6 +390,27 @@ export default function Dashboard() {
             )}
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               Over <span className="font-medium text-foreground">{dashboardData.totalTransactions}</span> lifetime transactions
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Pending Repairs */}
+        <Card className="relative overflow-hidden border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent hover:shadow-md transition-shadow group">
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-red-500/10 blur-2xl group-hover:bg-red-500/20 transition-colors" />
+          <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Pending Repairs
+            </CardTitle>
+            <div className="rounded-xl bg-red-500/10 p-2 shrink-0 group-hover:scale-110 transition-transform">
+              <Wallet className="h-4 w-4 text-red-500" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-5 pt-0">
+            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight">
+              {pendingCount}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+              <span className="font-medium text-red-500">{pendingCount}</span> repairs awaiting completion
             </p>
           </CardContent>
         </Card>

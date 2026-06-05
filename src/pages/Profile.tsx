@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { PasswordStrengthMeter, validatePassword } from "@/components/ui/PasswordStrengthMeter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -11,14 +11,15 @@ import { useToast } from "@/hooks/use-toast";
 import {
   User,
   Camera,
-  Upload,
   Trash2,
   Shield,
   LogOut,
   Loader2,
-  Pencil,
-  Check,
-  X,
+  Key,
+  Mail,
+  AtSign,
+  UserCircle,
+  Save
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api";
@@ -35,45 +36,16 @@ export default function Profile() {
   const [avatarSrc, setAvatarSrc] = useState<string | null>(() =>
     localStorage.getItem(AVATAR_KEY)
   );
-  const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  
+  // Forms state
   const [newPassword, setNewPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Inline display-name editing
-  const [editingName, setEditingName] = useState(false);
-  const [nameValue, setNameValue] = useState(user?.name || user?.username || '');
-  const [savingName, setSavingName] = useState(false);
+  const [isSubmittingInfo, setIsSubmittingInfo] = useState(false);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
-  };
-
-  const handleSaveName = async () => {
-    const trimmed = nameValue.trim();
-    if (!trimmed || trimmed === (user?.name || user?.username)) {
-      setEditingName(false);
-      return;
-    }
-    setSavingName(true);
-    try {
-      // Only include fields defined in openapi.yaml (ProfileUpdate schema)
-      const payload = {
-        full_name: trimmed,
-        email: user?.email || '',
-      };
-      
-      const res = await apiClient.updateProfile(payload);
-      if (!res.success) throw new Error(res.message || 'Failed to update name');
-      updateUser({ name: trimmed });
-      toast({ title: 'Name updated', description: 'Your display name has been saved.' });
-      setEditingName(false);
-    } catch (err: any) {
-      toast({ title: 'Update Failed', description: err.message || 'Could not save name.', variant: 'destructive' });
-    } finally {
-      setSavingName(false);
-    }
   };
 
   // ── image processing ────────────────────────────────────────────────────────
@@ -91,7 +63,6 @@ export default function Profile() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
-      // Resize to max 400px to keep localStorage small
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
@@ -108,7 +79,6 @@ export default function Profile() {
         localStorage.setItem(AVATAR_KEY, resized);
         setAvatarSrc(resized);
         setUploading(false);
-        // Notify the Header (and any other listener) to refresh the avatar immediately
         window.dispatchEvent(new CustomEvent("avatar-updated"));
         toast({ title: "Photo updated", description: "Your profile photo has been saved." });
       };
@@ -118,8 +88,6 @@ export default function Profile() {
       };
       img.src = dataUrl;
     };
-    // BUG 3 FIX: reader.onerror was missing - if FileReader fails, uploading
-    // would stay true forever, permanently disabling the upload button.
     reader.onerror = () => {
       setUploading(false);
       toast({ title: "Read error", description: "Failed to read the file. Please try again.", variant: "destructive" });
@@ -130,26 +98,84 @@ export default function Profile() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) processFile(file);
-    // Reset input so same file can be re-selected
     e.target.value = "";
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
   };
 
   const removePhoto = () => {
     localStorage.removeItem(AVATAR_KEY);
     setAvatarSrc(null);
-    // Notify Header immediately
     window.dispatchEvent(new CustomEvent("avatar-updated"));
     toast({ title: "Photo removed", description: "Your profile photo has been cleared." });
   };
 
-  // ── role badge ────────────────────────────────────────────────────────────
+  // ── Form Handlers ────────────────────────────────────────────────────────
+  const handleUpdateInfo = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = (formData.get("name") as string)?.trim();
+    const username = (formData.get("username") as string)?.trim();
+
+    if ((!name || name === user?.name) && (!username || username === user?.username)) {
+      toast({ title: "No changes", description: "You didn't make any changes." });
+      return;
+    }
+
+    setIsSubmittingInfo(true);
+    try {
+      const updates: any = {
+        full_name: name || user?.name || user?.username,
+        email: user?.email || '',
+      };
+      
+      const res = await apiClient.updateProfile(updates);
+      if (!res.success) throw new Error(res.message || "Failed to update profile info");
+
+      updateUser({
+        name: updates.full_name !== undefined ? updates.full_name : user?.name,
+        username: updates.username !== undefined ? updates.username : user?.username,
+      });
+      toast({ title: "Profile updated", description: "Your personal information has been saved." });
+    } catch (error: any) {
+      toast({ title: "Update Failed", description: error.message || String(error), variant: "destructive" });
+    } finally {
+      setIsSubmittingInfo(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!newPassword) return;
+
+    const pwError = validatePassword(newPassword);
+    if (pwError) {
+      toast({ title: 'Weak Password', description: pwError, variant: 'destructive' });
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+    try {
+      const updates: any = {
+        full_name: user?.name || user?.username || '',
+        email: user?.email || '',
+        password: newPassword
+      };
+
+      const res = await apiClient.updateProfile(updates);
+      if (!res.success) throw new Error(res.message || "Failed to update password");
+
+      toast({ title: "Password updated", description: "Your password was changed successfully. Please log in again." });
+      setTimeout(() => {
+        logout();
+        navigate("/login", { replace: true });
+      }, 1500);
+    } catch (error: any) {
+      toast({ title: "Update Failed", description: error.message || String(error), variant: "destructive" });
+    } finally {
+      setIsSubmittingPassword(false);
+      setNewPassword('');
+    }
+  };
+
   const roleColor = {
     admin: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400",
     owner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400",
@@ -157,320 +183,162 @@ export default function Profile() {
   }[user?.role ?? "worker"];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 md:pb-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
+        <h1 className="text-3xl font-bold text-foreground font-heading tracking-tight">Account Settings</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Manage your profile, security, and account preferences.</p>
       </div>
 
-      {/* Profile card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Profile Photo
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-
-          {/* Avatar + upload zone */}
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-
-            {/* Avatar circle */}
-            <div className="relative shrink-0">
-              <div className="w-28 h-28 rounded-full border-4 border-primary/20 overflow-hidden bg-muted flex items-center justify-center">
-                {avatarSrc ? (
-                  <img
-                    src={avatarSrc}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <User className="h-14 w-14 text-muted-foreground/50" />
-                )}
-              </div>
-              {/* Camera overlay — sits outside the circle overflow:hidden */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-1 -right-1 z-10 w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 active:scale-95 transition-all"
-                aria-label="Upload photo"
-              >
-                <Camera className="h-4 w-4 text-primary-foreground" />
-              </button>
-            </div>
-
-            {/* Drag & drop zone */}
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={cn(
-                "flex-1 w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200",
-                dragOver
-                  ? "border-primary bg-primary/5 scale-[1.02]"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-              )}
-            >
-              <Upload className={cn("h-8 w-8 transition-colors", dragOver ? "text-primary" : "text-muted-foreground")} />
-              <p className="text-sm font-medium text-foreground">
-                {uploading ? "Processing…" : "Click or drag & drop"}
-              </p>
-              <p className="text-xs text-muted-foreground">PNG, JPG, WEBP up to 5 MB</p>
-            </div>
-
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-2"
-            >
-              <Camera className="h-4 w-4" />
-              {avatarSrc ? "Change Photo" : "Upload Photo"}
-            </Button>
-            {avatarSrc && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={removePhoto}
-                className="flex items-center gap-2 text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-                Remove
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Account info card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Account Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Name</Label>
-              {editingName ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={nameValue}
-                    onChange={(e) => setNameValue(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') { setEditingName(false); setNameValue(user?.name || user?.username || ''); } }}
-                    className="h-8 text-sm"
-                    autoFocus
-                  />
-                  <button
-                    onClick={handleSaveName}
-                    disabled={savingName}
-                    className="h-7 w-7 flex items-center justify-center rounded-md bg-brand-orange hover:bg-brand-orange-light text-black transition-colors"
-                    aria-label="Save name"
-                  >
-                    {savingName ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                  </button>
-                  <button
-                    onClick={() => { setEditingName(false); setNameValue(user?.name || user?.username || ''); }}
-                    className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-colors"
-                    aria-label="Cancel"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        
+        {/* Left Column: Profile Card */}
+        <div className="lg:col-span-1 space-y-6">
+          <Card className="overflow-hidden border-border/50 shadow-sm">
+            <div className="h-24 bg-gradient-to-br from-primary/20 to-primary/5 w-full" />
+            <CardContent className="px-6 pb-6 pt-0 text-center flex flex-col items-center">
+              <div className="relative -mt-12 mb-4">
+                <div className="w-24 h-24 rounded-full border-4 border-background overflow-hidden bg-muted flex items-center justify-center shadow-sm">
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="h-10 w-10 text-muted-foreground/50" />
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center gap-2 group">
-                  <p className="font-semibold text-foreground">{user?.name || user?.username || '—'}</p>
-                  <button
-                    onClick={() => { setEditingName(true); setNameValue(user?.name || user?.username || ''); }}
-                    className="opacity-0 group-hover:opacity-100 h-6 w-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground transition-all"
-                    aria-label="Edit name"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Username</Label>
-              <p className="font-semibold text-foreground">{user?.username || "—"}</p>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Email</Label>
-              <p className="font-semibold text-foreground">{user?.email || "—"}</p>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Role</Label>
-              <div>
-                <Badge variant="outline" className={cn("capitalize text-xs", roleColor)}>
-                  <Shield className="h-3 w-3 mr-1" />
-                  {user?.role ?? "—"}
-                </Badge>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 z-10 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 active:scale-95 transition-all ring-2 ring-background"
+                  aria-label="Upload photo"
+                >
+                  <Camera className="h-3.5 w-3.5 text-primary-foreground" />
+                </button>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Update Credentials card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Update Credentials
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            const name = (formData.get("name") as string)?.trim();
-            const username = (formData.get("username") as string)?.trim();
-            const password = formData.get("password") as string;
-            
-            // Build payload matching openapi.yaml ProfileUpdate schema
-            const updates: any = {
-              full_name: name || user?.name || user?.username,
-              email: user?.email || '',
-            };
-            
-            if (password) updates.password = password;
-
-            // Only submit if there's an actual change (excluding the default included fields)
-            if (!password && (!name || name === user?.name) && (!username || username === user?.username)) {
-              toast({ title: "No changes", description: "You didn't make any changes." });
-              return;
-            }
-
-            // Validate password strength before submitting
-            if (password) {
-              const pwError = validatePassword(password);
-              if (pwError) {
-                toast({ title: 'Weak Password', description: pwError, variant: 'destructive' });
-                return;
-              }
-            }
-
-            setIsSubmitting(true);
-            try {
-              const res = await apiClient.updateProfile(updates);
-              if (!res.success) {
-                // Determine user-friendly error message
-                let errorMsg = res.message || "Failed to update credentials";
-                if (typeof errorMsg === 'string' && errorMsg.includes('email') && errorMsg.includes('value_error.missing')) {
-                  // Fallback in case backend strictly requires email but we don't send it from Profile
-                  errorMsg = "Server error: Email required by backend but not provided.";
-                } else if (errorMsg.includes('value_error') || errorMsg.includes('loc')) {
-                  errorMsg = "Server validation failed. Please check your inputs.";
-                }
-                
-                throw new Error(errorMsg);
-              }
               
-              if (updates.password) {
-                toast({ title: "Success", description: "Credentials updated successfully. Please log in again." });
-                setTimeout(() => {
-                  logout();
-                  navigate("/login", { replace: true });
-                }, 1500);
-              } else {
-                // BUG 9 FIX: use ?? not || so an intentional name update to an
-                // empty-ish string is not silently discarded by the falsy check.
-                updateUser({
-                  name: updates.full_name !== undefined ? updates.full_name : user?.name,
-                  username: updates.username !== undefined ? updates.username : user?.username,
-                });
-                toast({ title: "Success", description: "Profile updated successfully." });
-              }
-            } catch (error: any) {
-              const msg = error instanceof Error ? error.message : String(error);
-              toast({ title: "Update Failed", description: msg, variant: "destructive" });
-            } finally {
-              setIsSubmitting(false);
-            }
-          }}>
-            <div className="space-y-2">
-              <Label htmlFor="name">Display Name (optional)</Label>
-              <input 
-                id="name" 
-                name="name" 
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
-                placeholder={user?.name || user?.username} 
-                defaultValue={user?.name !== user?.username ? user?.name : ""}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="username">New Username (optional)</Label>
-              <input 
-                id="username" 
-                name="username" 
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
-                placeholder={user?.username} 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">New Password (optional)</Label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Leave blank to keep current"
-              />
-              <PasswordStrengthMeter password={newPassword} />
-            </div>
-            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Update Profile"
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <h2 className="text-lg font-bold text-foreground font-heading">{user?.name || user?.username || '—'}</h2>
+              <p className="text-sm text-muted-foreground mb-3">{user?.email || 'No email provided'}</p>
+              
+              <Badge variant="outline" className={cn("capitalize px-3 py-1 font-medium", roleColor)}>
+                <Shield className="h-3.5 w-3.5 mr-1.5" />
+                {user?.role ?? "—"}
+              </Badge>
 
-      {/* Danger zone */}
-      <Card className="border-destructive/30">
-        <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2">
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Button
-            variant="destructive"
-            onClick={handleLogout}
-            className="flex items-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Log out of this account
-          </Button>
-        </CardContent>
-      </Card>
+              {avatarSrc && (
+                <Button variant="ghost" size="sm" onClick={removePhoto} className="mt-4 text-destructive hover:text-destructive hover:bg-destructive/10 w-full">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove Photo
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Forms */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Personal Information */}
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-4 border-b border-border/50">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <UserCircle className="h-5 w-5 text-primary" />
+                Personal Information
+              </CardTitle>
+              <CardDescription>Update your name and username.</CardDescription>
+            </CardHeader>
+            <form onSubmit={handleUpdateInfo}>
+              <CardContent className="space-y-4 pt-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Display Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input id="name" name="name" className="pl-9" placeholder="Your full name" defaultValue={user?.name || ''} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username</Label>
+                    <div className="relative">
+                      <AtSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input id="username" name="username" className="pl-9" placeholder="Your username" defaultValue={user?.username || ''} />
+                    </div>
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input id="email" className="pl-9 bg-muted/50" value={user?.email || ''} readOnly disabled />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">Email cannot be changed currently.</p>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="bg-muted/20 border-t border-border/50 px-6 py-4">
+                <Button type="submit" disabled={isSubmittingInfo} className="ml-auto flex items-center gap-2 shadow-sm hover:shadow">
+                  {isSubmittingInfo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Save Changes
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+
+          {/* Security */}
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-4 border-b border-border/50">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Key className="h-5 w-5 text-primary" />
+                Security
+              </CardTitle>
+              <CardDescription>Change your password to secure your account.</CardDescription>
+            </CardHeader>
+            <form onSubmit={handleUpdatePassword}>
+              <CardContent className="space-y-4 pt-6">
+                <div className="space-y-2 max-w-md">
+                  <Label htmlFor="password">New Password</Label>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter a strong password" 
+                  />
+                  <PasswordStrengthMeter password={newPassword} />
+                </div>
+              </CardContent>
+              <CardFooter className="bg-muted/20 border-t border-border/50 px-6 py-4">
+                <Button type="submit" disabled={isSubmittingPassword || !newPassword} className="ml-auto flex items-center gap-2 shadow-sm hover:shadow">
+                  {isSubmittingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
+                  Update Password
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+
+          {/* Danger Zone */}
+          <Card className="border-destructive/30 shadow-sm bg-destructive/5">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg text-destructive flex items-center gap-2">
+                <LogOut className="h-5 w-5" />
+                Danger Zone
+              </CardTitle>
+              <CardDescription>Actions here cannot be undone.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="font-medium text-foreground">Sign out of your account</h4>
+                  <p className="text-sm text-muted-foreground mt-0.5">You will need to enter your credentials to log back in.</p>
+                </div>
+                <Button variant="destructive" onClick={handleLogout} className="shrink-0 flex items-center gap-2 shadow-sm">
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
+      </div>
     </div>
   );
 }
