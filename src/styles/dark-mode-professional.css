@@ -1,0 +1,370 @@
+/* Professional Dark Mode Enhancements with Deep Black Contrast */
+
+/* Dark Mode Professional Color Scheme */
+[data-theme="dark"] {
+  /* Deep Black Backgrounds for Maximum Contrast */
+  --color-background: #000000; /* Pure black for maximum contrast */
+  --color-surface: #111111; /* Very dark surface */
+  --color-card: #1a1a1a; /* Dark card background */
+  --color-border: #333333; /* Dark border */
+  
+  /* High Contrast Text Colors */
+  --color-text-primary: #ffffff; /* Pure white for maximum readability */
+  --color-text-secondary: #e5e5e5; /* Light gray for secondary text */
+  --color-text-muted: #b3b3b3; /* Muted but still readable */
+  
+  /* Professional Dark Primary Colors with High Contrast */
+  --color-primary: #3b82f6; /* Bright blue for visibility */
+  --color-secondary: #94a3b8; /* Professional gray */
+  --color-success: #10b981; /* Bright green */
+  --color-warning: #f59e0b; /* Bright amber */
+  --color-error: #ef4444; /* Bright red */
+  
+  /* Professional Dark Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(255 255 255 / 0.08), 0 2px 4px -2px rgb(255 255 255 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(255 255 255 / 0.1), 0 4px 6px -4px rgb(255 255 255 / 0.05);
+}
+
+/* Dark Mode Body and Global Styles */
+[data-theme="dark"] body {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* Dark Mode Card Styles with High Contrast */
+[data-theme="dark"] .card-professional {
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .card-professional:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 6px -1px rgb(59 130 246 / 0.2);
+}
+
+/* Dark Mode Navigation with Maximum Contrast */
+[data-theme="dark"] .nav-professional {
+  background: #000000;
+  border-bottom: 1px solid #333333;
+  box-shadow: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+}
+
+[data-theme="dark"] .nav-professional a {
+  color: #e5e5e5;
+}
+
+[data-theme="dark"] .nav-professional a:hover,
+[data-theme="dark"] .nav-professional a.active {
+  color: #3b82f6;
+  background: #1a1a1a;
+}
+
+/* Dark Mode Button Styles */
+[data-theme="dark"] .btn-professional {
+  background: #3b82f6;
+  color: #ffffff;
+  border: 1px solid #3b82f6;
+}
+
+[data-theme="dark"] .btn-professional:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 6px -1px rgb(59 130 246 / 0.3);
+}
+
+/* Dark Mode Form Styles with High Contrast */
+[data-theme="dark"] .form-professional input,
+[data-theme="dark"] .form-professional select,
+[data-theme="dark"] .form-professional textarea {
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .form-professional input::placeholder,
+[data-theme="dark"] .form-professional textarea::placeholder {
+  color: #b3b3b3;
+}
+
+[data-theme="dark"] .form-professional input:focus,
+[data-theme="dark"] .form-professional select:focus,
+[data-theme="dark"] .form-professional textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.2);
+}
+
+[data-theme="dark"] .form-professional label {
+  color: #ffffff;
+}
+
+/* Dark Mode Table Styles with High Contrast */
+[data-theme="dark"] .table-professional {
+  background: #000000;
+  border: 1px solid #333333;
+}
+
+[data-theme="dark"] .table-professional th {
+  background: #1a1a1a;
+  color: #ffffff;
+  border-bottom: 1px solid #333333;
+}
+
+[data-theme="dark"] .table-professional td {
+  color: #e5e5e5;
+  border-bottom: 1px solid #333333;
+}
+
+[data-theme="dark"] .table-professional tr:hover {
+  background: #1a1a1a;
+}
+
+/* Dark Mode Status Badge with High Contrast */
+[data-theme="dark"] .status-badge {
+  background: #1a1a1a;
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+}
+
+[data-theme="dark"] .status-badge.online {
+  background: #0a2e0a;
+  color: #10b981;
+  border-color: #10b981;
+}
+
+[data-theme="dark"] .status-badge.offline {
+  background: #2e0a0a;
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+/* Dark Mode System Status */
+[data-theme="dark"] .system-status-professional {
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .system-status-professional .status-indicator {
+  background: #10b981;
+  box-shadow: 0 0 0 2px #0a2e0a;
+}
+
+[data-theme="dark"] .system-status-professional .version-badge {
+  background: #000000;
+  color: #e5e5e5;
+  border: 1px solid #333333;
+}
+
+/* Dark Mode Alert Styles with High Contrast */
+[data-theme="dark"] .alert-professional.success {
+  background: #0a2e0a;
+  border-color: #10b981;
+  color: #10b981;
+}
+
+[data-theme="dark"] .alert-professional.warning {
+  background: #2e2e0a;
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+[data-theme="dark"] .alert-professional.error {
+  background: #2e0a0a;
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* Dark Mode Sidebar with High Contrast */
+[data-theme="dark"] .sidebar {
+  background: #000000;
+  border-right: 1px solid #333333;
+}
+
+[data-theme="dark"] .sidebar-menu-item {
+  color: #e5e5e5;
+  background: transparent;
+}
+
+[data-theme="dark"] .sidebar-menu-item:hover {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .sidebar-menu-item.active {
+  background: #1a1a1a;
+  color: #3b82f6;
+  border-right: 2px solid #3b82f6;
+}
+
+/* Dark Mode Header with High Contrast */
+[data-theme="dark"] .header {
+  background: #000000;
+  border-bottom: 1px solid #333333;
+}
+
+[data-theme="dark"] .header-title {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .header-subtitle {
+  color: #b3b3b3;
+}
+
+/* Dark Mode Dropdown/Select Styles */
+[data-theme="dark"] .select-content {
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .select-item {
+  color: #e5e5e5;
+  background: transparent;
+}
+
+[data-theme="dark"] .select-item:hover {
+  background: #333333;
+  color: #ffffff;
+}
+
+/* Dark Mode Modal/Dialog Styles */
+[data-theme="dark"] .dialog-content {
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .dialog-overlay {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* Dark Mode Loading Spinner */
+[data-theme="dark"] .loading-professional {
+  border: 2px solid #333333;
+  border-top: 2px solid #3b82f6;
+}
+
+/* Dark Mode Breadcrumb */
+[data-theme="dark"] .breadcrumb {
+  color: #b3b3b3;
+}
+
+[data-theme="dark"] .breadcrumb-current {
+  color: #ffffff;
+}
+
+/* Dark Mode Progress Bar */
+[data-theme="dark"] .progress-bar {
+  background: #333333;
+}
+
+[data-theme="dark"] .progress-bar-fill {
+  background: #3b82f6;
+}
+
+/* Dark Mode Badge Variants */
+[data-theme="dark"] .badge-primary {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .badge-success {
+  background: #10b981;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .badge-warning {
+  background: #f59e0b;
+  color: #000000;
+}
+
+[data-theme="dark"] .badge-error {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* Dark Mode Professional Charts */
+[data-theme="dark"] .recharts-cartesian-grid line {
+  stroke: #333333;
+}
+
+[data-theme="dark"] .recharts-cartesian-axis-tick text {
+  fill: #e5e5e5;
+}
+
+[data-theme="dark"] .recharts-tooltip-wrapper {
+  background: #1a1a1a !important;
+  border: 1px solid #333333 !important;
+  color: #ffffff !important;
+}
+
+/* Dark Mode Mobile Bottom Navigation */
+[data-theme="dark"] .mobile-bottom-nav {
+  background: #000000;
+  border-top: 1px solid #333333;
+}
+
+[data-theme="dark"] .mobile-nav-item {
+  color: #b3b3b3;
+}
+
+[data-theme="dark"] .mobile-nav-item.active {
+  color: #3b82f6;
+}
+
+/* Dark Mode Scrollbar Styling */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+/* Ensure High Contrast Across All Elements */
+[data-theme="dark"] * {
+  border-color: #333333;
+}
+
+[data-theme="dark"] .text-foreground {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .text-muted-foreground {
+  color: #b3b3b3 !important;
+}
+
+[data-theme="dark"] .bg-background {
+  background-color: #000000 !important;
+}
+
+[data-theme="dark"] .bg-card {
+  background-color: #1a1a1a !important;
+}
+
+[data-theme="dark"] .bg-muted {
+  background-color: #1a1a1a !important;
+}
+
+/* Dark Mode Focus Indicators */
+[data-theme="dark"] *:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Dark Mode Text Selection */
+[data-theme="dark"] ::selection {
+  background: #3b82f6;
+  color: #ffffff;
+}

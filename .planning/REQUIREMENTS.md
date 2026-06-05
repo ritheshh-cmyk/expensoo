@@ -1,0 +1,106 @@
+# Requirements: Expensoo
+
+**Defined:** 2026-06-04
+**Core Value:** Ensure accurate profit and transaction tracking for mobile repair shops through an intuitive, mobile-optimized multi-step workflow.
+
+## v1 Requirements
+
+Requirements mapped to initial development phases.
+
+### Phase 1: Critical Bug Fixes
+- [ ] **BUG-01**: Clicking "Create transaction" in sales mode immediately redirects without showing response or errors.
+- [ ] **BUG-02**: Profits do not update dynamically across dashboard and reports upon transaction mutation (create/edit/delete).
+- [ ] **BUG-03**: Audit log date filter is broken (only shows today), sessions expired events are missing, and database does not auto-purge entries older than 7 days.
+- [ ] **BUG-04**: Session management lacks administrative logout/revocation button to terminate active user sessions.
+- [ ] **BUG-05**: Mobile pagination on sales history page overlaps bottom navigation and redirects to dashboard.
+- [ ] **BUG-06**: Clicking edit on any transaction immediately navigates to dashboard.
+- [ ] **BUG-07**: Deleting a transaction triggers browser native `confirm()` instead of a customized confirmation modal.
+- [ ] **BUG-08**: Sidebar uses same icon for open/close states, and cannot be closed by clicking outside on mobile view.
+
+### Phase 2: Global Rule Enforcement
+- [ ] **RULE-01**: Complete global codebase sweep to ensure zero `window.confirm()`, `window.alert()`, or `window.prompt()` usage.
+- [ ] **RULE-02**: Mask cost price (CP) values by default across all forms, tables, details, and cards with an eye toggle.
+- [ ] **RULE-03**: Ensure fields with no values are completely hidden/omitted from UI (no "N/A" or "-" placeholders).
+- [ ] **RULE-04**: Sweep and remove all user-facing instructional helper descriptions or explanation boxes from pages.
+
+### Phase 3: Multistep Transaction Overhaul
+- [ ] **FORM-01**: Add Paid / Unpaid payment status toggle on the transaction creation flow.
+- [ ] **FORM-02**: Add a secure CP eye-toggle component in sales mode and other input fields.
+- [ ] **FORM-03**: Fix UPI mode in repairs automatically pre-populating customer payment amount with Cost Price (CP).
+- [ ] **FORM-04**: Replace "Internal Purchase" step with a robust "Internal Repair" detail form (technician name, parts used, labor, etc.).
+- [ ] **FORM-05**: Add "Internal Repair" as a third mode in Step 2 of the creation wizard alongside Repair and Sale.
+- [ ] **FORM-06**: Restructure Step 3 of the creation wizard to exactly three visual boxes: Job Info, Cost Price (CP), and Selling Price (SP).
+
+### Phase 4: History Upgrades
+- [ ] **HIST-01**: Implement expandable accordion detail rows in transaction history (desktop) and slide-up sheet (mobile) on row click.
+- [ ] **HIST-02**: Apply identical row expansion details to Sales History.
+- [ ] **HIST-03**: Display detailed supplier parts and unit cost information inside the transaction details expansion block.
+
+### Phase 5: Dashboard Upgrade
+- [ ] **DASH-01**: Fix welcome message to reactively show the user's actual display name instead of role/shop name.
+- [ ] **DASH-02**: Restrict dashboard transaction overview to show only the last 5 transactions.
+- [ ] **DASH-03**: Implement distinct decision-making metric cards on the dashboard (Today's revenue, unpaid outstanding, week-over-week comparison).
+- [ ] **DASH-04**: Add a prominent "New Transaction" header button on desktop and a floating action button (FAB) on mobile dashboard.
+
+### Phase 6: Settings, Profile & Manual Cleanup
+- [ ] **CONF-01**: Fully clean up Profile page layout and spacing into a professional theme.
+- [ ] **CONF-02**: Implement a dedicated help/user manual page (/manual) linked from the header.
+- [ ] **CONF-03**: Add display name editing to Profile form with dynamic propagation to navbar and welcome messages without page reload.
+- [ ] **CONF-04**: Optimize settings tabs navigation bar to fit and scroll horizontally on mobile screens (375px width).
+
+### Phase 7: New Features & Global Polish
+- [ ] **FEAT-01**: Place notification bell placeholder icon in header navbar with a dropdown menu displaying notifications.
+- [ ] **FEAT-02**: Conduct a global mobile spacing audit (gaps, margins, padding) on all pages to ensure responsiveness at 375px.
+
+## v2 Requirements
+- **REPT-01**: Expand Reports page with custom date range filters.
+- **SYNC-01**: Real-time background sync queue for offline changes.
+
+## Out of Scope
+- Real-time chat messaging.
+- Native mobile application builds.
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| BUG-01 | Phase 1 | Pending |
+| BUG-02 | Phase 1 | Pending |
+| BUG-03 | Phase 1 | Pending |
+| BUG-04 | Phase 1 | Pending |
+| BUG-05 | Phase 1 | Pending |
+| BUG-06 | Phase 1 | Pending |
+| BUG-07 | Phase 1 | Pending |
+| BUG-08 | Phase 1 | Pending |
+| RULE-01 | Phase 2 | Pending |
+| RULE-02 | Phase 2 | Pending |
+| RULE-03 | Phase 2 | Pending |
+| RULE-04 | Phase 2 | Pending |
+| FORM-01 | Phase 3 | Pending |
+| FORM-02 | Phase 3 | Pending |
+| FORM-03 | Phase 3 | Pending |
+| FORM-04 | Phase 3 | Pending |
+| FORM-05 | Phase 3 | Pending |
+| FORM-06 | Phase 3 | Pending |
+| HIST-01 | Phase 4 | Pending |
+| HIST-02 | Phase 4 | Pending |
+| HIST-03 | Phase 4 | Pending |
+| DASH-01 | Phase 5 | Pending |
+| DASH-02 | Phase 5 | Pending |
+| DASH-03 | Phase 5 | Pending |
+| DASH-04 | Phase 5 | Pending |
+| CONF-01 | Phase 6 | Pending |
+| CONF-02 | Phase 6 | Pending |
+| CONF-03 | Phase 6 | Pending |
+| CONF-04 | Phase 6 | Pending |
+| FEAT-01 | Phase 7 | Pending |
+| FEAT-02 | Phase 7 | Pending |
+
+**Coverage:**
+- v1 requirements: 31 total
+- Mapped to phases: 31
+- Unmapped: 0 ✓
+
+---
+*Requirements defined: 2026-06-04*
+*Last updated: 2026-06-04 after GSD Project Initialization*

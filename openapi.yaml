@@ -1,0 +1,2201 @@
+openapi: 3.1.0
+
+info:
+  title: CallMeMobiles Repair Shop API
+  version: 1.0.0
+  description: |
+    Production REST API for the **CallMeMobiles** mobile phone repair shop management system.
+
+    ## Overview
+    This API powers the full back-office of a repair shop: authentication, transaction tracking,
+    supplier management, expenditure recording, bill generation, customer records, metrics, and
+    real-time dashboard statistics.
+
+    ## Authentication
+    All protected endpoints require a **Bearer JWT** token obtained from `POST /api/auth/login`.
+    Tokens are valid for **15 minutes** from the time of issue (enforced both client-side and
+    server-side). Include the token in every request as:
+
+    ```
+    Authorization: Bearer <token>
+    ```
+
+    ## Base URLs
+    | Environment | URL |
+    |---|---|
+    | Development (Vite proxy) | `http://localhost:5174` |
+    | Production (DigitalOcean) | `https://expensoo-app-gu3wg.ondigitalocean.app` |
+    | Supabase REST (direct table access) | `https://swdojmsuznofynwgssxs.supabase.co/rest/v1` |
+
+    ## Roles
+    The system has three user roles with different access levels:
+    - **admin** — full access to all resources
+    - **owner** — access to financial data and reports
+    - **worker** — access to transactions and customers only
+
+    ## Error Format
+    All errors return a consistent JSON envelope:
+    ```json
+    { "error": "short_code", "message": "Human-readable description", "status_code": 400 }
+    ```
+
+    ## Retry Policy
+    The client retries `5xx` and network errors once with exponential back-off
+    (base 500 ms, max 3 000 ms).
+  contact:
+    name: CallMeMobiles Development Team
+    email: dev@callmemobiles.com
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5174
+    description: Local development server (Vite proxy → localhost:5000 backend)
+  - url: https://expensoo-app-gu3wg.ondigitalocean.app
+    description: Production server (DigitalOcean App Platform)
+  - url: https://swdojmsuznofynwgssxs.supabase.co/rest/v1
+    description: Supabase REST API (direct database access — requires apikey header)
+
+# ─── Global Security ─────────────────────────────────────────────────────────
+security:
+  - bearerAuth: []
+
+# ─── Tags ────────────────────────────────────────────────────────────────────
+tags:
+  - name: Auth
+    description: Authentication — login, logout, token verification, user registration
+  - name: Dashboard
+    description: Aggregated statistics for the main dashboard
+  - name: Transactions
+    description: Repair transaction lifecycle (create, read, update, delete)
+  - name: Suppliers
+    description: Spare-parts supplier management
+  - name: Expenditures
+    description: Shop expenditure / overhead recording
+  - name: Bills
+    description: Customer-facing bill generation and management
+  - name: Customers
+    description: Customer record lookup
+  - name: Reports
+    description: Summary and transactional reports
+  - name: Metrics
+    description: Operational KPI metrics
+  - name: Notifications
+    description: SMS notification delivery
+  - name: System
+    description: Health checks and system status
+
+# ─── Paths ───────────────────────────────────────────────────────────────────
+paths:
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+
+  /api/auth/login:
+    post:
+      operationId: authLogin
+      tags: [Auth]
+      summary: Log in and obtain a JWT
+      description: |
+        Authenticates a user by username + password.
+        On success the server returns a signed JWT valid for **15 minutes** and the full user
+        profile. Store the token in `localStorage` under `auth_token`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              admin:
+                summary: Admin login
+                value:
+                  username: admin
+                  password: Secret@123
+              worker:
+                summary: Worker login
+                value:
+                  username: john_worker
+                  password: WorkerPass1
+      responses:
+        '200':
+          description: Login successful — token and user profile returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImFkbWluIn0.abc123
+                user:
+                  id: "1"
+                  name: Admin User
+                  username: admin
+                  role: admin
+                  email: admin@callmemobiles.com
+                expires_at: "2026-05-30T16:00:00.000Z"
+                message: Login successful
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/auth/register:
+    post:
+      operationId: authRegister
+      tags: [Auth]
+      summary: Register a new user account
+      description: Creates a new user. Typically restricted to admin role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              username: jane_worker
+              password: Worker@Pass1
+              name: Jane Smith
+              role: worker
+              email: jane@callmemobiles.com
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/auth/verify:
+    get:
+      operationId: authVerifyToken
+      tags: [Auth]
+      summary: Verify the current JWT
+      description: |
+        Validates that the Bearer token in the `Authorization` header is still valid.
+        Called on app startup to restore an existing session. Returns `{ valid: true }` on
+        success. Returns `401` if the token has expired or is malformed.
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/auth/logout:
+    post:
+      operationId: authLogout
+      tags: [Auth]
+      summary: Invalidate the current session
+      description: |
+        Server-side session invalidation (if the backend tracks tokens).
+        The client also clears `auth_token` and `auth_user` from `localStorage`.
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/auth/me:
+    get:
+      operationId: authGetCurrentUser
+      tags: [Auth]
+      summary: Get the currently authenticated user
+      description: Returns the full profile of the user whose token is in the request.
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Dashboard ──────────────────────────────────────────────────────────────
+
+  /api/dashboard:
+    get:
+      operationId: getDashboard
+      tags: [Dashboard]
+      summary: Get high-level dashboard totals
+      description: Returns headline figures — total revenue, today revenue, total profit, etc.
+      responses:
+        '200':
+          description: Dashboard totals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardTotals'
+              example:
+                totalRevenue: 450000
+                todayRevenue: 12500
+                totalProfit: 180000
+                todayProfit: 4200
+                totalTransactions: 1240
+                pendingTransactions: 18
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [Dashboard]
+      summary: Get detailed dashboard statistics
+      description: |
+        Returns a richer breakdown: all-time totals, today's figures, this-week's figures,
+        and the authenticated user's role.
+      responses:
+        '200':
+          description: Detailed dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+              example:
+                totals:
+                  totalRevenue: 450000
+                  totalProfit: 180000
+                  totalTransactions: 1240
+                  pendingTransactions: 18
+                  completedTransactions: 1222
+                  avgTransactionValue: 363
+                today:
+                  totalRevenue: 12500
+                  totalProfit: 4200
+                  totalTransactions: 34
+                week:
+                  totalRevenue: 85000
+                  totalProfit: 29000
+                  totalTransactions: 230
+                userRole: admin
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Transactions ──────────────────────────────────────────────────────────
+
+  /api/transactions:
+    get:
+      operationId: listTransactions
+      tags: [Transactions]
+      summary: List all repair transactions
+      description: Returns the full list of repair transactions, newest first.
+      parameters:
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [Pending, Completed, Cancelled]
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: search
+          in: query
+          description: Search by customer name, mobile number, or device model
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of transactions
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+                  - $ref: '#/components/schemas/PaginatedTransactions'
+              example:
+                - id: "txn_001"
+                  transaction_id: "TXN-2026-001"
+                  serial_no: 1
+                  customerName: Ravi Kumar
+                  mobileNumber: "9876543210"
+                  deviceModel: Samsung Galaxy S23
+                  repairType: Screen Replacement
+                  repairCost: 3500
+                  actualCost: 2800
+                  profit: 700
+                  amountGiven: 3500
+                  changeReturned: 0
+                  paymentMethod: cash
+                  status: Completed
+                  remarks: Screen cracked at corner
+                  freeGlassInstallation: false
+                  requiresInventory: true
+                  partsCost: 2800
+                  supplierName: MobileParts Hub
+                  created_at: "2026-05-30T09:00:00.000Z"
+                  updated_at: "2026-05-30T09:05:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      operationId: createTransaction
+      tags: [Transactions]
+      summary: Create a new repair transaction
+      description: |
+        Records a new repair job. All monetary values are in Indian Rupees (₹).
+        `partsCost` is auto-calculated as the sum of all items in `externalPurchases`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionCreate'
+            example:
+              customerName: Ravi Kumar
+              mobileNumber: "9876543210"
+              deviceModel: Samsung Galaxy S23
+              repairType: Screen Replacement
+              repairCost: 3500
+              actualCost: 2800
+              profit: 700
+              amountGiven: 3500
+              changeReturned: 0
+              paymentMethod: cash
+              status: Completed
+              remarks: Screen cracked at corner
+              freeGlassInstallation: false
+              requiresInventory: true
+              partsCost: 2800
+              supplierName: MobileParts Hub
+              externalPurchases:
+                - store: MobileParts Hub
+                  item: AMOLED Screen S23
+                  cost: 2800
+      responses:
+        '201':
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/transactions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+
+    get:
+      operationId: getTransaction
+      tags: [Transactions]
+      summary: Get a single transaction by ID
+      responses:
+        '200':
+          description: The requested transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      operationId: updateTransaction
+      tags: [Transactions]
+      summary: Update an existing transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionUpdate'
+            example:
+              status: Completed
+              remarks: Repair done, customer happy
+              repairCost: 3500
+      responses:
+        '200':
+          description: Updated transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      operationId: deleteTransaction
+      tags: [Transactions]
+      summary: Delete a transaction
+      responses:
+        '200':
+          description: Transaction deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Suppliers ─────────────────────────────────────────────────────────────
+
+  /api/suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [Suppliers]
+      summary: List all suppliers
+      responses:
+        '200':
+          description: Array of suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Supplier'
+              example:
+                - id: "sup_001"
+                  name: MobileParts Hub
+                  phone: "9123456789"
+                  parts_type: Screens & Displays
+                  total_spent: 125000
+                  created_at: "2026-01-15T08:00:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      operationId: createSupplier
+      tags: [Suppliers]
+      summary: Add a new supplier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierCreate'
+            example:
+              name: SpareZone India
+              phone: "9988776655"
+              parts_type: Batteries & Chargers
+      responses:
+        '201':
+          description: Supplier created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/suppliers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+
+    get:
+      operationId: getSupplier
+      tags: [Suppliers]
+      summary: Get a single supplier by ID
+      responses:
+        '200':
+          description: Supplier record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      operationId: updateSupplier
+      tags: [Suppliers]
+      summary: Update supplier details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierCreate'
+            example:
+              name: SpareZone India
+              phone: "9988776600"
+              parts_type: Batteries, Chargers & Cables
+      responses:
+        '200':
+          description: Updated supplier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      operationId: deleteSupplier
+      tags: [Suppliers]
+      summary: Delete a supplier
+      responses:
+        '200':
+          description: Supplier deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Expenditures ──────────────────────────────────────────────────────────
+
+  /api/expenditures:
+    get:
+      operationId: listExpenditures
+      tags: [Expenditures]
+      summary: List all shop expenditures
+      parameters:
+        - name: status
+          in: query
+          description: Filter by payment status
+          schema:
+            type: string
+            enum: [paid, pending, overdue]
+        - name: category
+          in: query
+          description: Filter by expense category
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of expenditures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Expenditure'
+              example:
+                - id: "exp_001"
+                  category: Rent
+                  description: Monthly shop rent — May 2026
+                  amount: 18000
+                  date: "2026-05-01"
+                  status: paid
+                  created_at: "2026-05-01T10:00:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      operationId: createExpenditure
+      tags: [Expenditures]
+      summary: Record a new expenditure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenditureCreate'
+            example:
+              category: Electricity
+              description: KSEB bill for May 2026
+              amount: 3200
+              date: "2026-05-28"
+              status: paid
+      responses:
+        '201':
+          description: Expenditure recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expenditure'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/expenditures/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+
+    put:
+      operationId: updateExpenditure
+      tags: [Expenditures]
+      summary: Update an expenditure record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenditureCreate'
+            example:
+              category: Electricity
+              description: KSEB bill for May 2026 (revised)
+              amount: 3400
+              date: "2026-05-28"
+              status: paid
+      responses:
+        '200':
+          description: Updated expenditure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expenditure'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      operationId: deleteExpenditure
+      tags: [Expenditures]
+      summary: Delete an expenditure record
+      responses:
+        '200':
+          description: Expenditure deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Bills ─────────────────────────────────────────────────────────────────
+
+  /api/bills:
+    get:
+      operationId: listBills
+      tags: [Bills]
+      summary: List all generated bills
+      responses:
+        '200':
+          description: Array of bills
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bill'
+              example:
+                - id: "bill_001"
+                  transaction_id: "TXN-2026-001"
+                  customer_name: Ravi Kumar
+                  phone: "9876543210"
+                  device_model: Samsung Galaxy S23
+                  repair_type: Screen Replacement
+                  amount: 3500
+                  payment_method: cash
+                  status: paid
+                  bill_number: "BILL-2026-001"
+                  created_at: "2026-05-30T09:10:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      operationId: createBill
+      tags: [Bills]
+      summary: Generate a new bill
+      description: Creates a customer-facing bill linked to a transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillCreate'
+            example:
+              transaction_id: "TXN-2026-001"
+              customer_name: Ravi Kumar
+              phone: "9876543210"
+              device_model: Samsung Galaxy S23
+              repair_type: Screen Replacement
+              amount: 3500
+              payment_method: cash
+              status: paid
+      responses:
+        '201':
+          description: Bill created — returns the full bill object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/bills/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+
+    put:
+      operationId: updateBill
+      tags: [Bills]
+      summary: Update a bill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillCreate'
+      responses:
+        '200':
+          description: Updated bill
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      operationId: deleteBill
+      tags: [Bills]
+      summary: Delete a bill
+      responses:
+        '200':
+          description: Bill deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Customers ─────────────────────────────────────────────────────────────
+
+  /api/customers:
+    get:
+      operationId: listCustomers
+      tags: [Customers]
+      summary: List all customers
+      parameters:
+        - name: search
+          in: query
+          description: Search by name or phone
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      operationId: createCustomer
+      tags: [Customers]
+      summary: Create a customer record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreate'
+            example:
+              name: Priya Nair
+              phone: "9745123456"
+              email: priya@example.com
+              device_type: iPhone
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/customers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+
+    get:
+      operationId: getCustomer
+      tags: [Customers]
+      summary: Get a customer by ID
+      description: Returns full customer profile including repair history count.
+      responses:
+        '200':
+          description: Customer record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+              example:
+                id: "cust_001"
+                name: Priya Nair
+                phone: "9745123456"
+                email: priya@example.com
+                device_type: iPhone
+                total_repairs: 3
+                created_at: "2026-03-10T07:30:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Reports ───────────────────────────────────────────────────────────────
+
+  /api/reports/summary:
+    get:
+      operationId: getReportSummary
+      tags: [Reports]
+      summary: Get a financial summary report
+      description: Returns revenue, profit, and expenditure totals for a given date range.
+      parameters:
+        - name: from
+          in: query
+          description: Start date (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2026-05-01"
+        - name: to
+          in: query
+          description: End date (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2026-05-31"
+      responses:
+        '200':
+          description: Financial summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSummary'
+              example:
+                period:
+                  from: "2026-05-01"
+                  to: "2026-05-31"
+                revenue:
+                  total: 185000
+                  today: 12500
+                profit:
+                  total: 68000
+                  today: 4200
+                expenditures:
+                  total: 32000
+                  categories:
+                    - category: Rent
+                      amount: 18000
+                    - category: Electricity
+                      amount: 3200
+                    - category: Internet
+                      amount: 1200
+                transactions:
+                  total: 512
+                  completed: 498
+                  pending: 14
+                  cancelled: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/reports/transactions:
+    get:
+      operationId: getTransactionReport
+      tags: [Reports]
+      summary: Get a paginated transaction report
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Pending, Completed, Cancelled]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Paginated transaction report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTransactions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Profile ───────────────────────────────────────────────────────────────
+
+  /api/profile:
+    get:
+      operationId: getProfile
+      tags: [Auth]
+      summary: Get the authenticated user's profile
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      operationId: updateProfile
+      tags: [Auth]
+      summary: Update the authenticated user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+            example:
+              full_name: Admin User
+              email: admin@callmemobiles.com
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/profile/avatar:
+    post:
+      operationId: uploadAvatar
+      tags: [Auth]
+      summary: Upload a profile avatar image
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+                  description: JPEG or PNG image, max 2 MB
+      responses:
+        '200':
+          description: Avatar uploaded — returns updated profile with avatar_url
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Metrics ───────────────────────────────────────────────────────────────
+
+  /api/metrics:
+    get:
+      operationId: getMetrics
+      tags: [Metrics]
+      summary: Get operational KPI metrics
+      description: Returns revenue, transaction, and supplier KPIs.
+      responses:
+        '200':
+          description: KPI metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metrics'
+              example:
+                revenue:
+                  today: 12500
+                  total: 450000
+                transactions:
+                  pending: 18
+                  completed: 1222
+                suppliers:
+                  total: 12
+                  outstanding: 3
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── SMS / Notifications ───────────────────────────────────────────────────
+
+  /api/sms/send:
+    post:
+      operationId: sendSMS
+      tags: [Notifications]
+      summary: Send an SMS notification to a customer
+      description: Sends a bill or status update SMS via the configured SMS gateway.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SMSRequest'
+            example:
+              phone: "9876543210"
+              message: "Dear Ravi, your Samsung Galaxy S23 screen replacement is done. Bill: ₹3,500. Thank you! — CallMeMobiles"
+      responses:
+        '200':
+          description: SMS sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message_id:
+                    type: string
+                    example: "sms_abc123def456"
+                  message:
+                    type: string
+                    example: SMS sent successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ── Health ────────────────────────────────────────────────────────────────
+
+  /api/health:
+    get:
+      operationId: healthCheck
+      tags: [System]
+      summary: Health check
+      description: Returns the server's current status. No authentication required.
+      security: []
+      responses:
+        '200':
+          description: Server is online
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: online
+                version: 1.0.0
+                timestamp: "2026-05-30T09:55:00.000Z"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+# ─── Components ───────────────────────────────────────────────────────────────
+components:
+
+  # ── Security Schemes ───────────────────────────────────────────────────────
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT issued by `POST /api/auth/login`. Valid for **15 minutes**.
+        Pass it as: `Authorization: Bearer <token>`
+
+  # ── Parameters ─────────────────────────────────────────────────────────────
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: Resource unique identifier
+      schema:
+        type: string
+        example: "txn_001"
+
+  # ── Responses ──────────────────────────────────────────────────────────────
+  responses:
+    BadRequest:
+      description: Bad request — invalid or missing parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: validation_error
+            message: "customerName is required"
+            status_code: 400
+
+    Unauthorized:
+      description: Authentication required or token expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: unauthorized
+            message: "Please log in to continue"
+            status_code: 401
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: not_found
+            message: "Transaction not found"
+            status_code: 404
+
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: internal_server_error
+            message: "An unexpected error occurred"
+            status_code: 500
+
+  # ── Schemas ────────────────────────────────────────────────────────────────
+  schemas:
+
+    # ── Auth / Users ──────────────────────────────────────────────────────
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: admin
+          description: Unique login handle for the user
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: Secret@123
+          description: Account password (min 6 characters)
+
+    RegisterRequest:
+      type: object
+      required: [username, password, name, role]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: jane_worker
+        password:
+          type: string
+          format: password
+          minLength: 6
+          example: Worker@Pass1
+        name:
+          type: string
+          example: Jane Smith
+        role:
+          type: string
+          enum: [admin, owner, worker]
+          example: worker
+        email:
+          type: string
+          format: email
+          example: jane@callmemobiles.com
+
+    LoginResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+          description: Signed JWT — valid for 15 minutes
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIn0.abc
+        user:
+          $ref: '#/components/schemas/User'
+        expires_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the token expires
+          example: "2026-05-30T16:00:00.000Z"
+        message:
+          type: string
+          example: Login successful
+
+    User:
+      type: object
+      required: [id, name, role]
+      properties:
+        id:
+          type: string
+          example: "1"
+          description: Unique user identifier
+        name:
+          type: string
+          example: Admin User
+        username:
+          type: string
+          example: admin
+        role:
+          type: string
+          enum: [admin, owner, worker]
+          example: admin
+          description: |
+            Role controls access:
+            - **admin** — full access
+            - **owner** — financial + reports
+            - **worker** — transactions + customers
+        email:
+          type: string
+          format: email
+          example: admin@callmemobiles.com
+
+    Profile:
+      type: object
+      required: [id, username]
+      properties:
+        id:
+          type: string
+          example: "1"
+        username:
+          type: string
+          example: admin
+        full_name:
+          type: string
+          example: Admin User
+        email:
+          type: string
+          format: email
+          example: admin@callmemobiles.com
+        avatar_url:
+          type: string
+          format: uri
+          nullable: true
+          example: "https://expensoo-app-gu3wg.ondigitalocean.app/uploads/avatars/admin.jpg"
+        role:
+          type: string
+          enum: [admin, owner, worker]
+          example: admin
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00.000Z"
+
+    ProfileUpdate:
+      type: object
+      properties:
+        full_name:
+          type: string
+          example: Admin User
+        email:
+          type: string
+          format: email
+          example: admin@callmemobiles.com
+
+    # ── Transaction ───────────────────────────────────────────────────────
+
+    ExternalPurchase:
+      type: object
+      required: [store, item, cost]
+      properties:
+        store:
+          type: string
+          description: Supplier or store name where the part was purchased
+          example: MobileParts Hub
+        item:
+          type: string
+          description: Name or description of the part
+          example: AMOLED Screen S23
+        cost:
+          type: number
+          format: float
+          minimum: 0
+          description: Cost of this part in ₹
+          example: 2800
+
+    Transaction:
+      type: object
+      required: [id, customerName, mobileNumber, deviceModel, repairType, repairCost, status]
+      properties:
+        id:
+          type: string
+          example: "txn_001"
+          description: Internal database ID
+        transaction_id:
+          type: string
+          example: "TXN-2026-001"
+          description: Human-readable transaction reference number
+        serial_no:
+          type: integer
+          example: 1
+          description: Sequential serial number for the shop
+        customerName:
+          type: string
+          example: Ravi Kumar
+        mobileNumber:
+          type: string
+          example: "9876543210"
+          description: Customer's 10-digit mobile number
+        deviceModel:
+          type: string
+          example: Samsung Galaxy S23
+        repairType:
+          type: string
+          example: Screen Replacement
+          description: Type/description of the repair performed
+        repairCost:
+          type: number
+          format: float
+          minimum: 0
+          example: 3500
+          description: Amount charged to the customer (₹)
+        actualCost:
+          type: number
+          format: float
+          minimum: 0
+          nullable: true
+          example: 2800
+          description: Actual cost of parts/labour (₹)
+        profit:
+          type: number
+          format: float
+          nullable: true
+          example: 700
+          description: repairCost − actualCost (₹)
+        amountGiven:
+          type: number
+          format: float
+          minimum: 0
+          example: 3500
+          description: Cash amount handed over by the customer (₹)
+        changeReturned:
+          type: number
+          format: float
+          minimum: 0
+          example: 0
+          description: Change returned to customer (₹)
+        paymentMethod:
+          type: string
+          enum: [cash, card, upi, online]
+          example: cash
+        status:
+          type: string
+          enum: [Pending, Completed, Cancelled]
+          example: Completed
+        remarks:
+          type: string
+          nullable: true
+          example: Screen cracked at corner
+        freeGlassInstallation:
+          type: boolean
+          example: false
+          description: Whether a free tempered-glass screen protector was installed
+        requiresInventory:
+          type: boolean
+          example: true
+          description: Whether parts were sourced from inventory
+        partsCost:
+          type: number
+          format: float
+          nullable: true
+          example: 2800
+          description: Total cost of all parts used (sum of externalPurchases)
+        supplierName:
+          type: string
+          nullable: true
+          example: MobileParts Hub
+          description: Primary supplier for this transaction's parts
+        externalPurchases:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/ExternalPurchase'
+        shop_id:
+          type: string
+          nullable: true
+          example: "shop_001"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-05-30T09:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-05-30T09:05:00.000Z"
+
+    TransactionCreate:
+      type: object
+      required: [customerName, mobileNumber, deviceModel, repairType, repairCost, amountGiven, paymentMethod, status]
+      properties:
+        customerName:
+          type: string
+          example: Ravi Kumar
+        mobileNumber:
+          type: string
+          example: "9876543210"
+        deviceModel:
+          type: string
+          example: Samsung Galaxy S23
+        repairType:
+          type: string
+          example: Screen Replacement
+        repairCost:
+          type: number
+          format: float
+          minimum: 0
+          example: 3500
+        actualCost:
+          type: number
+          format: float
+          minimum: 0
+          nullable: true
+          example: 2800
+        profit:
+          type: number
+          format: float
+          nullable: true
+          example: 700
+        amountGiven:
+          type: number
+          format: float
+          minimum: 0
+          example: 3500
+        changeReturned:
+          type: number
+          format: float
+          minimum: 0
+          example: 0
+        paymentMethod:
+          type: string
+          enum: [cash, card, upi, online]
+          example: cash
+        status:
+          type: string
+          enum: [Pending, Completed, Cancelled]
+          default: Completed
+        remarks:
+          type: string
+          nullable: true
+          example: Screen cracked at corner
+        freeGlassInstallation:
+          type: boolean
+          default: false
+        requiresInventory:
+          type: boolean
+          default: false
+        partsCost:
+          type: number
+          format: float
+          nullable: true
+          example: 2800
+        supplierName:
+          type: string
+          nullable: true
+          example: MobileParts Hub
+        externalPurchases:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/ExternalPurchase'
+        shop_id:
+          type: string
+          nullable: true
+          example: "shop_001"
+
+    TransactionUpdate:
+      type: object
+      description: All fields are optional — only supplied fields are updated.
+      properties:
+        customerName:
+          type: string
+        mobileNumber:
+          type: string
+        deviceModel:
+          type: string
+        repairType:
+          type: string
+        repairCost:
+          type: number
+          format: float
+        actualCost:
+          type: number
+          format: float
+        profit:
+          type: number
+          format: float
+        amountGiven:
+          type: number
+          format: float
+        changeReturned:
+          type: number
+          format: float
+        paymentMethod:
+          type: string
+          enum: [cash, card, upi, online]
+        status:
+          type: string
+          enum: [Pending, Completed, Cancelled]
+        remarks:
+          type: string
+        freeGlassInstallation:
+          type: boolean
+        requiresInventory:
+          type: boolean
+        partsCost:
+          type: number
+          format: float
+        supplierName:
+          type: string
+        externalPurchases:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalPurchase'
+
+    # ── Supplier ──────────────────────────────────────────────────────────
+
+    Supplier:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          example: "sup_001"
+        name:
+          type: string
+          example: MobileParts Hub
+          description: Trading name of the supplier
+        phone:
+          type: string
+          nullable: true
+          example: "9123456789"
+        parts_type:
+          type: string
+          nullable: true
+          example: Screens & Displays
+          description: Category of parts this supplier provides
+        total_spent:
+          type: number
+          format: float
+          minimum: 0
+          example: 125000
+          description: Cumulative spend with this supplier in ₹
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-01-15T08:00:00.000Z"
+
+    SupplierCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: SpareZone India
+        phone:
+          type: string
+          nullable: true
+          example: "9988776655"
+        parts_type:
+          type: string
+          nullable: true
+          example: Batteries & Chargers
+
+    # ── Expenditure ───────────────────────────────────────────────────────
+
+    Expenditure:
+      type: object
+      required: [id, category, amount, date]
+      properties:
+        id:
+          type: string
+          example: "exp_001"
+        category:
+          type: string
+          example: Rent
+          description: Expense category (e.g. Rent, Electricity, Salaries, Internet, Supplies)
+        description:
+          type: string
+          nullable: true
+          example: Monthly shop rent — May 2026
+        amount:
+          type: number
+          format: float
+          minimum: 0
+          example: 18000
+          description: Expenditure amount in ₹
+        date:
+          type: string
+          format: date
+          example: "2026-05-01"
+        status:
+          type: string
+          enum: [paid, pending, overdue]
+          example: paid
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-05-01T10:00:00.000Z"
+
+    ExpenditureCreate:
+      type: object
+      required: [category, amount, date]
+      properties:
+        category:
+          type: string
+          example: Electricity
+        description:
+          type: string
+          nullable: true
+          example: KSEB bill for May 2026
+        amount:
+          type: number
+          format: float
+          minimum: 0
+          example: 3200
+        date:
+          type: string
+          format: date
+          example: "2026-05-28"
+        status:
+          type: string
+          enum: [paid, pending, overdue]
+          default: paid
+
+    # ── Bill ─────────────────────────────────────────────────────────────
+
+    Bill:
+      type: object
+      required: [id, customer_name, phone, device_model, repair_type, amount]
+      properties:
+        id:
+          type: string
+          example: "bill_001"
+        transaction_id:
+          type: string
+          nullable: true
+          example: "TXN-2026-001"
+        bill_number:
+          type: string
+          example: "BILL-2026-001"
+          description: Human-readable bill reference
+        customer_name:
+          type: string
+          example: Ravi Kumar
+        phone:
+          type: string
+          example: "9876543210"
+        device_model:
+          type: string
+          example: Samsung Galaxy S23
+        repair_type:
+          type: string
+          example: Screen Replacement
+        amount:
+          type: number
+          format: float
+          minimum: 0
+          example: 3500
+        payment_method:
+          type: string
+          enum: [cash, card, upi, online]
+          example: cash
+        status:
+          type: string
+          enum: [paid, pending, cancelled]
+          example: paid
+        notes:
+          type: string
+          nullable: true
+          example: Warranty: 30 days on screen
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-05-30T09:10:00.000Z"
+
+    BillCreate:
+      type: object
+      required: [customer_name, phone, device_model, repair_type, amount, payment_method, status]
+      properties:
+        transaction_id:
+          type: string
+          nullable: true
+          example: "TXN-2026-001"
+        customer_name:
+          type: string
+          example: Ravi Kumar
+        phone:
+          type: string
+          example: "9876543210"
+        device_model:
+          type: string
+          example: Samsung Galaxy S23
+        repair_type:
+          type: string
+          example: Screen Replacement
+        amount:
+          type: number
+          format: float
+          minimum: 0
+          example: 3500
+        payment_method:
+          type: string
+          enum: [cash, card, upi, online]
+          example: cash
+        status:
+          type: string
+          enum: [paid, pending, cancelled]
+          default: paid
+        notes:
+          type: string
+          nullable: true
+
+    # ── Customer ──────────────────────────────────────────────────────────
+
+    Customer:
+      type: object
+      required: [id, name, phone]
+      properties:
+        id:
+          type: string
+          example: "cust_001"
+        name:
+          type: string
+          example: Priya Nair
+        phone:
+          type: string
+          example: "9745123456"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: priya@example.com
+        device_type:
+          type: string
+          nullable: true
+          example: iPhone
+          description: Primary device type this customer usually brings in
+        total_repairs:
+          type: integer
+          minimum: 0
+          example: 3
+          description: Total number of repair transactions for this customer
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-10T07:30:00.000Z"
+
+    CustomerCreate:
+      type: object
+      required: [name, phone]
+      properties:
+        name:
+          type: string
+          example: Priya Nair
+        phone:
+          type: string
+          example: "9745123456"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: priya@example.com
+        device_type:
+          type: string
+          nullable: true
+          example: iPhone
+
+    # ── Dashboard ─────────────────────────────────────────────────────────
+
+    DashboardTotals:
+      type: object
+      properties:
+        totalRevenue:
+          type: number
+          format: float
+          example: 450000
+        todayRevenue:
+          type: number
+          format: float
+          example: 12500
+        totalProfit:
+          type: number
+          format: float
+          example: 180000
+        todayProfit:
+          type: number
+          format: float
+          example: 4200
+        totalTransactions:
+          type: integer
+          example: 1240
+        pendingTransactions:
+          type: integer
+          example: 18
+
+    DashboardPeriodStats:
+      type: object
+      properties:
+        totalRevenue:
+          type: number
+          format: float
+          example: 85000
+        totalProfit:
+          type: number
+          format: float
+          example: 29000
+        totalTransactions:
+          type: integer
+          example: 230
+
+    DashboardStats:
+      type: object
+      properties:
+        totals:
+          allOf:
+            - $ref: '#/components/schemas/DashboardTotals'
+            - type: object
+              properties:
+                completedTransactions:
+                  type: integer
+                  example: 1222
+                avgTransactionValue:
+                  type: number
+                  format: float
+                  example: 363
+        today:
+          $ref: '#/components/schemas/DashboardPeriodStats'
+        week:
+          $ref: '#/components/schemas/DashboardPeriodStats'
+        userRole:
+          type: string
+          enum: [admin, owner, worker]
+          example: admin
+
+    # ── Reports ───────────────────────────────────────────────────────────
+
+    ReportSummary:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            from:
+              type: string
+              format: date
+              example: "2026-05-01"
+            to:
+              type: string
+              format: date
+              example: "2026-05-31"
+        revenue:
+          type: object
+          properties:
+            total:
+              type: number
+              format: float
+              example: 185000
+            today:
+              type: number
+              format: float
+              example: 12500
+        profit:
+          type: object
+          properties:
+            total:
+              type: number
+              format: float
+              example: 68000
+            today:
+              type: number
+              format: float
+              example: 4200
+        expenditures:
+          type: object
+          properties:
+            total:
+              type: number
+              format: float
+              example: 32000
+            categories:
+              type: array
+              items:
+                type: object
+                properties:
+                  category:
+                    type: string
+                    example: Rent
+                  amount:
+                    type: number
+                    format: float
+                    example: 18000
+        transactions:
+          type: object
+          properties:
+            total:
+              type: integer
+              example: 512
+            completed:
+              type: integer
+              example: 498
+            pending:
+              type: integer
+              example: 14
+            cancelled:
+              type: integer
+              example: 0
+
+    PaginatedTransactions:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        total:
+          type: integer
+          example: 1240
+          description: Total number of records matching the filter
+        page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 50
+
+    # ── Metrics ───────────────────────────────────────────────────────────
+
+    Metrics:
+      type: object
+      properties:
+        revenue:
+          type: object
+          properties:
+            today:
+              type: number
+              format: float
+              example: 12500
+            total:
+              type: number
+              format: float
+              example: 450000
+        transactions:
+          type: object
+          properties:
+            pending:
+              type: integer
+              example: 18
+            completed:
+              type: integer
+              example: 1222
+        suppliers:
+          type: object
+          properties:
+            total:
+              type: integer
+              example: 12
+            outstanding:
+              type: integer
+              example: 3
+              description: Number of suppliers with unpaid balances
+
+    # ── Notifications ─────────────────────────────────────────────────────
+
+    SMSRequest:
+      type: object
+      required: [phone, message]
+      properties:
+        phone:
+          type: string
+          description: Recipient mobile number (10 digits, Indian format)
+          example: "9876543210"
+        message:
+          type: string
+          maxLength: 160
+          description: SMS message content (keep under 160 chars for a single segment)
+          example: "Dear Ravi, your repair is complete. Bill: ₹3,500. Thank you! — CallMeMobiles"
+
+    # ── System ────────────────────────────────────────────────────────────
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [online, degraded, offline]
+          example: online
+        version:
+          type: string
+          example: "1.0.0"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-05-30T09:55:00.000Z"
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Record deleted successfully
+        id:
+          type: string
+          example: "txn_001"
+
+    # ── Generic Error ─────────────────────────────────────────────────────
+
+    Error:
+      type: object
+      required: [error, message, status_code]
+      properties:
+        error:
+          type: string
+          description: Machine-readable short error code
+          example: validation_error
+        message:
+          type: string
+          description: Human-readable explanation of what went wrong
+          example: "customerName is required"
+        status_code:
+          type: integer
+          description: HTTP status code echoed in the body for convenience
+          example: 400

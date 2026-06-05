@@ -1,0 +1,45 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules/
+dist/
+dist-ssr
+build/
+*.local
+*.log
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vercel
+
+# Playwright browsers & test artifacts (large binaries, never push)
+chrome/
+chromium/
+firefox/
+webkit/
+ms-playwright/
+playwright-chromium/
+pw-results/
+pw-report/
+screenshots/
+test-output.txt
+test.mjs
+test2.mjs
+test-profile-btn.mjs
+test-profile-btn2.mjs
+qa_list.txt
+qa_list_utf8.txt
