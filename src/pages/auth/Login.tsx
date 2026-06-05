@@ -376,6 +376,6 @@ export default function Login() {
           </CardFooter>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }
