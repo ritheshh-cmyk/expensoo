@@ -138,10 +138,7 @@ export default function AdminPage() {
               {user?.username}
             </Badge>
           </div>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5 flex items-center gap-1">
-            <ChevronRight className="h-3 w-3" />
-            {t("full-system-control")}
-          </p>
+
         </div>
         {/* Mobile admin badge */}
         <Badge variant="outline" className="sm:hidden shrink-0 gap-1 text-xs py-1 px-2">

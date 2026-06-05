@@ -400,9 +400,6 @@ export function AdminControlSystem({ className }: AdminControlSystemProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h3 className="font-medium">Reset Permissions</h3>
-              <p className="text-sm text-muted-foreground">
-                Restore default access controls for all roles
-              </p>
             </div>
             <Button
               variant="outline"

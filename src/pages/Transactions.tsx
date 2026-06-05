@@ -176,7 +176,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
 
   const [historyDialog, setHistoryDialog] = useState<{ open: boolean; customer: string | null }>({ open: false, customer: null });
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
-  const [showCp, setShowCp] = useState(false);
+
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const { t } = useLanguage();
@@ -811,7 +811,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
                       <tr className="bg-muted/10 border-b border-border">
                         <td colSpan={columns.length} className="p-0">
                           <div className="p-4 sm:p-6 animate-in slide-in-from-top-2 fade-in duration-200 border-x-4 border-l-brand-orange-light border-r-transparent">
-                            <TransactionDetailsContent tx={row.original} showCp={showCp} setShowCp={setShowCp} />
+                            <TransactionDetailsContent tx={row.original} />
                           </div>
                         </td>
                       </tr>
@@ -902,7 +902,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
             </SheetTitle>
           </SheetHeader>
           {selectedTxn && (
-            <TransactionDetailsContent tx={selectedTxn} showCp={showCp} setShowCp={setShowCp} />
+            <TransactionDetailsContent tx={selectedTxn} />
           )}
         </SheetContent>
       </Sheet>
@@ -910,10 +910,11 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
   );
 }
 
-function TransactionDetailsContent({ tx, showCp, setShowCp }: { tx: Transaction, showCp: boolean, setShowCp: (v: boolean) => void }) {
+function TransactionDetailsContent({ tx }: { tx: Transaction }) {
   const { t } = useLanguage();
   const { can } = usePermissions();
   const canViewCost = can('transactions.view_cost');
+  const [showCp, setShowCp] = useState(false);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -118,9 +118,7 @@ function ChangePasswordPanel() {
         <KeyRound className="h-5 w-5 text-brand-orange animate-pulse" />
         {t("change-password")}
       </h2>
-      <p className="text-xs sm:text-sm text-muted-foreground mb-6">
-        {t("pw-requirements-desc")}
-      </p>
+
 
       {success && (
         <div className="flex items-center gap-2 text-green-600 dark:text-green-400 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 mb-5 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-200">
@@ -264,9 +262,7 @@ export default function Settings() {
             <SettingsIcon className="h-8 w-8 text-brand-orange animate-spin-slow" />
             {t("settings")}
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground max-w-xl">
-            {t("manage-preferences")}
-          </p>
+
         </div>
       </div>
 
@@ -322,7 +318,7 @@ export default function Settings() {
               <Monitor className="h-5 w-5 text-brand-orange" />
               {t("theme-settings")}
             </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-6">{t("choose-theme")}</p>
+
             
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
@@ -358,7 +354,7 @@ export default function Settings() {
               <Globe className="h-5 w-5 text-brand-orange" />
               {t("language-settings")}
             </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-6">{t("choose-language")}</p>
+
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
