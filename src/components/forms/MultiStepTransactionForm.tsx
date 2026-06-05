@@ -742,8 +742,8 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                       <span className="font-medium text-foreground">{watchedValues.phoneNumber}</span>
                     </div>
                     <div className="flex justify-between items-center py-1">
-                      <span className="text-muted-foreground">Device Model:</span>
-                      <span className="font-semibold text-brand-orange-light">{watchedValues.deviceModel}</span>
+                      <span className="text-muted-foreground">{isSales ? "Item Sold:" : "Device Model:"}</span>
+                      <span className="font-semibold text-brand-orange-light">{isSales ? watchedValues.itemName : watchedValues.deviceModel}</span>
                     </div>
                   </div>
                 </div>
@@ -755,21 +755,21 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                   </h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between items-center py-1 border-b border-border/40">
-                      <span className="text-muted-foreground">Repair Type:</span>
-                      <span className="font-medium text-foreground">{watchedValues.repairType === "others" ? watchedValues.customRepairType || "Custom" : watchedValues.repairType}</span>
+                      <span className="text-muted-foreground">{isSales ? "Type:" : "Repair Type:"}</span>
+                      <span className="font-medium text-foreground">{isSales ? "Sales" : (watchedValues.repairType === "others" ? watchedValues.customRepairType || "Custom" : watchedValues.repairType)}</span>
                     </div>
                     <div className="flex justify-between items-center py-1 border-b border-border/40">
                       <span className="text-muted-foreground">Total Cost:</span>
-                      <span className="font-bold text-lg text-emerald-400">₹{(watchedValues.repairCost || 0).toLocaleString()}</span>
+                      <span className="font-bold text-lg text-emerald-400">₹{(isSales ? (watchedValues.soldPrice || 0) : (watchedValues.repairCost || 0)).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center py-1 border-b border-border/40">
                       <span className="text-muted-foreground">Payment Method:</span>
                       <span className="font-medium text-white bg-muted/60 px-2 py-0.5 rounded capitalize text-xs">{watchedValues.paymentMethod}</span>
                     </div>
-                    {watchedValues.paymentMethod === "cash" && (watchedValues.amountGiven || 0) > (watchedValues.repairCost || 0) && (
+                    {watchedValues.paymentMethod === "cash" && (watchedValues.amountGiven || 0) > (isSales ? (watchedValues.soldPrice || 0) : (watchedValues.repairCost || 0)) && (
                       <div className="flex justify-between items-center py-1 text-green-400">
                         <span>Change Returned:</span>
-                        <span className="font-bold">₹{Math.max(0, (watchedValues.amountGiven || 0) - (watchedValues.repairCost || 0)).toLocaleString()}</span>
+                        <span className="font-bold">₹{Math.max(0, (watchedValues.amountGiven || 0) - (isSales ? (watchedValues.soldPrice || 0) : (watchedValues.repairCost || 0))).toLocaleString()}</span>
                       </div>
                     )}
                   </div>
@@ -795,9 +795,10 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                           prefill: {
                             customerName: watchedValues.customerName,
                             phoneNumber: watchedValues.phoneNumber,
-                            repairCost: watchedValues.repairCost,
-                            repairType: watchedValues.repairType,
-                            customRepairType: watchedValues.customRepairType
+                            repairCost: isSales ? watchedValues.soldPrice : watchedValues.repairCost,
+                            repairType: isSales ? "Sale" : watchedValues.repairType,
+                            customRepairType: watchedValues.customRepairType,
+                            itemName: watchedValues.itemName
                           } 
                         } 
                       });
@@ -817,8 +818,8 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                     </h4>
                     <PaymentStatusChecker
                       transactionId={transactionCreated}
-                      expectedAmount={watchedValues.repairCost || 0}
-                      paymentMethod={watchedValues.paymentMethod}
+                      expectedAmount={isSales ? (watchedValues.soldPrice || 0) : (watchedValues.repairCost || 0)}
+                      paymentMethod={watchedValues.paymentMethod || "cash"}
                       customerName={watchedValues.customerName}
                       onPaymentConfirmed={(result) => {
                         toast({

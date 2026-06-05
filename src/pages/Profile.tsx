@@ -124,6 +124,7 @@ export default function Profile() {
     try {
       const updates: any = {
         full_name: name || user?.name || user?.username,
+        username: username || user?.username,
         email: user?.email || '',
       };
       

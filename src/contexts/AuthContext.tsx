@@ -132,9 +132,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'auth_user' && e.newValue) {
+        try {
+          setUser(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error("Failed to parse auth_user from storage event");
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
     return () => {
       if (timerRef.current)  clearTimeout(timerRef.current);
       if (channelRef.current) channelRef.current.close();
+      window.removeEventListener('storage', handleStorage);
     };
   }, [logout, scheduleSessionExpiry]);
 
