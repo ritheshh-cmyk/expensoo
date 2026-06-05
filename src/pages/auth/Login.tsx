@@ -127,8 +127,8 @@ export default function Login() {
   ];
 
   return (
-    <div className="min-h-[100dvh] w-full flex bg-background relative overflow-x-hidden">
-      {/* Theme Toggle */}
+    <main className="min-h-[100dvh] w-full flex bg-background relative overflow-x-hidden">
+      {/* Dynamic Background */}
       <div className="absolute top-4 right-4 z-50 flex gap-2">
         <Button
           variant="ghost"
@@ -215,6 +215,8 @@ export default function Login() {
 
       {/* ── RIGHT PANEL: Login Form Card ─────────────────────────── */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-12 bg-background min-h-[100dvh] relative overflow-hidden py-8">
+        {/* Decorative Overlay for bottom edge blending if needed */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent pointer-events-none" />
         {/* Glow ambient background elements for premium feel (especially visible on mobile) */}
         <div className="absolute top-[-20%] left-[-25%] w-[80%] h-[80%] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-20%] right-[-25%] w-[80%] h-[80%] rounded-full bg-accent/5 blur-[120px] pointer-events-none" />
@@ -291,15 +293,10 @@ export default function Login() {
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent"
                     onClick={(e) => {
                       e.preventDefault();
-                      e.stopPropagation();
                       setShowPassword(!showPassword);
-                      // Refocus the input so the keyboard stays open on mobile
-                      const input = document.getElementById('password');
-                      if (input) {
-                        input.focus();
-                      }
                     }}
                     tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -352,7 +349,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 px-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground font-semibold rounded-xl transition-colors duration-150 cursor-pointer min-h-[48px] mt-2 flex items-center justify-center gap-2 text-base shadow-lg shadow-primary/20"
+                className="w-full py-3 px-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl transition-colors duration-150 cursor-pointer min-h-[48px] mt-2 flex items-center justify-center gap-2 text-base shadow-lg shadow-primary/20"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
                 {isLoading ? (

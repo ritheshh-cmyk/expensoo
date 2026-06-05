@@ -1,5 +1,6 @@
 import React from 'react';
 import { toast } from '@/hooks/use-toast';
+import { registerSW } from 'virtual:pwa-register';
 
 // PWA Service Module
 export class PWAService {
@@ -32,22 +33,32 @@ export class PWAService {
   private async registerServiceWorker() {
     if ('serviceWorker' in navigator) {
       try {
-        // Use correct path for deployment - relative path to avoid origin issues
-        this.swRegistration = await navigator.serviceWorker.register('./sw.js', {
-          scope: './'
-        });
-        console.log('Service Worker registered successfully:', this.swRegistration);
-
-        // Listen for service worker updates
-        this.swRegistration.addEventListener('updatefound', () => {
-          const newWorker = this.swRegistration!.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New service worker available
-                this.showUpdateNotification();
-              }
-            });
+        const updateSW = registerSW({
+          immediate: true,
+          onNeedRefresh: () => {
+            this.showUpdateNotification();
+          },
+          onOfflineReady() {
+            console.log('App is ready to work offline');
+          },
+          onRegistered: (r) => {
+            console.log('Service Worker registered:', r);
+            if (r) {
+              this.swRegistration = r;
+              r.addEventListener('updatefound', () => {
+                const newWorker = r.installing;
+                if (newWorker) {
+                  newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      this.showUpdateNotification();
+                    }
+                  });
+                }
+              });
+            }
+          },
+          onRegisterError(error) {
+            console.error('Service Worker registration failed:', error);
           }
         });
 
