@@ -380,6 +380,13 @@ class ApiClient {
       })) : undefined;
 
       // Always send all required and optional camelCase fields for backend validation
+      const authUserStr = localStorage.getItem('auth_user');
+      const authUser = authUserStr ? JSON.parse(authUserStr) : null;
+      const created_by = authUser ? {
+        user_id: String(authUser.id || authUser.user_id || 'unknown'),
+        display_name: String(authUser.display_name || authUser.name || authUser.username || 'Staff')
+      } : undefined;
+
       const validationData = {
         customerName: data.customerName || data.customer_name || '',
         mobileNumber: data.mobileNumber || data.mobile_number || data.phoneNumber || '',
@@ -400,6 +407,7 @@ class ApiClient {
         supplierName: data.supplierName || undefined,
         externalPurchases: extPurchases || data.externalPurchases || undefined,
         shop_id: data.shop_id || undefined,
+        created_by,
       };
 
       this.debug('📤 Sending validation format (camelCase):', validationData);
