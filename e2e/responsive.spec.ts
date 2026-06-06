@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.use({ storageState: 'state.json' });
+
 const VIEWPORTS = [
   { name: 'Mobile (390px)', width: 390, height: 844 }
 ];
@@ -14,19 +16,6 @@ const PAGES_TO_TEST = [
 ];
 
 test.describe('Responsive Visual Verification', () => {
-  // Login first or assume no auth for these routes in dev mode?
-  // Our tests will try to just visit the pages.
-  test.beforeEach(async ({ page }) => {
-    // If login is needed, we should do it here. 
-    // Assuming the app has a login at /login. Let's try navigating to / first and see if it redirects.
-    await page.goto('/');
-    // Check if we are on login page
-    if (page.url().includes('login') || await page.locator('input[type="password"]').isVisible().catch(()=>false)) {
-      await page.fill('input[type="password"]', 'Lucky@1222');
-      await page.click('button[type="submit"]');
-      await page.waitForURL('**/');
-    }
-  });
 
   for (const viewport of VIEWPORTS) {
     test.describe(`Viewport: ${viewport.name}`, () => {

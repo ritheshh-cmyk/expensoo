@@ -6,7 +6,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 15_000 },
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: process.env.BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'on',
     video: 'retain-on-failure',

@@ -6,7 +6,7 @@ const API_URL = 'https://expensoo-app-gu3wg.ondigitalocean.app';
 const runTest = async () => {
   console.log("Launching Puppeteer...");
   const browser = await puppeteer.launch({ 
-    headless: 'new', 
+    headless: false, 
     protocolTimeout: 180000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'] 
   });

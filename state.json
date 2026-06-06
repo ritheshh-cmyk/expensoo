@@ -1,0 +1,26 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:4173",
+      "localStorage": [
+        {
+          "name": "auth_token",
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc4MDcxOTI0MCwiZXhwIjoxNzgwODA1NjQwfQ.BvxcySl73bNkfNlZlSibgX7XoFtqFrFdqC2udyq2c4M"
+        },
+        {
+          "name": "session_started_at",
+          "value": "1780719245951"
+        },
+        {
+          "name": "language",
+          "value": "en"
+        },
+        {
+          "name": "auth_user",
+          "value": "{\"id\":\"1\",\"name\":\"admin\",\"username\":\"admin\",\"role\":\"admin\",\"email\":\"\"}"
+        }
+      ]
+    }
+  ]
+}
