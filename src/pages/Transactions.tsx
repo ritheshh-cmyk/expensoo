@@ -9,6 +9,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
   CardContent,
@@ -182,6 +183,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
   const { t } = useLanguage();
   const { confirm, ConfirmModalElement } = useConfirm();
   const { can } = usePermissions();
+  const { user } = useAuth();
 
   const columnHelper = createColumnHelper<Transaction>();
 
@@ -475,6 +477,12 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
   // Add, update, delete handlers
   const handleAdd = async (txn: Partial<Transaction>) => {
     try {
+      if (user && user.id) {
+        txn.created_by = {
+          user_id: String(user.id),
+          display_name: user.display_name || user.name || user.username || "Unknown"
+        };
+      }
       const response = await apiClient.createTransaction(txn);
       if (!response || !response.success) {
         throw new Error(response?.message || 'Failed to create transaction');

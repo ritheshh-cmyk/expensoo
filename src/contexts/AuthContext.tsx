@@ -10,6 +10,7 @@ interface User {
   username?: string;
   role: 'admin' | 'owner' | 'worker';
   email?: string;
+  display_name?: string | null;
 }
 
 interface AuthContextType {
@@ -117,7 +118,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Token rejected by server — force clean logout
             logout('user', false);
           } else {
-            setUser(parsedUser);
+            const serverUser = verifyResponse.data?.user;
+            if (serverUser) {
+              const updatedUser: User = {
+                id: String(serverUser.id ?? parsedUser.id),
+                name: serverUser.display_name || serverUser.name || parsedUser.name,
+                username: serverUser.username || parsedUser.username,
+                role: serverUser.role || parsedUser.role,
+                email: serverUser.email || parsedUser.email || '',
+                display_name: serverUser.display_name || null,
+              };
+              localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+              setUser(updatedUser);
+            } else {
+              setUser(parsedUser);
+            }
             scheduleSessionExpiry(loginTimestamp);
           }
         } catch {
@@ -162,10 +177,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const normalised: User = {
           id:       String(raw.id ?? '1'),
-          name:     raw.name || raw.displayName || raw.fullName || loginUsername,
+          name:     raw.name || raw.displayName || raw.fullName || raw.display_name || loginUsername,
           username: loginUsername,
           role:     ((raw.role || 'worker') as 'admin' | 'owner' | 'worker'),
           email:    raw.email || '',
+          display_name: raw.display_name || raw.displayName || raw.fullName || null,
         };
 
         const now = Date.now();

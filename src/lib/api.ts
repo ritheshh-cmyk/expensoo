@@ -250,11 +250,9 @@ class ApiClient {
 
   async updateProfile(data: any): Promise<ApiResponse> {
     this.debug('Updating profile...', data);
-    // Backend doesn't have profile update endpoint, mock success
-    return Promise.resolve({
-      success: true,
-      message: 'Profile updated successfully',
-      data: data
+    return this.request('/api/auth/users/me', {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 
@@ -382,10 +380,10 @@ class ApiClient {
       // Always send all required and optional camelCase fields for backend validation
       const authUserStr = localStorage.getItem('auth_user');
       const authUser = authUserStr ? JSON.parse(authUserStr) : null;
-      const created_by = authUser ? {
+      const created_by = data.created_by || (authUser ? {
         user_id: String(authUser.id || authUser.user_id || 'unknown'),
         display_name: String(authUser.display_name || authUser.name || authUser.username || 'Staff')
-      } : undefined;
+      } : undefined);
 
       const validationData = {
         customerName: data.customerName || data.customer_name || '',

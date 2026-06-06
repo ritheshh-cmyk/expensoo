@@ -134,6 +134,7 @@ export default function Profile() {
       updateUser({
         name: updates.full_name !== undefined ? updates.full_name : user?.name,
         username: updates.username !== undefined ? updates.username : user?.username,
+        display_name: updates.full_name !== undefined ? updates.full_name : user?.display_name,
       });
       toast({ title: "Profile updated", description: "Your personal information has been saved." });
     } catch (error: any) {
