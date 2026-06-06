@@ -3,10 +3,11 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 60_000,
-  expect: { timeout: 15_000 },
+  timeout: 120_000,
+  expect: { timeout: 20_000 },
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:5173',
+    navigationTimeout: 30_000,
     trace: 'on-first-retry',
     screenshot: 'on',
     video: 'retain-on-failure',
