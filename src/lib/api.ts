@@ -116,7 +116,9 @@ class ApiClient {
 
         if (!response.ok) {
           let errorMessage = `HTTP Error ${response.status}`;
-          if (data && data.error) errorMessage = data.error;
+          if (data && data.errors && Array.isArray(data.errors)) {
+            errorMessage = data.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ');
+          } else if (data && data.error) errorMessage = data.error;
           else if (data && data.message) errorMessage = data.message;
           else if (data && data.detail) {
             errorMessage = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
@@ -124,6 +126,7 @@ class ApiClient {
           
           return {
             success: false,
+            error: errorMessage,
             message: errorMessage || data?.message || 'Please log in to continue'
           };
         }
@@ -401,7 +404,7 @@ class ApiClient {
         // Correct field names matching backend Zod schema
         freeGlassInstallation: Boolean(data.freeGlassInstallation ?? data.freeGlass ?? false),
         requiresInventory: Boolean(data.requiresInventory ?? false),
-        partsCost: partsArray.length > 0 ? String(totalPartsCost) : undefined,
+        partsCost: partsArray.length > 0 ? partsArray : undefined,
         supplierName: data.supplierName || undefined,
         externalPurchases: extPurchases || data.externalPurchases || undefined,
         shop_id: data.shop_id || undefined,
@@ -415,27 +418,9 @@ class ApiClient {
         body: JSON.stringify(validationData),
       });
 
-      if (response.success) {
-        toast({
-          title: 'Success',
-          description: 'Transaction created successfully'
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: response.error || 'Failed to create transaction',
-          variant: 'destructive'
-        });
-      }
-
       return response;
     } catch (error: any) {
       this.error('❌ Transaction creation failed:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create transaction',
-        variant: 'destructive'
-      });
       throw error;
     }
   }
@@ -473,6 +458,11 @@ class ApiClient {
     };
   }
 
+  async getSupplier(id: string | number): Promise<ApiResponse> {
+    this.debug('🏢 Fetching supplier by ID:', id);
+    return this.request(`/api/suppliers/${id}`);
+  }
+
   async getStaffList(shop_id?: string): Promise<ApiResponse> {
     this.debug('👨‍💼 Fetching staff list...');
     const endpoint = shop_id ? `/api/transactions/staff?shop_id=${encodeURIComponent(shop_id)}` : '/api/transactions/staff';
@@ -497,6 +487,21 @@ class ApiClient {
     return this.request('/api/suppliers', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async updateSupplier(id: string | number, data: any): Promise<ApiResponse> {
+    this.debug('🏢 Updating supplier:', id, data);
+    return this.request(`/api/suppliers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSupplier(id: string | number): Promise<ApiResponse> {
+    this.debug('🏢 Deleting supplier:', id);
+    return this.request(`/api/suppliers/${id}`, {
+      method: 'DELETE',
     });
   }
 

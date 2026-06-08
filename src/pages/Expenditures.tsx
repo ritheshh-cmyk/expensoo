@@ -90,6 +90,8 @@ export default function Expenditures() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingExpenditure, setEditingExpenditure] = useState<any | null>(null);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   // All expenditure data is loaded from backend and updated via socket.io
   const [expenditures, setExpenditures] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -130,6 +132,11 @@ export default function Expenditures() {
     };
 
     fetchData();
+
+    // Load suppliers for the dropdown
+    apiClient.getSuppliers().then(res => {
+      if (res.success && Array.isArray(res.data)) setSuppliers(res.data);
+    }).catch(() => {});
 
     // Real-time updates
     const wsUrl =
@@ -238,7 +245,9 @@ export default function Expenditures() {
   };
   const handleUpdateExpenditure = async (id: string, formData: any) => {
     try {
-      await (apiClient as any).updateExpenditure?.(id, formData);
+      const res = await apiClient.updateExpenditure(id, formData);
+      if (!res.success) throw new Error(res.error || 'Failed to update');
+      setExpenditures(prev => prev.map(e => String(e.id) === String(id) ? { ...e, ...formData } : e));
       toast({ title: 'Updated', description: 'Expenditure updated.' });
     } catch (err: any) {
       toast({ title: 'Error', description: err?.message || 'Failed to update', variant: 'destructive' });
@@ -411,8 +420,16 @@ export default function Expenditures() {
                   Add Expenditure
                 </Button>
               </DialogTrigger>
-              <AddExpenditureDialog onAdd={handleAddExpenditure} />
+              <AddExpenditureDialog onAdd={handleAddExpenditure} suppliers={suppliers} />
             </Dialog>
+            {editingExpenditure && (
+              <EditExpenditureDialog
+                expenditure={editingExpenditure}
+                suppliers={suppliers}
+                onSave={handleUpdateExpenditure}
+                onClose={() => setEditingExpenditure(null)}
+              />
+            )}
           </div>
         </div>
 
@@ -699,11 +716,11 @@ export default function Expenditures() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            {canEdit && (
+                        {canEdit && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleUpdateExpenditure(expenditure.id, expenditure)}
+                                onClick={(e) => { e.stopPropagation(); setEditingExpenditure(expenditure); }}
                                 title="Edit expenditure"
                               >
                                 <Edit className="h-4 w-4" />
@@ -786,7 +803,7 @@ export default function Expenditures() {
                          })()}
                       </div>
                       <div className="flex gap-1">
-                         {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleUpdateExpenditure(expenditure.id, expenditure)}><Edit className="h-4 w-4" /></Button>}
+                         {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setEditingExpenditure(expenditure); }}><Edit className="h-4 w-4" /></Button>}
                          {canDelete && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteExpenditure(expenditure.id)}><Trash2 className="h-4 w-4" /></Button>}
                       </div>
                     </div>
@@ -800,8 +817,107 @@ export default function Expenditures() {
   );
 }
 
+// Edit Expenditure Dialog
+function EditExpenditureDialog({ expenditure, suppliers, onSave, onClose }: { expenditure: any; suppliers: any[]; onSave: (id: string, data: any) => void; onClose: () => void }) {
+  const [formData, setFormData] = useState({
+    description: expenditure.description || "",
+    category: expenditure.category || "Supplies",
+    amount: String(expenditure.amount || ""),
+    paymentMethod: expenditure.paymentMethod || "cash",
+    recipient: expenditure.recipient || "",
+    items: expenditure.items || "",
+    supplierId: expenditure.supplierId ? String(expenditure.supplierId) : "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload: any = {
+      ...formData,
+      amount: parseFloat(formData.amount),
+      supplierId: formData.category === "Supplier" && formData.supplierId ? parseInt(formData.supplierId) : null,
+    };
+    onSave(expenditure.id, payload);
+    onClose();
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Expenditure</DialogTitle>
+          <DialogDescription>Update this business expense</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="edit-description">Description</Label>
+            <Input id="edit-description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} required />
+          </div>
+          <div>
+            <Label htmlFor="edit-category">Category</Label>
+            <Select value={formData.category} onValueChange={value => setFormData({ ...formData, category: value, supplierId: value !== "Supplier" ? "" : formData.supplierId })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent side="bottom" avoidCollisions={false}>
+                <SelectItem value="Supplies">Supplies</SelectItem>
+                <SelectItem value="Rent">Rent</SelectItem>
+                <SelectItem value="Utilities">Utilities</SelectItem>
+                <SelectItem value="Salaries">Salaries</SelectItem>
+                <SelectItem value="Equipment">Equipment</SelectItem>
+                <SelectItem value="Marketing">Marketing</SelectItem>
+                <SelectItem value="Maintenance">Maintenance</SelectItem>
+                <SelectItem value="Supplier">Supplier</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {formData.category === "Supplier" && (
+            <div>
+              <Label htmlFor="edit-supplier">Supplier <span className="text-destructive">*</span></Label>
+              <Select value={formData.supplierId} onValueChange={value => setFormData({ ...formData, supplierId: value })}>
+                <SelectTrigger><SelectValue placeholder="Select a supplier" /></SelectTrigger>
+                <SelectContent side="bottom" avoidCollisions={false}>
+                  {suppliers.map(s => (
+                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div>
+            <Label htmlFor="edit-amount">Amount</Label>
+            <Input id="edit-amount" type="number" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} min="0" step="0.01" required />
+          </div>
+          <div>
+            <Label htmlFor="edit-payment">Payment Method</Label>
+            <Select value={formData.paymentMethod} onValueChange={value => setFormData({ ...formData, paymentMethod: value })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent side="bottom" avoidCollisions={false}>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="card">Card</SelectItem>
+                <SelectItem value="upi">UPI</SelectItem>
+                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                <SelectItem value="check">Check</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="edit-recipient">Supplier / Vendor</Label>
+            <Input id="edit-recipient" value={formData.recipient} onChange={e => setFormData({ ...formData, recipient: e.target.value })} />
+          </div>
+          <div>
+            <Label htmlFor="edit-items">Items / Notes</Label>
+            <Textarea id="edit-items" value={formData.items} onChange={e => setFormData({ ...formData, items: e.target.value })} rows={2} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={!formData.description || !formData.amount || (formData.category === "Supplier" && !formData.supplierId)}>Save Changes</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Add Expenditure Dialog Component
-function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
+function AddExpenditureDialog({ onAdd, suppliers = [] }: { onAdd: (data: any) => void; suppliers?: any[] }) {
   const [formData, setFormData] = useState({
     description: "",
     category: "Supplies",
@@ -809,6 +925,7 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
     paymentMethod: "cash",
     recipient: "",
     items: "",
+    supplierId: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -816,6 +933,7 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
     onAdd({
       ...formData,
       amount: parseFloat(formData.amount),
+      supplierId: formData.category === "Supplier" && formData.supplierId ? parseInt(formData.supplierId) : null,
     });
     setFormData({
       description: "",
@@ -824,6 +942,7 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
       paymentMethod: "cash",
       recipient: "",
       items: "",
+      supplierId: "",
     });
   };
 
@@ -851,7 +970,7 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
           <Select
             value={formData.category}
             onValueChange={(value) =>
-              setFormData({ ...formData, category: value })
+              setFormData({ ...formData, category: value, supplierId: value !== "Supplier" ? "" : formData.supplierId })
             }
           >
             <SelectTrigger>
@@ -865,9 +984,32 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
               <SelectItem value="Equipment">Equipment</SelectItem>
               <SelectItem value="Marketing">Marketing</SelectItem>
               <SelectItem value="Maintenance">Maintenance</SelectItem>
+              <SelectItem value="Supplier">Supplier</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        {formData.category === "Supplier" && (
+          <div>
+            <Label htmlFor="supplier">Supplier <span className="text-destructive">*</span></Label>
+            <Select
+              value={formData.supplierId}
+              onValueChange={(value) =>
+                setFormData({ ...formData, supplierId: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a supplier" />
+              </SelectTrigger>
+              <SelectContent side="bottom" avoidCollisions={false}>
+                {suppliers.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div>
           <Label htmlFor="amount">Amount</Label>
           <Input
@@ -930,7 +1072,7 @@ function AddExpenditureDialog({ onAdd }: { onAdd: (data: any) => void }) {
         <DialogFooter>
           <Button
             type="submit"
-            disabled={!formData.description || !formData.amount}
+            disabled={!formData.description || !formData.amount || (formData.category === "Supplier" && !formData.supplierId)}
           >
             Add Expenditure
           </Button>

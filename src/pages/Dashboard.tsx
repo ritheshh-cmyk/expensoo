@@ -30,6 +30,11 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from "recharts";
+import Tippy from "@tippyjs/react";
+import "tippy.js/dist/tippy.css";
+import "tippy.js/animations/scale.css";
+import { SuccessConfetti } from "@/components/ui/SuccessConfetti";
+import { DashboardTour } from "@/components/ui/DashboardTour";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -246,6 +251,8 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6 relative animate-in fade-in duration-500">
+      {/* ── Onboarding Tour (shows once per browser) ── */}
+      <DashboardTour />
       {/* ── Mobile Floating Action Button (FAB) ── */}
       <div className="md:hidden fixed bottom-[72px] right-4 z-50 animate-in slide-in-from-bottom-8 duration-500 fade-in delay-200">
         <Link to="/transactions/new">
@@ -274,7 +281,7 @@ export default function Dashboard() {
         </div>
 
         <div className="flex gap-2 flex-wrap items-center">
-          <Link to="/transactions/new" className="hidden md:block">
+          <Link to="/transactions/new" className="hidden md:block" data-tour="new-txn">
             <Button className="min-h-[44px] px-4 gap-2 shadow-sm hover:shadow-md transition-all">
               <Plus className="h-4 w-4" />
               New Transaction
@@ -292,17 +299,24 @@ export default function Dashboard() {
             {loading ? t("loading") : t("refresh")}
           </Button>
           {isOwnerOrAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              id="toggle-profits-btn"
-              data-testid="profits-toggle"
-              onClick={toggleProfits}
-              className="min-h-[44px] px-4 shadow-sm hover:shadow-md transition-all bg-background"
-              style={{ touchAction: "manipulation" }}
+            <Tippy
+              content="Show or hide profit data — visible to owners and admins only"
+              placement="bottom"
+              animation="scale"
+              delay={[300, 0]}
             >
-              {showProfits ? t("hide-profits") : t("show-profits")}
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                id="toggle-profits-btn"
+                data-testid="profits-toggle"
+                onClick={toggleProfits}
+                className="min-h-[44px] px-4 shadow-sm hover:shadow-md transition-all bg-background"
+                style={{ touchAction: "manipulation" }}
+              >
+                {showProfits ? t("hide-profits") : t("show-profits")}
+              </Button>
+            </Tippy>
           )}
         </div>
       </div>
@@ -310,7 +324,7 @@ export default function Dashboard() {
       {/* ── Premium Metric Cards ───────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {/* Today Revenue */}
-        <Card className="relative overflow-hidden border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-transparent hover:shadow-md transition-shadow group">
+        <Card id="dashboard-today-card" className="relative overflow-hidden border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-transparent hover:shadow-md transition-shadow group">
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-green/10 blur-2xl group-hover:bg-brand-green/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -339,7 +353,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Week Overview (WoW Comparison Equivalent) */}
-        <Card className="relative overflow-hidden border-brand-blue/20 bg-gradient-to-br from-brand-blue/5 to-transparent hover:shadow-md transition-shadow group">
+        <Card id="dashboard-week-card" className="relative overflow-hidden border-brand-blue/20 bg-gradient-to-br from-brand-blue/5 to-transparent hover:shadow-md transition-shadow group">
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-blue/10 blur-2xl group-hover:bg-brand-blue/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -418,7 +432,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Revenue Chart ─────────────────────────────────────────────── */}
-        <Card className="col-span-1 lg:col-span-2 border-muted shadow-sm hover:shadow-md transition-shadow flex flex-col">
+        <Card id="revenue-chart" className="col-span-1 lg:col-span-2 border-muted shadow-sm hover:shadow-md transition-shadow flex flex-col">
           <CardHeader>
             <CardTitle className="text-lg">Revenue Overview</CardTitle>
             <CardDescription>Daily revenue for the past 7 days</CardDescription>

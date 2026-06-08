@@ -11,6 +11,7 @@ interface User {
   role: 'admin' | 'owner' | 'worker';
   email?: string;
   display_name?: string | null;
+  avatar?: string | null;
 }
 
 interface AuthContextType {
@@ -127,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 role: serverUser.role || parsedUser.role,
                 email: serverUser.email || parsedUser.email || '',
                 display_name: serverUser.display_name || null,
+                avatar: serverUser.avatar || null,
               };
               localStorage.setItem('auth_user', JSON.stringify(updatedUser));
               setUser(updatedUser);
@@ -182,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role:     ((raw.role || 'worker') as 'admin' | 'owner' | 'worker'),
           email:    raw.email || '',
           display_name: raw.display_name || raw.displayName || raw.fullName || null,
+          avatar: raw.avatar || null,
         };
 
         const now = Date.now();

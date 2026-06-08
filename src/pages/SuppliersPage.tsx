@@ -41,6 +41,8 @@ import {
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/components/ui/ConfirmModal";
 
 interface Supplier {
   id: string;
@@ -60,11 +62,15 @@ interface Supplier {
 export default function SuppliersPage() {
   const { user } = useAuth();
   const { can } = usePermissions();
+  const { toast } = useToast();
+  const { confirm, ConfirmModalElement } = useConfirm();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editSupplierData, setEditSupplierData] = useState<Supplier | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [newSupplier, setNewSupplier] = useState({
@@ -92,7 +98,14 @@ export default function SuppliersPage() {
       const response = await apiClient.getSuppliers();
       
       if (response.success) {
-        setSuppliers(response.suppliers || []);
+        const rawList = response.data || response.suppliers || [];
+        const mappedList = rawList.map((s: any) => ({
+          ...s,
+          phone: s.phone || s.contactNumber || s.contact_number || '',
+          contact_person: s.contact_person || s.address || '',
+          address: s.address || ''
+        }));
+        setSuppliers(mappedList);
       } else {
         setError('Failed to load suppliers data');
       }
@@ -117,13 +130,82 @@ export default function SuppliersPage() {
           contact_person: '',
           payment_terms: '30'
         });
+        toast({ title: 'Success', description: 'Supplier added successfully.' });
         loadSuppliers();
       } else {
-        setError('Failed to create supplier');
+        toast({ title: 'Error', description: 'Failed to create supplier.', variant: 'destructive' });
       }
     } catch (err) {
       console.error('Error creating supplier:', err);
-      setError('Unable to create supplier');
+      toast({ title: 'Error', description: 'Unable to create supplier.', variant: 'destructive' });
+    }
+  };
+
+  const handleEditClick = async (e: React.MouseEvent, supplier: Supplier) => {
+    e.stopPropagation();
+    try {
+      const res = await apiClient.getSupplier(supplier.id);
+      if (res.success && res.data) {
+        const s = res.data;
+        setEditSupplierData({
+          ...s,
+          phone: s.phone || s.contactNumber || s.contact_number || '',
+          contact_person: s.contact_person || s.address || '',
+          address: s.address || ''
+        });
+        setShowEditDialog(true);
+      } else {
+        toast({ title: 'Error', description: 'Failed to fetch supplier details.', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to fetch supplier details.', variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateSupplier = async () => {
+    if (!editSupplierData) return;
+    try {
+      const response = await apiClient.updateSupplier(editSupplierData.id, {
+        name: editSupplierData.name,
+        contact_person: editSupplierData.contact_person,
+        phone: editSupplierData.phone,
+        address: editSupplierData.address,
+        payment_terms: editSupplierData.payment_terms
+      });
+      if (response.success) {
+        setShowEditDialog(false);
+        setEditSupplierData(null);
+        toast({ title: 'Success', description: 'Supplier updated successfully.' });
+        loadSuppliers();
+      } else {
+        toast({ title: 'Error', description: response.error || 'Failed to update supplier.', variant: 'destructive' });
+      }
+    } catch (err: any) {
+      console.error('Error updating supplier:', err);
+      toast({ title: 'Error', description: err.message || 'Failed to update supplier.', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteClick = async (e: React.MouseEvent, supplier: Supplier) => {
+    e.stopPropagation();
+    const isConfirmed = await confirm({
+      title: 'Delete Supplier',
+      message: `Are you sure you want to delete ${supplier.name}? This will unlink any expenditures associated with this supplier.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    });
+    if (isConfirmed) {
+      try {
+        const res = await apiClient.deleteSupplier(supplier.id);
+        if (res.success) {
+          toast({ title: 'Success', description: 'Supplier deleted successfully.' });
+          loadSuppliers();
+        } else {
+          toast({ title: 'Error', description: res.error || 'Failed to delete supplier.', variant: 'destructive' });
+        }
+      } catch (err: any) {
+        toast({ title: 'Error', description: err.message || 'Failed to delete supplier.', variant: 'destructive' });
+      }
     }
   };
 
@@ -141,13 +223,14 @@ export default function SuppliersPage() {
         setShowPaymentDialog(false);
         setSelectedSupplier(null);
         setPaymentAmount('');
+        toast({ title: 'Success', description: 'Payment recorded successfully.' });
         loadSuppliers();
       } else {
-        setError('Failed to process payment');
+        toast({ title: 'Error', description: 'Failed to process payment.', variant: 'destructive' });
       }
     } catch (err) {
       console.error('Error processing payment:', err);
-      setError('Unable to process payment');
+      toast({ title: 'Error', description: 'Unable to process payment.', variant: 'destructive' });
     }
   };
 
@@ -461,13 +544,30 @@ export default function SuppliersPage() {
                   <TableCell>
                     {getStatusBadge(supplier.status)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedSupplier(supplier);
+                        }}
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform duration-100"
+                        aria-label={`View details of ${supplier.name}`}
+                        style={{ touchAction: "manipulation" }}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                       {canEditSuppliers && (
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => handleEditClick(e, supplier)}
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform duration-100"
+                          aria-label={`Edit ${supplier.name}`}
+                          style={{ touchAction: "manipulation" }}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                       )}
@@ -475,16 +575,27 @@ export default function SuppliersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedSupplier(supplier);
                             setShowPaymentDialog(true);
                           }}
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform duration-100"
+                          aria-label={`Pay ${supplier.name}`}
+                          style={{ touchAction: "manipulation" }}
                         >
                           <CreditCard className="h-4 w-4" />
                         </Button>
                       )}
                       {canDeleteSuppliers && (
-                        <Button variant="ghost" size="sm" className="text-red-600">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform duration-100"
+                          onClick={(e) => handleDeleteClick(e, supplier)}
+                          aria-label={`Delete ${supplier.name}`}
+                          style={{ touchAction: "manipulation" }}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
@@ -546,6 +657,82 @@ export default function SuppliersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Supplier</DialogTitle>
+            <DialogDescription>
+              Update the supplier's details.
+            </DialogDescription>
+          </DialogHeader>
+          {editSupplierData && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_name">Supplier Name</Label>
+                  <Input
+                    id="edit_name"
+                    value={editSupplierData.name}
+                    onChange={(e) => setEditSupplierData({ ...editSupplierData, name: e.target.value })}
+                    placeholder="Enter supplier name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_contact_person">Contact Person</Label>
+                  <Input
+                    id="edit_contact_person"
+                    value={editSupplierData.contact_person}
+                    onChange={(e) => setEditSupplierData({ ...editSupplierData, contact_person: e.target.value })}
+                    placeholder="Contact person name"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_phone">Phone</Label>
+                  <Input
+                    id="edit_phone"
+                    value={editSupplierData.phone}
+                    onChange={(e) => setEditSupplierData({ ...editSupplierData, phone: e.target.value })}
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_payment_terms">Payment Terms (days)</Label>
+                  <Input
+                    id="edit_payment_terms"
+                    type="number"
+                    value={editSupplierData.payment_terms || '30'}
+                    onChange={(e) => setEditSupplierData({ ...editSupplierData, payment_terms: e.target.value })}
+                    placeholder="30"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="edit_address">Address</Label>
+                <Input
+                  id="edit_address"
+                  value={editSupplierData.address}
+                  onChange={(e) => setEditSupplierData({ ...editSupplierData, address: e.target.value })}
+                  placeholder="Enter complete address"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateSupplier}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ConfirmModal rendering helper element */}
+      {ConfirmModalElement}
     </div>
   );
 }

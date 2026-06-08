@@ -118,20 +118,7 @@ export function Header({ onMenuClick, sidebarOpen = false }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
-  // Avatar sync — updated instantly when Profile page fires the custom event
-  const [avatarSrc, setAvatarSrc] = useState<string | null>(
-    () => localStorage.getItem("profile_avatar")
-  );
-
-  useEffect(() => {
-    const sync = () => setAvatarSrc(localStorage.getItem("profile_avatar"));
-    window.addEventListener("avatar-updated", sync);
-    window.addEventListener("focus", sync);
-    return () => {
-      window.removeEventListener("avatar-updated", sync);
-      window.removeEventListener("focus", sync);
-    };
-  }, []);
+  const avatarSrc = user?.avatar || null;
 
   const handleLogout = () => {
     logout();
