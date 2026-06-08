@@ -252,7 +252,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 pb-20 md:pb-6 relative animate-in fade-in duration-500">
       {/* ── Onboarding Tour (shows once per browser) ── */}
-      <DashboardTour />
+      {/* <DashboardTour /> Disabled due to mobile touch issues */}
       {/* ── Mobile Floating Action Button (FAB) ── */}
       <div className="md:hidden fixed bottom-[72px] right-4 z-50 animate-in slide-in-from-bottom-8 duration-500 fade-in delay-200">
         <Link to="/transactions/new">
