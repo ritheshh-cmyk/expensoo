@@ -87,7 +87,7 @@ export default function SupplierDetails() {
     apiClient.getSupplier(id).then(setSupplier).finally(() => setLoading(false));
 
     // Real-time updates
-    const websocketUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://expensoo-app-gu3wg.ondigitalocean.app";
+    const websocketUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://backendmobile-4swg.onrender.com";
     const socket = io(websocketUrl, { transports: ["websocket"] });
     const update = () => {
       const currentToken = localStorage.getItem("callmemobiles_token");

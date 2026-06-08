@@ -19,7 +19,7 @@ class RealtimeService {
     try {
       // Get backend URL based on environment
       const backendUrl = import.meta.env.MODE === 'production' 
-        ? (import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || 'https://positive-kodiak-friendly.ngrok-free.app')
+        ? (import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL || import.meta.env.VITE_PRODUCTION_BACKEND_URL || 'https://backendmobile-4swg.onrender.com')
         : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000');
       
       console.log('🔌 Connecting to WebSocket:', backendUrl);

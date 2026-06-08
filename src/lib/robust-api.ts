@@ -26,7 +26,7 @@ interface CachedResponse {
 class RobustApiClient {
   private backends: BackendConfig[] = [
     {
-      url: import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://positive-kodiak-friendly.ngrok-free.app",
+      url: import.meta.env.VITE_PRODUCTION_BACKEND_URL || "https://backendmobile-4swg.onrender.com",
       name: "Ngrok Backend",
       priority: 1,
       timeout: 15000

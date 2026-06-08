@@ -497,7 +497,7 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
     const wsUrl =
       import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL ||
       import.meta.env.VITE_PRODUCTION_BACKEND_URL ||
-      'https://expensoo-app-gu3wg.ondigitalocean.app';
+      'https://backendmobile-4swg.onrender.com';
 
     const socket = io(wsUrl, { transports: ['websocket'] });
 

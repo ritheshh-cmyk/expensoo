@@ -213,7 +213,7 @@ export default function Dashboard() {
     let cancelled = false;
     const wsUrl = import.meta.env.VITE_PRODUCTION_WEBSOCKET_URL ||
                   import.meta.env.VITE_PRODUCTION_BACKEND_URL ||
-                  'https://expensoo-app-gu3wg.ondigitalocean.app';
+                  'https://backendmobile-4swg.onrender.com';
     const socket = io(wsUrl, { transports: ['websocket'] });
     socket.on('connect_error', (err) => console.warn('Socket error:', err.message));
     
