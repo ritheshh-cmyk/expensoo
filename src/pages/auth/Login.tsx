@@ -290,11 +290,10 @@ export default function Login() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowPassword(!showPassword);
-                    }}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-accent z-10"
+                    onClick={() => setShowPassword(!showPassword)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onPointerDown={(e) => e.preventDefault()}
                     tabIndex={-1}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
