@@ -59,14 +59,14 @@ class RealtimeService {
   private initializeWebSocket() {
     try {
       // Use the working Digital Ocean backend URL
-      const backendUrl = 'https://expensoo-app-gu3wg.ondigitalocean.app';
+      const backendUrl = 'https://backendmobile-4swg.onrender.com';
       
       console.log('🔌 Real-time Service: Connecting to Digital Ocean backend');
       console.log('🔌 Backend URL:', backendUrl);
       
       this.socket = io(backendUrl, {
-        transports: ['websocket', 'polling'],
-        upgrade: true,
+        transports: ['websocket'],
+        upgrade: false,
         rememberUpgrade: true,
         timeout: 20000,
         forceNew: false,

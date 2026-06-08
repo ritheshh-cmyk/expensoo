@@ -24,8 +24,8 @@ class RealtimeService {
       
       console.log('🔌 Connecting to WebSocket:', backendUrl);
       this.socket = io(backendUrl, {
-        transports: ['websocket', 'polling'],
-        upgrade: true,
+        transports: ['websocket'],
+        upgrade: false,
         rememberUpgrade: true,
         timeout: 20000,
         forceNew: false,
