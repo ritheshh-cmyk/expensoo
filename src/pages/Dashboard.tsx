@@ -508,7 +508,7 @@ export default function Dashboard() {
           onClick={() => toggleCard('today')}
           className={cn(
             "relative overflow-hidden border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
-            expandedCard === 'today' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-brand-green/50" : "col-span-1"
+            expandedCard === 'today' ? "col-span-1 ring-2 ring-brand-green/50" : "col-span-1"
           )}
         >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-green/10 blur-2xl group-hover:bg-brand-green/20 transition-colors" />
@@ -587,7 +587,7 @@ export default function Dashboard() {
           onClick={() => toggleCard('week')}
           className={cn(
             "relative overflow-hidden border-brand-blue/20 bg-gradient-to-br from-brand-blue/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
-            expandedCard === 'week' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-brand-blue/50" : "col-span-1"
+            expandedCard === 'week' ? "col-span-1 ring-2 ring-brand-blue/50" : "col-span-1"
           )}
         >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-blue/10 blur-2xl group-hover:bg-brand-blue/20 transition-colors" />
@@ -669,7 +669,7 @@ export default function Dashboard() {
           onClick={() => toggleCard('total')}
           className={cn(
             "relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
-            expandedCard === 'total' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-primary/50" : "col-span-1"
+            expandedCard === 'total' ? "col-span-1 ring-2 ring-primary/50" : "col-span-1"
           )}
         >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-primary/10 blur-2xl group-hover:bg-primary/20 transition-colors" />
@@ -754,7 +754,7 @@ export default function Dashboard() {
           onClick={() => toggleCard('pending')}
           className={cn(
             "relative overflow-hidden border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
-            expandedCard === 'pending' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-red-500/50" : "col-span-1"
+            expandedCard === 'pending' ? "col-span-1 ring-2 ring-red-500/50" : "col-span-1"
           )}
         >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-red-500/10 blur-2xl group-hover:bg-red-500/20 transition-colors" />
@@ -822,7 +822,7 @@ export default function Dashboard() {
           onClick={() => toggleCard('unpaid')}
           className={cn(
             "relative overflow-hidden border-brand-orange/20 bg-gradient-to-br from-brand-orange/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
-            expandedCard === 'unpaid' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-brand-orange/50" : "col-span-1"
+            expandedCard === 'unpaid' ? "col-span-1 ring-2 ring-brand-orange/50" : "col-span-1"
           )}
         >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-orange/10 blur-2xl group-hover:bg-brand-orange/20 transition-colors" />
