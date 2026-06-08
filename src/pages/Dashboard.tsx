@@ -154,8 +154,10 @@ export default function Dashboard() {
         : [];
       
       const sortedTxns = [...raw].sort((a, b) => {
-        const dateA = new Date(a.createdAt || a.created_at || a.date).getTime();
-        const dateB = new Date(b.createdAt || b.created_at || b.date).getTime();
+        const timeA = new Date(a.createdAt || a.created_at || a.date).getTime();
+        const timeB = new Date(b.createdAt || b.created_at || b.date).getTime();
+        const dateA = isNaN(timeA) ? 0 : timeA;
+        const dateB = isNaN(timeB) ? 0 : timeB;
         return dateB - dateA;
       });
       
@@ -275,7 +277,10 @@ export default function Dashboard() {
   const todayTransactions = useMemo(() => {
     const todayStr = new Date().toDateString();
     return allTransactions.filter((tx: any) => {
-      const txDate = new Date(tx.createdAt || tx.created_at || tx.date);
+      const dStr = tx.createdAt || tx.created_at || tx.date;
+      if (!dStr) return false;
+      const txDate = new Date(dStr);
+      if (isNaN(txDate.getTime())) return false;
       return txDate.toDateString() === todayStr;
     });
   }, [allTransactions]);
@@ -294,8 +299,10 @@ export default function Dashboard() {
     startOfWeek.setHours(0, 0, 0, 0);
 
     const weekTx = allTransactions.filter((tx: any) => {
-      const txDate = new Date(tx.createdAt || tx.created_at || tx.date);
-      return txDate >= startOfWeek;
+      const dStr = tx.createdAt || tx.created_at || tx.date;
+      if (!dStr) return false;
+      const txDate = new Date(dStr);
+      return !isNaN(txDate.getTime()) && txDate >= startOfWeek;
     });
 
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -306,8 +313,13 @@ export default function Dashboard() {
     });
 
     weekTx.forEach((tx: any) => {
-      const txDate = new Date(tx.createdAt || tx.created_at || tx.date);
-      const dayName = days[txDate.getDay()];
+      const dStr = tx.createdAt || tx.created_at || tx.date;
+      if (!dStr) return;
+      const txDate = new Date(dStr);
+      const dayIdx = txDate.getDay();
+      if (isNaN(dayIdx)) return;
+      const dayName = days[dayIdx];
+      if (!dayName || !grouped[dayName]) return;
       const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
       grouped[dayName].txs.push(tx);
       grouped[dayName].total += cost;
@@ -352,7 +364,9 @@ export default function Dashboard() {
   }, [allTransactions]);
 
   const calculateDaysAgo = (dateVal: string | Date) => {
+    if (!dateVal) return "—";
     const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "—";
     const now = new Date();
     const dTime = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const nowTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
