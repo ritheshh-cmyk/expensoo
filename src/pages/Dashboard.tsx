@@ -579,6 +579,7 @@ export default function Dashboard() {
 
         {/* Total Lifetime Revenue */}
         <Card 
+          id="dashboard-total-card"
           onClick={() => toggleCard('total')}
           className={cn(
             "relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
@@ -615,6 +616,7 @@ export default function Dashboard() {
 
         {/* Pending Repairs */}
         <Card 
+          id="dashboard-pending-card"
           onClick={() => toggleCard('pending')}
           className={cn(
             "relative overflow-hidden border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
@@ -689,6 +691,7 @@ export default function Dashboard() {
             <>
               {/* Dim backdrop */}
               <motion.div
+                id="glassmorphism-overlay-backdrop"
                 key="glass-backdrop"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -699,6 +702,7 @@ export default function Dashboard() {
               />
               {/* Glass panel */}
               <motion.div
+                id="glassmorphism-overlay-panel"
                 key="glass-panel"
                 initial={{ opacity: 0, scale: 0.94, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
