@@ -35,6 +35,10 @@ import "tippy.js/dist/tippy.css";
 import "tippy.js/animations/scale.css";
 import { SuccessConfetti } from "@/components/ui/SuccessConfetti";
 import { DashboardTour } from "@/components/ui/DashboardTour";
+import CountUp from "@/components/ui/CountUp";
+import AnimatedList from "@/components/ui/AnimatedList";
+import { motion, AnimatePresence } from "framer-motion";
+import { useConfirm } from "@/components/ui/ConfirmModal";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -71,6 +75,9 @@ function getStatusColor(status: string) {
 export default function Dashboard() {
   const { t } = useLanguage();
   const { user, hasAccess } = useAuth();
+  const { confirm, ConfirmModalElement } = useConfirm();
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
 
   const [showProfits, setShowProfits] = useState(
     localStorage.getItem("showProfits") === "true",
@@ -153,6 +160,7 @@ export default function Dashboard() {
       });
       
       setRecentTransactions(sortedTxns.slice(0, 5));
+      setAllTransactions(raw);
 
       // Build 7-day chart data
       const last7Days = Array.from({ length: 7 }).map((_, i) => {
@@ -249,6 +257,163 @@ export default function Dashboard() {
     return null;
   };
 
+  // ── calculations for expanded panels ──────────────────────────────────
+  const unpaidTransactionsList = useMemo(() => {
+    return allTransactions.filter((tx: any) => (tx.status || "").toLowerCase() === "unpaid");
+  }, [allTransactions]);
+
+  const unpaidCount = unpaidTransactionsList.length;
+
+  const unpaidOutstanding = useMemo(() => {
+    return unpaidTransactionsList.reduce((sum: number, tx: any) => {
+      const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+      const amountGiven = Number(tx.amountGiven ?? tx.amount_given ?? 0);
+      return sum + Math.max(0, cost - amountGiven);
+    }, 0);
+  }, [unpaidTransactionsList]);
+
+  const todayTransactions = useMemo(() => {
+    const todayStr = new Date().toDateString();
+    return allTransactions.filter((tx: any) => {
+      const txDate = new Date(tx.createdAt || tx.created_at || tx.date);
+      return txDate.toDateString() === todayStr;
+    });
+  }, [allTransactions]);
+
+  const todayTotal = useMemo(() => {
+    return todayTransactions.reduce((sum: number, tx: any) => {
+      const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+      return sum + cost;
+    }, 0);
+  }, [todayTransactions]);
+
+  const weekTransactionsGrouped = useMemo(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const weekTx = allTransactions.filter((tx: any) => {
+      const txDate = new Date(tx.createdAt || tx.created_at || tx.date);
+      return txDate >= startOfWeek;
+    });
+
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const grouped: { [key: string]: { txs: any[]; total: number } } = {};
+    
+    days.forEach(d => {
+      grouped[d] = { txs: [], total: 0 };
+    });
+
+    weekTx.forEach((tx: any) => {
+      const txDate = new Date(tx.createdAt || tx.created_at || tx.date);
+      const dayName = days[txDate.getDay()];
+      const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+      grouped[dayName].txs.push(tx);
+      grouped[dayName].total += cost;
+    });
+
+    return Object.entries(grouped)
+      .filter(([_, data]) => data.txs.length > 0)
+      .map(([day, data]) => ({ day, ...data }));
+  }, [allTransactions]);
+
+  const weekTotal = useMemo(() => {
+    return weekTransactionsGrouped.reduce((sum, day) => sum + day.total, 0);
+  }, [weekTransactionsGrouped]);
+
+  const totalBreakdown = useMemo(() => {
+    let repairTotal = 0;
+    let saleTotal = 0;
+    allTransactions.forEach((tx: any) => {
+      const type = (tx.repairType || "").toLowerCase();
+      const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+      if (type === "sale") {
+        saleTotal += cost;
+      } else if (type !== "internal-repair") {
+        repairTotal += cost;
+      }
+    });
+    return { repairTotal, saleTotal };
+  }, [allTransactions]);
+
+  const top5Transactions = useMemo(() => {
+    return [...allTransactions]
+      .sort((a, b) => {
+        const costA = Number(a.repairCost ?? a.repair_cost ?? a.cost ?? 0);
+        const costB = Number(b.repairCost ?? b.repair_cost ?? b.cost ?? 0);
+        return costB - costA;
+      })
+      .slice(0, 5);
+  }, [allTransactions]);
+
+  const pendingRepairsList = useMemo(() => {
+    return allTransactions.filter((tx: any) => (tx.status || "").toLowerCase() === "pending");
+  }, [allTransactions]);
+
+  const calculateDaysAgo = (dateVal: string | Date) => {
+    const d = new Date(dateVal);
+    const now = new Date();
+    const dTime = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const nowTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const diffTime = nowTime - dTime;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return "Today";
+    return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
+  };
+
+  const toggleCard = (cardId: string) => {
+    setExpandedCard(prev => prev === cardId ? null : cardId);
+  };
+
+  const handleMarkAsPaid = async (tx: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+    const customer = getField(tx, "customerName", "customer_name", "customer") || "Customer";
+    
+    const isConfirmed = await confirm({
+      title: "Mark as Paid?",
+      description: `Are you sure you want to mark transaction for ${customer} (₹${formatCurrency(cost)}) as completed and paid?`,
+      confirmText: "Yes, Mark as Paid",
+      cancelText: "Cancel",
+    });
+
+    if (!isConfirmed) return;
+
+    try {
+      const updatedTx = {
+        ...tx,
+        customerName: tx.customerName || tx.customer_name || tx.customer || "Customer",
+        mobileNumber: tx.mobileNumber || tx.mobile_number || tx.phone || "0000000000",
+        deviceModel: tx.deviceModel || tx.device_model || tx.device || "Unknown",
+        repairType: tx.repairType || tx.repair_type || "other",
+        paymentMethod: tx.paymentMethod || tx.payment_method || "cash",
+        repairCost: cost,
+        amountGiven: cost,
+        changeReturned: 0,
+        status: "Completed",
+      };
+
+      const res = await apiClient.updateTransaction(tx.id, updatedTx);
+      if (res.success) {
+        toast({
+          title: "Payment Recorded",
+          description: `Transaction for ${customer} has been updated to completed and paid.`,
+        });
+        fetchDashboardData();
+      } else {
+        throw new Error(res.error || "Update failed");
+      }
+    } catch (err: any) {
+      console.error("Failed to mark as paid:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to mark transaction as paid",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20 md:pb-6 relative animate-in fade-in duration-500">
       {/* ── Onboarding Tour (shows once per browser) ── */}
@@ -322,9 +487,16 @@ export default function Dashboard() {
       </div>
 
       {/* ── Premium Metric Cards ───────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {/* Today Revenue */}
-        <Card id="dashboard-today-card" className="relative overflow-hidden border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-transparent hover:shadow-md transition-shadow group">
+        <Card 
+          id="dashboard-today-card" 
+          onClick={() => toggleCard('today')}
+          className={cn(
+            "relative overflow-hidden border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
+            expandedCard === 'today' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-brand-green/50" : "col-span-1"
+          )}
+        >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-green/10 blur-2xl group-hover:bg-brand-green/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -335,13 +507,13 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight">
-              ₹{formatCurrency(dashboardData.todayRevenue)}
+            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
+              ₹<CountUp to={dashboardData.todayRevenue} separator="," duration={0.7} />
             </div>
             {isOwnerOrAdmin && showProfits && (
               <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 animate-in slide-in-from-bottom-1 fade-in">
-                <span className="inline-flex items-center text-brand-green font-medium bg-brand-green/10 px-1.5 py-0.5 rounded-sm">
-                  Profit: ₹{formatCurrency(dashboardData.todayProfit)}
+                <span className="inline-flex items-center text-brand-green font-medium bg-brand-green/10 px-1.5 py-0.5 rounded-sm gap-0.5">
+                  Profit: ₹<CountUp to={dashboardData.todayProfit} separator="," duration={0.7} />
                 </span>
               </p>
             )}
@@ -349,11 +521,61 @@ export default function Dashboard() {
               <ArrowUpRight className="h-3 w-3 text-brand-green" />
               <span className="text-brand-green font-medium">+₹{formatCurrency(dashboardData.todayRevenue)}</span> today
             </p>
+
+            <AnimatePresence>
+              {expandedCard === 'today' && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden mt-4 pt-4 border-t border-border text-left"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                    {todayTransactions.length > 0 ? (
+                      todayTransactions.map((tx: any) => {
+                        const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+                        return (
+                          <div key={tx.id} className="flex justify-between items-center text-xs p-3 rounded-lg bg-muted/20 border border-border/50">
+                            <div className="min-w-0">
+                              <p className="font-semibold truncate text-white">{tx.customerName || tx.customer_name || tx.customer || "Customer"}</p>
+                              <p className="text-[10px] text-muted-foreground truncate mt-0.5">{tx.deviceModel || tx.device_model || tx.device || "Device"} • {tx.repairType}</p>
+                            </div>
+                            <div className="text-right shrink-0 ml-2">
+                              <p className="font-bold text-foreground">₹{formatCurrency(cost)}</p>
+                              <span className={cn("inline-flex items-center rounded px-1 py-0.5 text-[9px] font-medium uppercase mt-0.5", getStatusColor(tx.status))}>
+                                {tx.status}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center py-4">No transactions created today.</p>
+                    )}
+                  </div>
+                  {todayTransactions.length > 0 && (
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-border/50 text-xs font-bold text-foreground">
+                      <span>Total</span>
+                      <span className="text-brand-green">₹{formatCurrency(todayTotal)}</span>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </CardContent>
         </Card>
 
-        {/* Week Overview (WoW Comparison Equivalent) */}
-        <Card id="dashboard-week-card" className="relative overflow-hidden border-brand-blue/20 bg-gradient-to-br from-brand-blue/5 to-transparent hover:shadow-md transition-shadow group">
+        {/* Week Overview */}
+        <Card 
+          id="dashboard-week-card" 
+          onClick={() => toggleCard('week')}
+          className={cn(
+            "relative overflow-hidden border-brand-blue/20 bg-gradient-to-br from-brand-blue/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
+            expandedCard === 'week' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-brand-blue/50" : "col-span-1"
+          )}
+        >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-blue/10 blur-2xl group-hover:bg-brand-blue/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -364,24 +586,78 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight">
-              ₹{formatCurrency(dashboardData.weekRevenue)}
+            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
+              ₹<CountUp to={dashboardData.weekRevenue} separator="," duration={0.7} />
             </div>
             {isOwnerOrAdmin && showProfits && (
               <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 animate-in slide-in-from-bottom-1 fade-in">
-                <span className="inline-flex items-center text-brand-blue font-medium bg-brand-blue/10 px-1.5 py-0.5 rounded-sm">
-                  Profit: ₹{formatCurrency(dashboardData.weekProfit)}
+                <span className="inline-flex items-center text-brand-blue font-medium bg-brand-blue/10 px-1.5 py-0.5 rounded-sm gap-0.5">
+                  Profit: ₹<CountUp to={dashboardData.weekProfit} separator="," duration={0.7} />
                 </span>
               </p>
             )}
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               <span className="text-brand-blue font-medium">{dashboardData.completedTransactions}</span> completed this week
             </p>
+
+            <AnimatePresence>
+              {expandedCard === 'week' && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden mt-4 pt-4 border-t border-border text-left"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                    {weekTransactionsGrouped.length > 0 ? (
+                      weekTransactionsGrouped.map((dayData: any) => (
+                        <div key={dayData.day} className="space-y-1.5">
+                          <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-brand-blue-light/75 border-b border-border/30 pb-0.5">
+                            <span>{dayData.day}</span>
+                            <span>₹{formatCurrency(dayData.total)}</span>
+                          </div>
+                          <div className="space-y-1">
+                            {dayData.txs.map((tx: any) => {
+                              const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+                              return (
+                                <div key={tx.id} className="flex justify-between items-center text-xs p-2.5 rounded bg-muted/10 border border-border/20">
+                                  <div className="min-w-0">
+                                    <p className="font-medium truncate text-white">{tx.customerName || tx.customer_name || tx.customer || "Customer"}</p>
+                                    <p className="text-[10px] text-muted-foreground truncate mt-0.5">{tx.deviceModel || tx.device_model || tx.device || "Device"}</p>
+                                  </div>
+                                  <span className="font-semibold text-foreground shrink-0 ml-2">₹{formatCurrency(cost)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center py-4">No transactions this week.</p>
+                    )}
+                  </div>
+                  {weekTransactionsGrouped.length > 0 && (
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-border/50 text-xs font-bold text-foreground">
+                      <span>Week Total</span>
+                      <span className="text-brand-blue">₹{formatCurrency(weekTotal)}</span>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </CardContent>
         </Card>
 
         {/* Total Lifetime Revenue */}
-        <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-transparent hover:shadow-md transition-shadow group">
+        <Card 
+          onClick={() => toggleCard('total')}
+          className={cn(
+            "relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
+            expandedCard === 'total' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-primary/50" : "col-span-1"
+          )}
+        >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-primary/10 blur-2xl group-hover:bg-primary/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -392,24 +668,81 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight">
-              ₹{formatCurrency(dashboardData.totalRevenue)}
+            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
+              ₹<CountUp to={dashboardData.totalRevenue} separator="," duration={0.7} />
             </div>
             {isOwnerOrAdmin && showProfits && (
               <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 animate-in slide-in-from-bottom-1 fade-in">
-                <span className="inline-flex items-center text-primary font-medium bg-primary/10 px-1.5 py-0.5 rounded-sm">
-                  Profit: ₹{formatCurrency(dashboardData.totalProfit)}
+                <span className="inline-flex items-center text-primary font-medium bg-primary/10 px-1.5 py-0.5 rounded-sm gap-0.5">
+                  Profit: ₹<CountUp to={dashboardData.totalProfit} separator="," duration={0.7} />
                 </span>
               </p>
             )}
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               Over <span className="font-medium text-foreground">{dashboardData.totalTransactions}</span> lifetime transactions
             </p>
+
+            <AnimatePresence>
+              {expandedCard === 'total' && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden mt-4 pt-4 border-t border-border text-left"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                    <div className="p-3 rounded-lg bg-muted/20 border border-border/50 space-y-1.5 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Repairs</span>
+                        <span className="font-semibold text-foreground">₹{formatCurrency(totalBreakdown.repairTotal)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Sales</span>
+                        <span className="font-semibold text-foreground">₹{formatCurrency(totalBreakdown.saleTotal)}</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground italic border-t border-border/30 pt-1">
+                        * Note: Internal repairs are excluded.
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Top 5 Highest Value</p>
+                      <div className="space-y-1">
+                        {top5Transactions.length > 0 ? (
+                          top5Transactions.map((tx: any) => {
+                            const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+                            return (
+                              <div key={tx.id} className="flex justify-between items-center text-xs p-2.5 rounded bg-muted/10 border border-border/20">
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate text-white">{tx.customerName || tx.customer_name || tx.customer || "Customer"}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate mt-0.5">{tx.deviceModel || tx.device_model || tx.device || "Device"} • {tx.repairType}</p>
+                                </div>
+                                <span className="font-bold text-primary shrink-0 ml-2">₹{formatCurrency(cost)}</span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground text-center py-2">No transactions recorded.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </CardContent>
         </Card>
 
         {/* Pending Repairs */}
-        <Card className="relative overflow-hidden border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent hover:shadow-md transition-shadow group">
+        <Card 
+          onClick={() => toggleCard('pending')}
+          className={cn(
+            "relative overflow-hidden border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
+            expandedCard === 'pending' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-red-500/50" : "col-span-1"
+          )}
+        >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-red-500/10 blur-2xl group-hover:bg-red-500/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -421,11 +754,124 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
             <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight">
-              {pendingCount}
+              <CountUp to={pendingCount} duration={0.6} />
             </div>
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               <span className="font-medium text-red-500">{pendingCount}</span> repairs awaiting completion
             </p>
+
+            <AnimatePresence>
+              {expandedCard === 'pending' && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden mt-4 pt-4 border-t border-border text-left"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                    {pendingRepairsList.length > 0 ? (
+                      pendingRepairsList.map((tx: any) => {
+                        const dateStr = formatDate(tx.createdAt || tx.created_at || tx.date);
+                        const daysAgo = calculateDaysAgo(tx.createdAt || tx.created_at || tx.date);
+                        return (
+                          <div key={tx.id} className="p-3 rounded-lg bg-muted/20 border border-border/50 space-y-2.5 text-xs">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-white truncate">{tx.customerName || tx.customer_name || tx.customer || "Customer"}</p>
+                              <p className="text-muted-foreground truncate mt-0.5">{tx.deviceModel || tx.device_model || tx.device || "Device"} • {tx.repairType}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">{dateStr} ({daysAgo})</p>
+                            </div>
+                            <div>
+                              <Link to={`/transactions/${tx.id}/edit`}>
+                                <Button size="sm" className="w-full min-h-[44px] h-[44px] bg-red-500 hover:bg-red-600 text-white font-semibold shadow-sm transition-colors">
+                                  Take Action
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center py-4">No pending repairs.</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+
+        {/* Unpaid Transactions */}
+        <Card 
+          id="dashboard-unpaid-card" 
+          onClick={() => toggleCard('unpaid')}
+          className={cn(
+            "relative overflow-hidden border-brand-orange/20 bg-gradient-to-br from-brand-orange/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
+            expandedCard === 'unpaid' ? "col-span-2 md:col-span-1 lg:col-span-1 ring-2 ring-brand-orange/50" : "col-span-1"
+          )}
+        >
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-orange/10 blur-2xl group-hover:bg-brand-orange/20 transition-colors" />
+          <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Unpaid Transactions
+            </CardTitle>
+            <div className="rounded-xl bg-brand-orange/10 p-2 shrink-0 group-hover:scale-110 transition-transform">
+              <AlertCircle className="h-4 w-4 text-brand-orange" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-5 pt-0">
+            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight">
+              <CountUp to={unpaidCount} duration={0.6} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 flex flex-wrap items-center gap-1">
+              <span className="font-semibold text-brand-orange-light">{unpaidCount} unpaid</span>
+              <span>· ₹{formatCurrency(unpaidOutstanding)} outstanding</span>
+            </p>
+
+            <AnimatePresence>
+              {expandedCard === 'unpaid' && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden mt-4 pt-4 border-t border-border text-left"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                    {unpaidTransactionsList.length > 0 ? (
+                      unpaidTransactionsList.map((tx: any) => {
+                        const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+                        const amountGiven = Number(tx.amountGiven ?? tx.amount_given ?? 0);
+                        const owed = Math.max(0, cost - amountGiven);
+                        const dateStr = formatDate(tx.createdAt || tx.created_at || tx.date);
+                        return (
+                          <div key={tx.id} className="p-3 rounded-lg bg-muted/20 border border-border/50 space-y-2 text-xs">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-white truncate">{tx.customerName || tx.customer_name || tx.customer || "Customer"}</p>
+                              <p className="text-muted-foreground truncate mt-0.5">{tx.deviceModel || tx.device_model || tx.device || "Device"} • {dateStr}</p>
+                              <p className="text-brand-orange-light font-bold mt-1">₹{formatCurrency(owed)} owed</p>
+                            </div>
+                            <div className="pt-1">
+                              <Button 
+                                size="sm" 
+                                onClick={(e) => handleMarkAsPaid(tx, e)}
+                                className="w-full min-h-[44px] h-[44px] bg-brand-orange hover:bg-brand-orange/90 text-white font-semibold shadow-sm transition-colors"
+                              >
+                                Mark as Paid
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center py-4">No unpaid transactions.</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </CardContent>
         </Card>
       </div>
@@ -509,9 +955,14 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : recentTransactions.length > 0 ? (
-              <div className="divide-y divide-border/50">
-                {recentTransactions.map((tx, i) => {
-                  // Backend returns camelCase — map correctly
+              <AnimatedList
+                items={recentTransactions}
+                showGradients={false}
+                displayScrollbar={false}
+                enableArrowNavigation={false}
+                className="border-0 bg-transparent rounded-none p-0 h-auto"
+                listClassName="divide-y divide-border/50 p-0 flex flex-col"
+                renderItem={(tx: any) => {
                   const customerName =
                     getField(tx, "customerName", "customer_name", "name") ||
                     `Customer #${tx.id}`;
@@ -519,17 +970,12 @@ export default function Dashboard() {
                     getField(tx, "deviceModel", "device_model", "device_type", "device") || "—";
                   const repairType =
                     getField(tx, "repairType", "repair_type", "repair") || "—";
-                  const dateStr = formatDate(
-                    tx.createdAt ?? tx.created_at ?? tx.date
-                  );
                   const cost = getField(tx, "repairCost", "repair_cost", "amountGiven", "amount_given");
                   const status = getField(tx, "status") || "pending";
 
                   return (
                     <div
-                      key={tx.id ?? i}
-                      className="flex items-center gap-3 px-4 py-3 sm:px-5 hover:bg-muted/30 transition-colors animate-in fade-in slide-in-from-bottom-2"
-                      style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'both' }}
+                      className="flex items-center gap-3 px-4 py-3 sm:px-5 hover:bg-muted/30 transition-colors w-full"
                     >
                       {/* Avatar initial */}
                       <div className="shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm border border-primary/20 shadow-sm">
@@ -563,8 +1009,8 @@ export default function Dashboard() {
                       </div>
                     </div>
                   );
-                })}
-              </div>
+                }}
+              />
             ) : (
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center p-6">
                 <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4 ring-8 ring-background">
@@ -585,6 +1031,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+      {ConfirmModalElement}
     </div>
   );
 }

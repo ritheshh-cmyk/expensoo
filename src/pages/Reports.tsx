@@ -63,6 +63,57 @@ import {
 } from "recharts";
 import { usePermissions } from "@/hooks/usePermissions";
 
+const isValidRepairType = (name: string): boolean => {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  // Contains a plus symbol
+  if (trimmed.includes('+')) return false;
+  // Fewer than 2 real words (splitting on space, hyphen, or underscore)
+  const words = trimmed.split(/[\s_-]+/).filter(Boolean);
+  if (words.length < 2) return false;
+  // Looks like a test entry (case insensitive)
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('test') || lower.includes('battan')) return false;
+  return true;
+};
+
+const CHART_COLORS = [
+  '#F59E0B', // Amber
+  '#3B82F6', // Blue
+  '#10B981', // Emerald
+  '#8B5CF6', // Violet
+  '#EC4899', // Pink
+  '#06B6D4', // Cyan
+  '#F43F5E', // Rose
+  '#64748B'  // Slate for 'Others'
+];
+
+const getSliceColor = (name: string, index: number): string => {
+  if (name.toLowerCase() === 'others') {
+    return '#64748B'; // slate
+  }
+  const generalColors = CHART_COLORS.slice(0, -1);
+  return generalColors[index % generalColors.length];
+};
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 shadow-xl text-foreground">
+        <p className="text-sm font-semibold capitalize mb-1">{data.name}</p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          Count: <span className="font-semibold text-foreground">{data.count}</span>
+        </p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          Percentage: <span className="font-semibold text-brand-orange-light">{data.percentage.toFixed(1)}%</span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 // All reports data is loaded from backend and updated via socket.io
 
 export default function Reports() {
@@ -92,6 +143,7 @@ export default function Reports() {
   const [repairTypesData, setRepairTypesData] = useState<any[]>([]);
   const [deviceBrandsData, setDeviceBrandsData] = useState<any[]>([]);
   const [topCustomersData, setTopCustomersData] = useState<any[]>([]);
+  const [freeItemsData, setFreeItemsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const toggleProfits = () => {
@@ -144,7 +196,9 @@ export default function Reports() {
             monthData.repairs += 1;
 
             const repairType = transaction.repairType ?? transaction.repair_type ?? 'Other';
-            repairTypesMap.set(repairType, (repairTypesMap.get(repairType) || 0) + 1);
+            if (isValidRepairType(repairType)) {
+              repairTypesMap.set(repairType, (repairTypesMap.get(repairType) || 0) + 1);
+            }
 
             const deviceBrand = (transaction.deviceModel ?? transaction.device_model ?? 'Unknown').split(' ')[0];
             if (!deviceBrandsMap.has(deviceBrand)) {
@@ -177,11 +231,40 @@ export default function Reports() {
           });
         }
         
-        const totalRepairTypes = Array.from(repairTypesMap.values()).reduce((sum, count) => sum + count, 0);
-        const repairTypes = Array.from(repairTypesMap.entries()).map(([name, count]) => ({
-          name,
-          value: totalRepairTypes > 0 ? Math.round((count / totalRepairTypes) * 100) : 0,
-          count
+        const totalValidCount = Array.from(repairTypesMap.values()).reduce((sum, count) => sum + count, 0);
+        const rawRepairTypes = Array.from(repairTypesMap.entries()).map(([name, count]) => {
+          const percentage = totalValidCount > 0 ? (count / totalValidCount) * 100 : 0;
+          return { name, count, percentage };
+        });
+
+        const mainCategories: any[] = [];
+        let othersCount = 0;
+        let othersPercentage = 0;
+
+        rawRepairTypes.forEach(item => {
+          if (item.percentage < 5) {
+            othersCount += item.count;
+            othersPercentage += item.percentage;
+          } else {
+            mainCategories.push(item);
+          }
+        });
+
+        mainCategories.sort((a, b) => b.count - a.count);
+
+        if (othersCount > 0) {
+          mainCategories.push({
+            name: 'Others',
+            count: othersCount,
+            percentage: othersPercentage
+          });
+        }
+
+        const repairTypes = mainCategories.map(item => ({
+          name: item.name,
+          value: Math.round(item.percentage),
+          percentage: item.percentage,
+          count: item.count
         }));
         
         const deviceBrandsArr = Array.from(deviceBrandsMap.entries())
@@ -208,6 +291,22 @@ export default function Reports() {
         setRepairTypesData(repairTypes);
         setDeviceBrandsData(deviceBrandsArr);
         setTopCustomersData(topCustomersArr);
+
+        const freeItems = transactionsArr
+          .filter((tx: any) => {
+            const freeGlass = Number(tx.freeGlass ?? (tx.freeGlassInstallation ?? tx.free_glass_installation ? 1 : 0));
+            const freeCover = Number(tx.freeCover ?? 0);
+            return freeGlass > 0 || freeCover > 0;
+          })
+          .map((tx: any) => ({
+            id: String(tx.id || ''),
+            date: tx.createdAt || tx.created_at || tx.date || Date.now(),
+            customer: String(tx.customerName ?? tx.customer_name ?? tx.customer ?? 'Unknown'),
+            freeGlass: Number(tx.freeGlass ?? (tx.freeGlassInstallation ?? tx.free_glass_installation ? 1 : 0)),
+            freeCover: Number(tx.freeCover ?? 0),
+          }))
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setFreeItemsData(freeItems);
         
       } catch (error) {
         console.error('Error fetching reports data:', error);
@@ -430,29 +529,62 @@ export default function Reports() {
           <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
             <h3 className="text-base font-semibold text-foreground mb-1">Repair Types Distribution</h3>
 
-            <div className="h-[240px] md:h-[300px] w-full mt-4">
-              <ResponsiveContainer width="99%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={repairTypesData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#f59e0b"
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}%`}
-                  >
-                    {repairTypesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={['#f59e0b', '#10B981', '#8B5CF6', '#EF4444', '#06b6d4'][index % 5]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value) => `${value}%`}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                  />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </div>
+            {(() => {
+              const totalRepairsCount = repairTypesData.reduce((sum, item) => sum + item.count, 0);
+              return (
+                <div className="flex flex-col md:flex-row items-center justify-center gap-6 mt-4 w-full">
+                  {/* Donut Container */}
+                  <div className="relative w-full max-w-[280px] h-[240px] md:h-[280px] shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={repairTypesData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="60%"
+                          outerRadius="80%"
+                          paddingAngle={2}
+                          dataKey="count"
+                        >
+                          {repairTypesData.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={getSliceColor(entry.name, index)} 
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-3xl font-extrabold text-foreground">{totalRepairsCount}</span>
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mt-0.5">Repairs</span>
+                    </div>
+                  </div>
+
+                  {/* Legend Container */}
+                  <div className="w-full grid grid-cols-2 md:grid-cols-1 gap-2 md:gap-3 px-2">
+                    {repairTypesData.map((entry, index) => {
+                      const color = getSliceColor(entry.name, index);
+                      return (
+                        <div key={entry.name} className="flex items-center gap-2 md:gap-3 text-xs md:text-sm min-w-0">
+                          <span 
+                            className="w-2.5 h-2.5 rounded-full shrink-0" 
+                            style={{ backgroundColor: color }}
+                          />
+                          <div className="flex flex-row md:items-center justify-between w-full min-w-0 gap-1">
+                            <span className="font-medium text-foreground truncate capitalize">{entry.name}</span>
+                            <span className="text-[11px] text-muted-foreground shrink-0 md:ml-4 whitespace-nowrap">
+                              {entry.count} ({entry.percentage.toFixed(0)}%)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Device Brands */}
@@ -644,6 +776,73 @@ export default function Reports() {
                   : 'No customer retention data available.'}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Free Items Audit Log */}
+        <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
+          <h3 className="text-base font-semibold text-foreground mb-1">Free Items Audit Log</h3>
+          <p className="text-xs text-muted-foreground mb-4">Detailed audit of all complimentary tempered glass and back cover installations tracked by customer.</p>
+
+          <div className="overflow-x-auto rounded-md border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border">
+                  <TableHead className="text-muted-foreground">Date</TableHead>
+                  <TableHead className="text-muted-foreground">Transaction ID</TableHead>
+                  <TableHead className="text-muted-foreground">Customer Name</TableHead>
+                  <TableHead className="text-muted-foreground text-center">Free Glass</TableHead>
+                  <TableHead className="text-muted-foreground text-center">Free Cover</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                ) : freeItemsData.length > 0 ? (
+                  freeItemsData.map((item) => (
+                    <TableRow key={item.id} className="border-border hover:bg-muted/50 transition-colors">
+                      <TableCell className="text-foreground font-medium">
+                        {new Date(item.date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground font-mono text-xs">
+                        {item.id.substring(0, 8).toUpperCase()}
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {item.customer}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.freeGlass > 0 ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-brand-green/20 text-brand-green border border-brand-green/30">
+                            +{item.freeGlass}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.freeCover > 0 ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                            +{item.freeCover}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No free items recorded.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>

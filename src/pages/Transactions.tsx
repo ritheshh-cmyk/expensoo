@@ -70,7 +70,7 @@ import {
   Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -97,7 +97,8 @@ interface Transaction {
   repairType: string;
   cost: number;
   paymentMethod: "cash" | "upi" | "card" | "bank-transfer";
-  freeGlass: boolean;
+  freeGlass: number;
+  freeCover: number;
   status: string;
   partsCost: TransactionPart[];
   remarks: string;
@@ -132,7 +133,8 @@ const normaliseTransaction = (raw: Record<string, unknown>): Transaction => ({
   repairType:    (raw.repairType   ?? raw.repair_type   ?? '') as string,
   cost:          Number(raw.repairCost ?? raw.repair_cost ?? raw.cost ?? 0),
   paymentMethod: (raw.paymentMethod ?? raw.payment_method ?? 'cash') as Transaction['paymentMethod'],
-  freeGlass:     Boolean(raw.freeGlassInstallation ?? raw.free_glass_installation ?? raw.freeGlass ?? false),
+  freeGlass:     Number(raw.freeGlass ?? (raw.freeGlassInstallation ?? raw.free_glass_installation ? 1 : 0)),
+  freeCover:     Number(raw.freeCover ?? 0),
   status:        String(raw.status ?? 'pending'),
   partsCost:     (() => {
     let parts = raw.partsCost;
@@ -196,6 +198,10 @@ interface TransactionsProps {
 }
 
 export default function Transactions({ filterCategory = 'all' }: TransactionsProps) {
+  const [searchParams] = useSearchParams();
+  const searchId = searchParams.get("id");
+  const searchQuery = searchParams.get("search");
+
   const [data, setData] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -205,6 +211,12 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
 
   const [historyDialog, setHistoryDialog] = useState<{ open: boolean; customer: string | null }>({ open: false, customer: null });
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchQuery) {
+      setGlobalFilter(searchQuery);
+    }
+  }, [searchQuery]);
 
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
@@ -326,8 +338,19 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
         cell: ({ row }) => (
           <div className="text-sm text-foreground">
             {t(row.getValue("paymentMethod"))}
-            {row.original.freeGlass && (
-              <div className="text-xs text-brand-green mt-0.5">+ Free Glass</div>
+            {(row.original.freeGlass > 0 || row.original.freeCover > 0) && (
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {row.original.freeGlass > 0 && (
+                  <span className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-semibold bg-brand-green/20 text-brand-green border border-brand-green/30">
+                    +{row.original.freeGlass} Glass
+                  </span>
+                )}
+                {row.original.freeCover > 0 && (
+                  <span className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                    +{row.original.freeCover} Cover
+                  </span>
+                )}
+              </div>
             )}
           </div>
         ),
@@ -446,6 +469,16 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
               mapped = mapped.filter(t => t.repairType.toLowerCase() !== 'sale');
             }
             setData(mapped);
+            if (searchId) {
+              const matched = mapped.find(t => t.id === searchId);
+              if (matched) {
+                setExpandedRowId(searchId);
+                setSelectedTxn(matched);
+                if (window.innerWidth < 768) {
+                  setMobileSheetOpen(true);
+                }
+              }
+            }
           } else {
             setData([]);
           }
@@ -769,7 +802,16 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
                         <span className="text-xs text-muted-foreground font-mono">{shortId}</span>
                         <span className="text-xs text-muted-foreground">{tx.repairType}</span>
                         <span className="text-xs text-muted-foreground">{t(tx.paymentMethod)}</span>
-                        {tx.freeGlass && <span className="text-xs text-brand-green">+Glass</span>}
+                        {tx.freeGlass > 0 && (
+                          <span className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-semibold bg-brand-green/20 text-brand-green border border-brand-green/30">
+                            +{tx.freeGlass} Glass
+                          </span>
+                        )}
+                        {tx.freeCover > 0 && (
+                          <span className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                            +{tx.freeCover} Cover
+                          </span>
+                        )}
                       </div>
                     </div>
                     {/* Actions */}

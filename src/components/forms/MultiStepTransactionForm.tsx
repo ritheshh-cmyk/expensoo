@@ -54,6 +54,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Stepper, { Step } from "@/components/ui/Stepper";
 
 const transactionSchema = z.object({
   // Step 1: Customer Details
@@ -76,7 +77,8 @@ const transactionSchema = z.object({
   partSupplier: z.string().optional(), // New field for part supplier selection
   
   // Step 4: Additional Details
-  freeGlass: z.boolean().optional(),
+  freeGlass: z.number().min(0).optional(),
+  freeCover: z.number().min(0).optional(),
   remarks: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
   estimatedCompletion: z.string().optional(),
@@ -189,7 +191,8 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
       amountGiven: Number(initialData.amountGiven) || Number(initialData.amount_given) || 0,
       paymentMethod: initialData.paymentMethod || "cash",
       requiresParts: initialData.requiresParts || (initialData.partsCost && initialData.partsCost.length > 0) || false,
-      freeGlass: initialData.freeGlass || initialData.freeGlassInstallation || false,
+      freeGlass: Number(initialData.freeGlass ?? (initialData.freeGlassInstallation ? 1 : 0)),
+      freeCover: Number(initialData.freeCover ?? 0),
       priority: initialData.priority || "medium",
       remarks: initialData.remarks || "",
       estimatedCompletion: initialData.estimatedCompletion || "",
@@ -201,7 +204,8 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
       amountGiven: 0,
       paymentMethod: "cash",
       requiresParts: false,
-      freeGlass: false,
+      freeGlass: 0,
+      freeCover: 0,
       externalPurchase: false,
       priority: "medium",
       ourCost: 0,
@@ -408,51 +412,48 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
     { title: t("additional-details"), icon: Smartphone, description: "Final details and completion" },
   ];
 
-  const nextStep = async () => {
-    let fieldsToValidate: (keyof TransactionFormData)[] = [];
+  const handleStepChange = async (nextStep: number) => {
+    if (nextStep > currentStep) {
+      let fieldsToValidate: (keyof TransactionFormData)[] = [];
 
-    switch (currentStep) {
-      case 1:
-        fieldsToValidate = ["customerName", "phoneNumber"];
-        break;
-      case 2:
-        if (isSales) {
-          fieldsToValidate = isPaid
-            ? ["paymentMethod", "amountGiven", "itemName", "ourCost", "soldPrice"]
-            : ["paymentMethod", "itemName", "ourCost", "soldPrice"];
-        } else if (isInternalRepair) {
-          fieldsToValidate = ["repairType"];
-        } else {
-          fieldsToValidate = isPaid
-            ? ["repairType", "repairCost", "paymentMethod", "amountGiven"]
-            : ["repairType", "repairCost", "paymentMethod"];
-        }
-        break;
-      case 3:
-        // Validate supplier selection if external purchase is enabled
-        if (useExternalPurchase && !selectedSupplier) {
-          toast({
-            title: "Supplier Required",
-            description: "Please select a supplier for external purchase.",
-            variant: "destructive",
-          });
-          return;
-        }
-        break;
-      case 4:
-        break;
+      switch (currentStep) {
+        case 1:
+          fieldsToValidate = ["customerName", "phoneNumber"];
+          break;
+        case 2:
+          if (isSales) {
+            fieldsToValidate = isPaid
+              ? ["paymentMethod", "amountGiven", "itemName", "ourCost", "soldPrice"]
+              : ["paymentMethod", "itemName", "ourCost", "soldPrice"];
+          } else if (isInternalRepair) {
+            fieldsToValidate = ["repairType"];
+          } else {
+            fieldsToValidate = isPaid
+              ? ["repairType", "repairCost", "paymentMethod", "amountGiven"]
+              : ["repairType", "repairCost", "paymentMethod"];
+          }
+          break;
+        case 3:
+          if (useExternalPurchase && !selectedSupplier) {
+            toast({
+              title: "Supplier Required",
+              description: "Please select a supplier for external purchase.",
+              variant: "destructive",
+            });
+            return;
+          }
+          break;
+      }
+
+      const isValid = await trigger(fieldsToValidate);
+      if (!isValid) return;
     }
 
-    const isValid = await trigger(fieldsToValidate);
-    if (isValid && currentStep < steps.length) {
-      setCurrentStep(currentStep + 1);
-    }
+    setCurrentStep(nextStep);
   };
 
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+  const handleFinalStepCompleted = () => {
+    handleSubmit(onFormSubmit, onFormError)();
   };
 
   const addPart = () => {
@@ -622,7 +623,9 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
               internalRepairNotes
             ].filter(Boolean).join(" | ") || data.remarks || ""
           : data.remarks || "",
-        freeGlassInstallation: data.freeGlass || false,
+        freeGlass: Number(data.freeGlass ?? 0),
+        freeCover: Number(data.freeCover ?? 0),
+        freeGlassInstallation: Number(data.freeGlass ?? 0) > 0 || Number(data.freeCover ?? 0) > 0,
         partsCost: isInternalRepair
           ? (internalRepairPart ? [{ supplier: "", cost: internalRepairCost, price: 0, quantity: 1, item: internalRepairPart }] : [])
           : parts.length > 0 ? parts.map(part => ({
@@ -940,51 +943,29 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
         </div>
       ) : (
         <>
-          {/* Enhanced Progress Steps */}
-          <div className="mb-8">
-            <div className="sm:hidden mb-4 text-center font-medium text-brand-orange-light">
-              Step {currentStep} of {steps.length}: {steps[currentStep - 1].title}
-            </div>
-            <div className="flex items-center justify-between mb-4">
-              {steps.map((step, index) => {
-                const stepNumber = index + 1;
-                const isActive = currentStep === stepNumber;
-                const isCompleted = currentStep > stepNumber;
-                const StepIcon = step.icon;
-
-                return (
-                  <div
-                    key={stepNumber}
-                    className={cn(
-                      "flex items-center space-x-2 sm:px-4 sm:py-2 p-2 rounded-lg transition-all",
-                      isActive && "bg-brand-orange text-black shadow-md shadow-brand-orange/20",
-                      isCompleted && "bg-brand-orange/20 text-brand-orange-light border border-brand-orange/30",
-                      !isActive && !isCompleted && "bg-background text-muted-foreground border border-border"
-                    )}
-                  >
-                    <StepIcon className="w-5 h-5" />
-                    <div className="hidden sm:block">
-                      <div className="font-medium text-sm">{step.title}</div>
-                      <div className="text-xs opacity-80">{step.description}</div>
-                    </div>
-                    {isCompleted && <div className="w-2 h-2 bg-brand-orange-light rounded-full hidden sm:block" />}
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* Progress Bar */}
-            <div className="w-full bg-muted/50 rounded-full h-2">
-              <div 
-                className="bg-brand-orange h-2 rounded-full transition-all duration-300 shadow-sm shadow-brand-orange/50"
-                style={{ width: `${(currentStep / steps.length) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit(onFormSubmit, onFormError)} className="space-y-6">
-            {/* Step 1: Customer Details */}
-            {currentStep === 1 && (
+          <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+            <Stepper
+              activeStep={currentStep}
+              onStepChange={handleStepChange}
+              onFinalStepCompleted={handleFinalStepCompleted}
+              stepCircleContainerClassName="border-0 shadow-none p-0 max-w-full bg-transparent"
+              stepContainerClassName="px-0 py-4"
+              contentClassName="pt-2"
+              footerClassName="px-0 pb-0 pt-4"
+              backButtonText="Previous"
+              nextButtonText="Next"
+              completeButtonText={isSubmitting ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update Transaction" : "Create Transaction")}
+              backButtonProps={{
+                type: "button",
+                className: "px-4 py-2 text-sm font-medium border border-input bg-background hover:bg-muted/50 text-foreground rounded-md transition-colors min-w-[120px]"
+              }}
+              nextButtonProps={{
+                type: "button",
+                disabled: isSubmitting,
+                className: "px-4 py-2 text-sm font-semibold bg-brand-orange hover:bg-brand-orange-light text-black rounded-lg transition-colors flex items-center justify-center min-w-[120px] min-h-[44px]"
+              }}
+            >
+              <Step>
               <Card className="border border-border bg-card">
                 <CardHeader className="border-b border-border">
                   <CardTitle className="flex items-center gap-2 text-foreground">
@@ -1036,10 +1017,9 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                   </div>
                 </CardContent>
               </Card>
-            )}
+              </Step>
 
-            {/* Step 2: Repair OR Sales Details */}
-            {currentStep === 2 && (
+              <Step>
               <Card className="border border-border bg-card overflow-visible">
                 <CardHeader className="border-b border-border">
                   <CardTitle className="flex items-center gap-2 text-foreground">
@@ -1271,10 +1251,9 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                   )}
                 </CardContent>
               </Card>
-            )}
+              </Step>
 
-            {/* Step 3: Enhanced Parts and Supplier Selection */}
-            {currentStep === 3 && (
+              <Step>
               <Card className="border border-border bg-card overflow-visible">
                 <CardHeader className="border-b border-border">
                   <CardTitle className="flex items-center gap-2 text-foreground">
@@ -1859,10 +1838,10 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                   )}
                 </CardContent>
               </Card>
-            )}
+              </Step>
 
-            {/* Step 4: Additional Details */}
-            {currentStep === 4 && (
+              {steps.length === 4 && (
+                <Step>
               <Card className="border border-border bg-card overflow-visible">
                 <CardHeader className="border-b border-border">
                   <CardTitle className="flex items-center gap-2 text-foreground">
@@ -1900,13 +1879,26 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="freeGlass" className="text-sm font-medium text-muted-foreground mb-1.5">Free Glass Count</Label>
+                      <Input
                         id="freeGlass"
-                        {...register("freeGlass")}
+                        type="number"
+                        min={0}
+                        {...register("freeGlass", { valueAsNumber: true })}
+                        className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
                       />
-                      <Label htmlFor="freeGlass" className="text-foreground">Free tempered glass installation</Label>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="freeCover" className="text-sm font-medium text-muted-foreground mb-1.5">Free Cover Count</Label>
+                      <Input
+                        id="freeCover"
+                        type="number"
+                        min={0}
+                        {...register("freeCover", { valueAsNumber: true })}
+                        className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
+                      />
                     </div>
                   </div>
 
@@ -2024,47 +2016,9 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={prevStep}
-                disabled={currentStep === 1 || isSubmitting}
-                className="min-w-[120px] bg-background hover:bg-muted/50 border border-border text-foreground"
-              >
-                Previous
-              </Button>
-
-              {currentStep < steps.length ? (
-                <Button
-                  id="next-btn"
-                  key="next-btn"
-                  type="button"
-                  onClick={nextStep}
-                  className="min-w-[120px] bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg cursor-pointer min-h-[44px]"
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  id="submit-btn"
-                  key="submit-btn"
-                  type="submit"
-                  className="min-w-[120px] bg-brand-orange hover:bg-brand-orange-light text-black font-semibold rounded-lg cursor-pointer min-h-[44px]"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
-                      {initialData ? "Updating..." : "Creating..."}
-                    </span>
-                  ) : (initialData ? "Update Transaction" : "Create Transaction")}
-                </Button>
+                </Step>
               )}
-            </div>
+            </Stepper>
           </form>
         </>
       )}

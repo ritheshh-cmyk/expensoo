@@ -304,18 +304,11 @@ export default function Expenditures() {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      Supplies: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+      Suppliers: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+      "Electricity Bill": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
       Rent: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-      Utilities:
-        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-      Salaries:
-        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-      Equipment:
-        "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-      Marketing:
-        "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300",
-      Maintenance:
-        "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+      "WiFi Bill": "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
+      Others: "bg-secondary text-foreground dark:bg-gray-900 dark:text-gray-300",
     };
     return (
       colors[category] ||
@@ -325,7 +318,7 @@ export default function Expenditures() {
 
   const categoryDataToShow = Object.entries(
         expenditures.reduce((acc, exp) => {
-          acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+          acc[exp.category] = (acc[exp.category] || 0) + (Number(exp.amount) || 0);
           return acc;
         }, {} as Record<string, number>)
       ).map(([name, amount]) => ({
@@ -333,13 +326,11 @@ export default function Expenditures() {
         amount,
         color:
           {
-            Supplies: "#3B82F6",
+            Suppliers: "#3B82F6",
+            "Electricity Bill": "#F59E0B",
             Rent: "#EF4444",
-            Utilities: "#F59E0B",
-            Salaries: "#10B981",
-            Equipment: "#8B5CF6",
-            Marketing: "#EC4899",
-            Maintenance: "#F97316",
+            "WiFi Bill": "#8B5CF6",
+            Others: "#6B7280",
           }[name] || "#6B7280",
       }));
 
@@ -821,20 +812,30 @@ export default function Expenditures() {
 function EditExpenditureDialog({ expenditure, suppliers, onSave, onClose }: { expenditure: any; suppliers: any[]; onSave: (id: string, data: any) => void; onClose: () => void }) {
   const [formData, setFormData] = useState({
     description: expenditure.description || "",
-    category: expenditure.category || "Supplies",
+    category: expenditure.category || "Others",
     amount: String(expenditure.amount || ""),
     paymentMethod: expenditure.paymentMethod || "cash",
     recipient: expenditure.recipient || "",
     items: expenditure.items || "",
     supplierId: expenditure.supplierId ? String(expenditure.supplierId) : "",
+    status: expenditure.status || "paid",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedAmount = parseFloat(formData.amount);
+    const isPending = formData.category === "Suppliers" && formData.status === "pending";
+    const selectedSup = suppliers.find(s => String(s.id) === String(formData.supplierId));
+    const recipientName = formData.category === "Suppliers" && selectedSup ? selectedSup.name : formData.recipient;
+
     const payload: any = {
       ...formData,
-      amount: parseFloat(formData.amount),
-      supplierId: formData.category === "Supplier" && formData.supplierId ? parseInt(formData.supplierId) : null,
+      amount: parsedAmount,
+      supplierId: formData.category === "Suppliers" && formData.supplierId ? parseInt(formData.supplierId) : null,
+      status: formData.category === "Suppliers" ? formData.status : "paid",
+      paidAmount: isPending ? 0 : parsedAmount,
+      remainingAmount: isPending ? parsedAmount : 0,
+      recipient: recipientName,
     };
     onSave(expenditure.id, payload);
     onClose();
@@ -854,32 +855,41 @@ function EditExpenditureDialog({ expenditure, suppliers, onSave, onClose }: { ex
           </div>
           <div>
             <Label htmlFor="edit-category">Category</Label>
-            <Select value={formData.category} onValueChange={value => setFormData({ ...formData, category: value, supplierId: value !== "Supplier" ? "" : formData.supplierId })}>
+            <Select value={formData.category} onValueChange={value => setFormData({ ...formData, category: value, supplierId: value !== "Suppliers" ? "" : formData.supplierId })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent side="bottom" avoidCollisions={false}>
-                <SelectItem value="Supplies">Supplies</SelectItem>
+                <SelectItem value="Suppliers">Suppliers</SelectItem>
+                <SelectItem value="Electricity Bill">Electricity Bill</SelectItem>
                 <SelectItem value="Rent">Rent</SelectItem>
-                <SelectItem value="Utilities">Utilities</SelectItem>
-                <SelectItem value="Salaries">Salaries</SelectItem>
-                <SelectItem value="Equipment">Equipment</SelectItem>
-                <SelectItem value="Marketing">Marketing</SelectItem>
-                <SelectItem value="Maintenance">Maintenance</SelectItem>
-                <SelectItem value="Supplier">Supplier</SelectItem>
+                <SelectItem value="WiFi Bill">WiFi Bill</SelectItem>
+                <SelectItem value="Others">Others</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {formData.category === "Supplier" && (
-            <div>
-              <Label htmlFor="edit-supplier">Supplier <span className="text-destructive">*</span></Label>
-              <Select value={formData.supplierId} onValueChange={value => setFormData({ ...formData, supplierId: value })}>
-                <SelectTrigger><SelectValue placeholder="Select a supplier" /></SelectTrigger>
-                <SelectContent side="bottom" avoidCollisions={false}>
-                  {suppliers.map(s => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {formData.category === "Suppliers" && (
+            <>
+              <div>
+                <Label htmlFor="edit-supplier">Supplier <span className="text-destructive">*</span></Label>
+                <Select value={formData.supplierId} onValueChange={value => setFormData({ ...formData, supplierId: value })}>
+                  <SelectTrigger><SelectValue placeholder="Select a supplier" /></SelectTrigger>
+                  <SelectContent side="bottom" avoidCollisions={false}>
+                    {suppliers.map(s => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-status">Payment Status</Label>
+                <Select value={formData.status} onValueChange={value => setFormData({ ...formData, status: value })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent side="bottom" avoidCollisions={false}>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
           <div>
             <Label htmlFor="edit-amount">Amount</Label>
@@ -898,17 +908,19 @@ function EditExpenditureDialog({ expenditure, suppliers, onSave, onClose }: { ex
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label htmlFor="edit-recipient">Supplier / Vendor</Label>
-            <Input id="edit-recipient" value={formData.recipient} onChange={e => setFormData({ ...formData, recipient: e.target.value })} />
-          </div>
+          {formData.category !== "Suppliers" && (
+            <div>
+              <Label htmlFor="edit-recipient">Supplier / Vendor</Label>
+              <Input id="edit-recipient" value={formData.recipient} onChange={e => setFormData({ ...formData, recipient: e.target.value })} />
+            </div>
+          )}
           <div>
             <Label htmlFor="edit-items">Items / Notes</Label>
             <Textarea id="edit-items" value={formData.items} onChange={e => setFormData({ ...formData, items: e.target.value })} rows={2} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={!formData.description || !formData.amount || (formData.category === "Supplier" && !formData.supplierId)}>Save Changes</Button>
+            <Button type="submit" disabled={!formData.description || !formData.amount || (formData.category === "Suppliers" && !formData.supplierId)}>Save Changes</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -920,29 +932,40 @@ function EditExpenditureDialog({ expenditure, suppliers, onSave, onClose }: { ex
 function AddExpenditureDialog({ onAdd, suppliers = [] }: { onAdd: (data: any) => void; suppliers?: any[] }) {
   const [formData, setFormData] = useState({
     description: "",
-    category: "Supplies",
+    category: "Others",
     amount: "",
     paymentMethod: "cash",
     recipient: "",
     items: "",
     supplierId: "",
+    status: "paid",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedAmount = parseFloat(formData.amount);
+    const isPending = formData.category === "Suppliers" && formData.status === "pending";
+    const selectedSup = suppliers.find(s => String(s.id) === String(formData.supplierId));
+    const recipientName = formData.category === "Suppliers" && selectedSup ? selectedSup.name : formData.recipient;
+
     onAdd({
       ...formData,
-      amount: parseFloat(formData.amount),
-      supplierId: formData.category === "Supplier" && formData.supplierId ? parseInt(formData.supplierId) : null,
+      amount: parsedAmount,
+      supplierId: formData.category === "Suppliers" && formData.supplierId ? parseInt(formData.supplierId) : null,
+      status: formData.category === "Suppliers" ? formData.status : "paid",
+      paidAmount: isPending ? 0 : parsedAmount,
+      remainingAmount: isPending ? parsedAmount : 0,
+      recipient: recipientName,
     });
     setFormData({
       description: "",
-      category: "Supplies",
+      category: "Others",
       amount: "",
       paymentMethod: "cash",
       recipient: "",
       items: "",
       supplierId: "",
+      status: "paid",
     });
   };
 
@@ -970,45 +993,61 @@ function AddExpenditureDialog({ onAdd, suppliers = [] }: { onAdd: (data: any) =>
           <Select
             value={formData.category}
             onValueChange={(value) =>
-              setFormData({ ...formData, category: value, supplierId: value !== "Supplier" ? "" : formData.supplierId })
+              setFormData({ ...formData, category: value, supplierId: value !== "Suppliers" ? "" : formData.supplierId })
             }
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent side="bottom" avoidCollisions={false}>
-              <SelectItem value="Supplies">Supplies</SelectItem>
+              <SelectItem value="Suppliers">Suppliers</SelectItem>
+              <SelectItem value="Electricity Bill">Electricity Bill</SelectItem>
               <SelectItem value="Rent">Rent</SelectItem>
-              <SelectItem value="Utilities">Utilities</SelectItem>
-              <SelectItem value="Salaries">Salaries</SelectItem>
-              <SelectItem value="Equipment">Equipment</SelectItem>
-              <SelectItem value="Marketing">Marketing</SelectItem>
-              <SelectItem value="Maintenance">Maintenance</SelectItem>
-              <SelectItem value="Supplier">Supplier</SelectItem>
+              <SelectItem value="WiFi Bill">WiFi Bill</SelectItem>
+              <SelectItem value="Others">Others</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        {formData.category === "Supplier" && (
-          <div>
-            <Label htmlFor="supplier">Supplier <span className="text-destructive">*</span></Label>
-            <Select
-              value={formData.supplierId}
-              onValueChange={(value) =>
-                setFormData({ ...formData, supplierId: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a supplier" />
-              </SelectTrigger>
-              <SelectContent side="bottom" avoidCollisions={false}>
-                {suppliers.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {formData.category === "Suppliers" && (
+          <>
+            <div>
+              <Label htmlFor="supplier">Supplier <span className="text-destructive">*</span></Label>
+              <Select
+                value={formData.supplierId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, supplierId: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a supplier" />
+                </SelectTrigger>
+                <SelectContent side="bottom" avoidCollisions={false}>
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="status">Payment Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent side="bottom" avoidCollisions={false}>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
         )}
         <div>
           <Label htmlFor="amount">Amount</Label>
@@ -1045,18 +1084,20 @@ function AddExpenditureDialog({ onAdd, suppliers = [] }: { onAdd: (data: any) =>
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Label htmlFor="recipient">Supplier / Vendor</Label>
-          <Input
-            id="recipient"
-            value={formData.recipient}
-            onChange={(e) =>
-              setFormData({ ...formData, recipient: e.target.value })
-            }
-            placeholder="Who was paid?"
-            required
-          />
-        </div>
+        {formData.category !== "Suppliers" && (
+          <div>
+            <Label htmlFor="recipient">Supplier / Vendor</Label>
+            <Input
+              id="recipient"
+              value={formData.recipient}
+              onChange={(e) =>
+                setFormData({ ...formData, recipient: e.target.value })
+              }
+              placeholder="Who was paid?"
+              required
+            />
+          </div>
+        )}
         <div>
           <Label htmlFor="items">Items / Notes (Optional)</Label>
           <Textarea
@@ -1072,7 +1113,7 @@ function AddExpenditureDialog({ onAdd, suppliers = [] }: { onAdd: (data: any) =>
         <DialogFooter>
           <Button
             type="submit"
-            disabled={!formData.description || !formData.amount || (formData.category === "Supplier" && !formData.supplierId)}
+            disabled={!formData.description || !formData.amount || (formData.category === "Suppliers" && !formData.supplierId)}
           >
             Add Expenditure
           </Button>

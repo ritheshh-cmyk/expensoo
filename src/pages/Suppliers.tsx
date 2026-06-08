@@ -114,7 +114,8 @@ export default function Suppliers() {
   const [newExpense, setNewExpense] = useState({
     description: '',
     amount: '',
-    paymentMethod: 'cash'
+    paymentMethod: 'cash',
+    status: 'paid'
   });
   const [expenseLoading, setExpenseLoading] = useState(false);
 
@@ -272,17 +273,23 @@ export default function Suppliers() {
     }
     setExpenseLoading(true);
     try {
+      const parsedAmount = parseFloat(newExpense.amount);
+      const isPending = newExpense.status === 'pending';
       const res = await apiClient.createExpenditure({
         description: newExpense.description.trim(),
-        amount: parseFloat(newExpense.amount),
-        category: 'Supplier',
+        amount: parsedAmount,
+        category: 'Suppliers',
         paymentMethod: newExpense.paymentMethod,
-        supplierId: selectedSupplier.id
+        supplierId: selectedSupplier.id,
+        status: newExpense.status,
+        paidAmount: isPending ? 0 : parsedAmount,
+        remainingAmount: isPending ? parsedAmount : 0,
+        recipient: selectedSupplier.name
       });
       if (res.success) {
         toast({ title: 'Success', description: 'Expenditure added successfully.' });
         setShowAddExpenseDialog(false);
-        setNewExpense({ description: '', amount: '', paymentMethod: 'cash' });
+        setNewExpense({ description: '', amount: '', paymentMethod: 'cash', status: 'paid' });
         
         // Refresh supplier details in dialog to show the new expenditure
         const updatedSupplierRes = await apiClient.getSupplier(selectedSupplier.id);
@@ -930,6 +937,21 @@ export default function Suppliers() {
                 <option value="upi">UPI</option>
                 <option value="card">Card</option>
                 <option value="bank_transfer">Bank Transfer</option>
+              </select>
+            </div>
+
+            {/* Payment Status */}
+            <div className="space-y-1.5">
+              <Label htmlFor="exp-status">Payment Status</Label>
+              <select
+                id="exp-status"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
+                value={newExpense.status}
+                onChange={(e) => setNewExpense(f => ({ ...f, status: e.target.value }))}
+                disabled={expenseLoading}
+              >
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
               </select>
             </div>
           </div>

@@ -6,10 +6,12 @@ import { ThemeProvider } from './components/theme-provider';
 import { Toaster } from './components/ui/toaster';
 import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { LoaderOne } from './components/ui/loader';
 import './App.css';
 
 // ── Lazy-loaded page chunks (each page becomes its own JS chunk) ───────────
 const Login        = React.lazy(() => import('./pages/auth/Login'));
+const Signup       = React.lazy(() => import('./pages/auth/Signup'));
 const Dashboard    = React.lazy(() => import('./pages/Dashboard'));
 const Transactions = React.lazy(() => import('./pages/Transactions'));
 const NewTransaction = React.lazy(() => import('./pages/NewTransaction'));
@@ -31,11 +33,7 @@ import { NetworkErrorPage } from './components/NetworkErrorPage';
 
 // ── Suspense fallback — shown while a page chunk is downloading ───────────
 function PageLoader() {
-  return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-    </div>
-  );
+  return <LoaderOne />;
 }
 
 // ── Protected Route ───────────────────────────────────────────────────────────
@@ -63,7 +61,7 @@ function AppRoutes() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+        <LoaderOne />
       </div>
     );
   }
@@ -75,6 +73,10 @@ function AppRoutes() {
       <Route
         path="/login"
         element={user ? <Navigate to="/dashboard" replace /> : <Login />}
+      />
+      <Route
+        path="/signup"
+        element={user ? <Navigate to="/dashboard" replace /> : <Signup />}
       />
       {/* Placeholder for the forgot-password link inside Login.tsx */}
       <Route

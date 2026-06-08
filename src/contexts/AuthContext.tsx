@@ -169,7 +169,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Login ─────────────────────────────────────────────────────────────────
   const login = async (username: string, password: string): Promise<boolean> => {
-    setLoading(true);
     try {
       const response = await apiClient.login(username, password);
 
@@ -202,8 +201,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error: unknown) {
       throw error instanceof Error ? error : new Error(String(error));
-    } finally {
-      setLoading(false);
     }
   };
 

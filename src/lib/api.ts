@@ -402,7 +402,9 @@ class ApiClient {
         status: data.status || 'Completed',
         remarks: data.remarks || '',
         // Correct field names matching backend Zod schema
-        freeGlassInstallation: Boolean(data.freeGlassInstallation ?? data.freeGlass ?? false),
+        freeGlassInstallation: Boolean(data.freeGlassInstallation ?? (data.freeGlass > 0 || data.freeCover > 0) ?? false),
+        freeGlass: Number(data.freeGlass ?? 0),
+        freeCover: Number(data.freeCover ?? 0),
         requiresInventory: Boolean(data.requiresInventory ?? false),
         partsCost: partsArray.length > 0 ? partsArray : undefined,
         supplierName: data.supplierName || undefined,

@@ -39,6 +39,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "express": "^5.2.1",
+    "framer-motion": "^12.40.0",
     "fuse.js": "^7.4.2",
     "lucide-react": "^0.446.0",
     "playwright": "^1.60.0",
