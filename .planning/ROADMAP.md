@@ -12,6 +12,7 @@ This roadmap details a 7-phase plan to address critical bug fixes, enforce cost 
 - [x] **Phase 5: Dashboard Upgrade** - Personalized welcome, last 5 transactions list, metric cards, and Mobile FAB (DASH-01 to DASH-04)
 - [x] **Phase 6: Settings, Profile & Manual Cleanup** - UI cleanup, horizontal mobile tabs, display name sync, and User Manual (CONF-01 to CONF-04)
 - [x] **Phase 7: New Features & Global Polish** - Add notification bell with dropdown, and global mobile spacing checks (FEAT-01 to FEAT-02)
+- [/] **Phase 8: Additional Profile & Supplier Fixes** - Fix Suppliers page edit/delete, profile photo DB storage, and display name persistence (FIX-01 to FIX-03)
 
 ## Phase Details
 
@@ -112,6 +113,20 @@ Plans:
 Plans:
 - [x] 07-01: Add notification bell component to Header context, and audit/reduce spacing gaps on all views for mobile.
 
+### Phase 8: Additional Profile & Supplier Fixes
+**Goal**: Resolve critical UX and persistence bugs for profile photo, display name, and suppliers.
+**Depends on**: Phase 7
+**Requirements**: FIX-01, FIX-02, FIX-03
+**Success Criteria**:
+  1. Supplier edit form pre-fills correctly by fetching by ID, and stopPropagation works.
+  2. Supplier delete unlinks associated expenditures instead of deleting them, using custom ConfirmModal.
+  3. Profile photo uploads to backend as base64 and persists across sessions/devices.
+  4. Display name changes persist in the database and show after logout/login.
+**Plans**: 1 plan
+
+Plans:
+- [/] 08-01: Implement backend DB fields, routes, and frontend handlers for suppliers, profile photos, and display name.
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -123,6 +138,7 @@ Plans:
 | 5. Dashboard Upgrade | 1/1 | Completed | - |
 | 6. Settings, Profile & Manual Cleanup | 1/1 | Completed | 2026-06-04 |
 | 7. New Features & Global Polish | 1/1 | Completed | 2026-06-04 |
+| 8. Additional Profile & Supplier Fixes | 0/1 | In Progress | 2026-06-08 |
 
 ## Bug Tracker (Phase 1)
 

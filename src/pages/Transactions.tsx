@@ -21,6 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { InitialsBadge } from "@/components/ui/InitialsBadge";
+import Tippy from "@tippyjs/react";
+import "tippy.js/dist/tippy.css";
+import "tippy.js/animations/scale.css";
+import { useFuzzySearch } from "@/hooks/useFuzzySearch";
 import {
   Select,
   SelectContent,
@@ -130,13 +134,23 @@ const normaliseTransaction = (raw: Record<string, unknown>): Transaction => ({
   paymentMethod: (raw.paymentMethod ?? raw.payment_method ?? 'cash') as Transaction['paymentMethod'],
   freeGlass:     Boolean(raw.freeGlassInstallation ?? raw.free_glass_installation ?? raw.freeGlass ?? false),
   status:        String(raw.status ?? 'pending'),
-  partsCost:     Array.isArray(raw.partsCost) ? raw.partsCost.map((p: any) => ({
-    item: p.item || p.name || "",
-    cost: Number(p.cost) || 0,
-    price: Number(p.price || p.soldPrice) || 0,
-    quantity: Number(p.quantity) || 1,
-    supplier: p.supplier || ""
-  })) : [],
+  partsCost:     (() => {
+    let parts = raw.partsCost;
+    if (typeof parts === 'string') {
+      try {
+        parts = JSON.parse(parts);
+      } catch (e) {
+        parts = [];
+      }
+    }
+    return Array.isArray(parts) ? parts.map((p: any) => ({
+      item: p.item || p.name || "",
+      cost: Number(p.cost) || 0,
+      price: Number(p.price || p.soldPrice) || 0,
+      quantity: Number(p.quantity) || 1,
+      supplier: p.supplier || ""
+    })) : [];
+  })(),
   remarks:       (raw.remarks ?? '') as string,
   technician:    (raw.technician ?? '') as string,
   actualCost:    Number(raw.actualCost ?? raw.internalCost ?? raw.ourCost ?? 0),
@@ -149,6 +163,12 @@ const normaliseTransaction = (raw: Record<string, unknown>): Transaction => ({
 });
 
 // ─── Status Badge helper ──────────────────────────────────────────────────────
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  completed: 'Payment received and repair job is done.',
+  pending:   'Awaiting collection or payment from the customer.',
+  cancelled: 'This repair was cancelled.',
+};
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     completed: 'bg-brand-green/15 text-brand-green border-brand-green/20',
@@ -156,10 +176,18 @@ function StatusBadge({ status }: { status: string }) {
     cancelled: 'bg-red-500/15    text-red-400    border-red-500/20',
   };
   const cls = map[status?.toLowerCase()] ?? 'bg-zinc-500/15 text-muted-foreground border-zinc-500/20';
+  const description = STATUS_DESCRIPTIONS[status?.toLowerCase()] ?? status;
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${cls}`}>
-      {status || 'Unknown'}
-    </span>
+    <Tippy
+      content={<span className="text-xs">{description}</span>}
+      animation="scale"
+      placement="top"
+      delay={[250, 0]}
+    >
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-default ${cls}`}>
+        {status || 'Unknown'}
+      </span>
+    </Tippy>
   );
 }
 
@@ -368,13 +396,19 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
     [t],
   );
 
-  const filteredData = useMemo(() => {
-    return data.filter((transaction) => {
-      const matchesPayment =
-        paymentFilter === "all" || transaction.paymentMethod === paymentFilter;
-      return matchesPayment;
-    });
-  }, [data, paymentFilter]);
+  // ── Step 1: payment method filter ──────────────────────────────────────────
+  const paymentFiltered = useMemo(
+    () => data.filter((t) => paymentFilter === "all" || t.paymentMethod === paymentFilter),
+    [data, paymentFilter]
+  );
+
+  // ── Step 2: Fuse.js fuzzy text search over payment-filtered data ────────────
+  const filteredData = useFuzzySearch(
+    paymentFiltered,
+    ['customer', 'mobile', 'deviceModel', 'repairType', 'remarks'],
+    globalFilter,
+    0.35
+  );
 
   const table = useReactTable({
     data: filteredData,
@@ -383,11 +417,8 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    state: {
-      globalFilter,
-    },
-    onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: "includesString",
+    // globalFilter is now handled by Fuse.js above — no TanStack filter needed
+    state: {},
   });
 
   // All transaction data is loaded from backend and updated via socket.io

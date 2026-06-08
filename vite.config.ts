@@ -76,10 +76,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: ['react-joyride'],
+  },
   build: {
     sourcemap: true,
     rollupOptions: {
       output: {
+        interop: 'auto',
         manualChunks: {
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
@@ -96,6 +100,9 @@ export default defineConfig({
           utils: ['clsx', 'class-variance-authority', 'tailwind-merge'],
         },
       },
+    },
+    commonjsOptions: {
+      include: [/react-joyride/, /node_modules/],
     },
     assetsInlineLimit: 0,
   },

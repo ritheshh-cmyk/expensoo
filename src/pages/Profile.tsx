@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { PasswordStrengthMeter, validatePassword } from "@/components/ui/PasswordStrengthMeter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api";
+import { AvatarDropzone } from "@/components/ui/AvatarDropzone";
 
-const AVATAR_KEY = "profile_avatar";
+
 
 export default function Profile() {
   const { user, logout, updateUser } = useAuth();
@@ -32,11 +33,13 @@ export default function Profile() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load saved avatar from localStorage
-  const [avatarSrc, setAvatarSrc] = useState<string | null>(() =>
-    localStorage.getItem(AVATAR_KEY)
-  );
+  // Load saved avatar from AuthContext
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(() => user?.avatar || null);
   const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    setAvatarSrc(user?.avatar || null);
+  }, [user?.avatar]);
   
   // Forms state
   const [newPassword, setNewPassword] = useState('');
@@ -76,11 +79,24 @@ export default function Profile() {
         canvas.height = height;
         canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
         const resized = canvas.toDataURL("image/jpeg", 0.85);
-        localStorage.setItem(AVATAR_KEY, resized);
-        setAvatarSrc(resized);
-        setUploading(false);
-        window.dispatchEvent(new CustomEvent("avatar-updated"));
-        toast({ title: "Photo updated", description: "Your profile photo has been saved." });
+
+        // Upload to database
+        apiClient.updateProfile({ avatar: resized })
+          .then((res) => {
+            if (res.success) {
+              updateUser({ avatar: resized });
+              setAvatarSrc(resized);
+              toast({ title: "Photo updated", description: "Your profile photo has been saved." });
+            } else {
+              throw new Error(res.message || "Failed to save photo");
+            }
+          })
+          .catch((err) => {
+            toast({ title: "Upload Failed", description: err.message || String(err), variant: "destructive" });
+          })
+          .finally(() => {
+            setUploading(false);
+          });
       };
       img.onerror = () => {
         setUploading(false);
@@ -101,11 +117,19 @@ export default function Profile() {
     e.target.value = "";
   };
 
-  const removePhoto = () => {
-    localStorage.removeItem(AVATAR_KEY);
-    setAvatarSrc(null);
-    window.dispatchEvent(new CustomEvent("avatar-updated"));
-    toast({ title: "Photo removed", description: "Your profile photo has been cleared." });
+  const removePhoto = async () => {
+    setUploading(true);
+    try {
+      const res = await apiClient.updateProfile({ avatar: null });
+      if (!res.success) throw new Error(res.message || "Failed to remove photo");
+      updateUser({ avatar: null });
+      setAvatarSrc(null);
+      toast({ title: "Photo removed", description: "Your profile photo has been cleared." });
+    } catch (err: any) {
+      toast({ title: "Removal Failed", description: err.message || String(err), variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   // ── Form Handlers ────────────────────────────────────────────────────────
@@ -207,15 +231,11 @@ export default function Profile() {
                     <User className="h-10 w-10 text-muted-foreground/50" />
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 z-10 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 active:scale-95 transition-all ring-2 ring-background"
-                  aria-label="Upload photo"
-                >
-                  <Camera className="h-3.5 w-3.5 text-primary-foreground" />
-                </button>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+              </div>
+
+              {/* Drag-and-drop avatar upload zone */}
+              <div className="w-full mt-2 mb-2">
+                <AvatarDropzone onFile={processFile} uploading={uploading} />
               </div>
               
               <h2 className="text-lg font-bold text-foreground font-heading">{user?.name || user?.username || '—'}</h2>

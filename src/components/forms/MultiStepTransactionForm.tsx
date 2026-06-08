@@ -32,6 +32,7 @@ import { PaymentStatusChecker } from "@/components/PaymentStatusChecker";
 import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
+import { SuccessConfetti } from "@/components/ui/SuccessConfetti";
 
 import {
   User,
@@ -126,8 +127,16 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
   const [currentStep, setCurrentStep] = useState(1);
   const [calculatedProfit, setCalculatedProfit] = useState(0);
   const [parts, setParts] = useState<Part[]>(() => {
-    if (initialData?.partsCost && Array.isArray(initialData.partsCost)) {
-      return initialData.partsCost.map((p: any) => ({
+    let rawParts = initialData?.partsCost;
+    if (typeof rawParts === 'string') {
+      try {
+        rawParts = JSON.parse(rawParts);
+      } catch (e) {
+        rawParts = [];
+      }
+    }
+    if (rawParts && Array.isArray(rawParts)) {
+      return rawParts.map((p: any) => ({
         name: p.item || p.name || "",
         cost: Number(p.cost) || 0,
         quantity: Number(p.quantity) || 1,
@@ -137,12 +146,29 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
     return [];
   });
   const [requiresParts, setRequiresParts] = useState(() => {
-    return initialData?.requiresParts || (initialData?.partsCost && initialData.partsCost.length > 0) || false;
+    let rawParts = initialData?.partsCost;
+    if (typeof rawParts === 'string') {
+      try {
+        rawParts = JSON.parse(rawParts);
+      } catch (e) {
+        rawParts = [];
+      }
+    }
+    const hasPartsList = Array.isArray(rawParts) && rawParts.length > 0;
+    return initialData?.requiresParts || hasPartsList || false;
   });
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<string>(() => {
-    if (initialData?.partsCost && Array.isArray(initialData.partsCost) && initialData.partsCost[0]) {
-      return initialData.partsCost[0].supplier || "";
+    let rawParts = initialData?.partsCost;
+    if (typeof rawParts === 'string') {
+      try {
+        rawParts = JSON.parse(rawParts);
+      } catch (e) {
+        rawParts = [];
+      }
+    }
+    if (Array.isArray(rawParts) && rawParts[0]) {
+      return String(rawParts[0].supplier || "");
     }
     return "";
   });
@@ -248,6 +274,9 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
     }
     return false;
   });
+
+  // Confetti — fires on every successful transaction save
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // BUG-10: skip amountGiven auto-fill in Internal Repair mode or when Unpaid
   useEffect(() => {
@@ -466,9 +495,52 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
 
   const onFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
+    
+    // Pre-submit conditional validation before any async operations
+    if (isSales) {
+      if (!data.itemName?.trim()) {
+        toast({ title: "Validation Error", description: "Item Name is required for sales.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+      if (data.ourCost === undefined || isNaN(data.ourCost)) {
+        toast({ title: "Validation Error", description: "Cost Price is required for sales.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+      if (data.soldPrice === undefined || isNaN(data.soldPrice)) {
+        toast({ title: "Validation Error", description: "Selling Price is required for sales.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+    } else if (isInternalRepair) {
+      if (!internalRepairPart?.trim()) {
+        toast({ title: "Validation Error", description: "Repair / Work Done details are required for internal repair.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+      if (internalRepairCost === undefined || isNaN(internalRepairCost)) {
+        toast({ title: "Validation Error", description: "Cost Price is required for internal repair.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+    } else {
+      // Repair Mode
+      if (data.repairType === "others" && !data.customRepairType?.trim()) {
+        toast({ title: "Validation Error", description: "Please specify the repair type.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+      if (useExternalPurchase && !selectedSupplier) {
+        toast({ title: "Validation Error", description: "Please select a supplier for external purchase.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       // Create suppliers first if needed
-      const createdSuppliers = [];
+      let newSupplierId = selectedSupplier;
       
       if (data.supplier === "Other" && data.newSupplierName?.trim()) {
         const newSupplier = {
@@ -480,14 +552,17 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
         try {
           const supplierResponse = await apiClient.createSupplier(newSupplier);
           if (supplierResponse.success) {
-            createdSuppliers.push(supplierResponse.supplier);
+            const newSup = supplierResponse.data?.supplier ?? supplierResponse.data;
+            if (newSup && newSup.id) {
+              newSupplierId = String(newSup.id);
+            }
             toast({
               title: "Supplier Added",
               description: `${data.newSupplierName} has been added to your suppliers list.`,
             });
           }
-        } catch {
-          // Supplier creation failed — transaction will still proceed
+        } catch (e) {
+          console.error("Supplier creation failed in submit:", e);
         }
       }
 
@@ -529,10 +604,10 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
           ? internalRepairCost
           : Number(data.repairCost) || 0,
         internalCost: isSales
-          ? (Number((data as any).ourCost) || 0) + parts.reduce((t, p) => t + (p.cost * p.quantity), 0)
+          ? (Number((data as any).ourCost) || 0) + parts.reduce((t, p) => t + ((Number(p.cost) || 0) * (Number(p.quantity) || 1)), 0)
           : isInternalRepair
           ? internalRepairCost
-          : parts.reduce((t, p) => t + (p.cost * p.quantity), 0),
+          : parts.reduce((t, p) => t + ((Number(p.cost) || 0) * (Number(p.quantity) || 1)), 0),
         profit: isInternalRepair
           ? (Number(data.repairCost) || 0) - internalRepairCost
           : calculatedProfit,
@@ -551,7 +626,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
         partsCost: isInternalRepair
           ? (internalRepairPart ? [{ supplier: "", cost: internalRepairCost, price: 0, quantity: 1, item: internalRepairPart }] : [])
           : parts.length > 0 ? parts.map(part => ({
-              supplier: part.supplier || "",
+              supplier: part.supplier === "Other" ? newSupplierId : (part.supplier || newSupplierId || ""),
               cost: part.cost,
               price: part.price || 0,
               quantity: part.quantity,
@@ -582,14 +657,15 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
       }
 
       if (response.success) {
-        const createdId = response.transaction?.id || response.data?.transaction?.id || `TXN${Date.now()}`;
-        setTransactionCreated(createdId);
+        const createdId = response.transaction?.id || response.data?.transaction?.id || response.data?.id || `TXN${Date.now()}`;
+        setTransactionCreated(String(createdId));
         setCreatedTransactionData(response.transaction ?? response.data?.transaction ?? response.data);
 
         // Update supplier expenditures if parts were purchased
         if (parts.length > 0) {
           for (const part of parts) {
-            if (part.supplier) {
+            const partSupplierId = part.supplier === "Other" ? newSupplierId : part.supplier;
+            if (partSupplierId && partSupplierId !== "Other") {
               try {
                 await apiClient.request(`/api/expenditures`, {
                   method: 'POST',
@@ -598,11 +674,11 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                     amount: part.cost * part.quantity,
                     category: "Supplies",
                     paymentMethod: data.paymentMethod || "cash",
-                    recipient: part.supplier
+                    recipient: partSupplierId
                   })
                 });
-              } catch {
-                // Expenditure update failed — non-fatal, transaction is already saved
+              } catch (e) {
+                console.error("Failed to create expenditure for part:", e);
               }
             }
           }
@@ -610,15 +686,18 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
 
         toast({
           title: "Success!",
-          description: "Transaction created successfully with all supplier information.",
+          description: initialData ? "Transaction updated successfully." : "Transaction created successfully.",
         });
+        // Fire confetti on every successful save
+        setShowConfetti(true);
       } else {
         throw new Error(response.error || (initialData ? "Failed to update transaction" : "Failed to create transaction"));
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to create transaction. Please try again.';
+      console.error("Transaction submit failed with error:", error);
+      const message = error instanceof Error ? error.message : 'Failed to save transaction. Please try again.';
       toast({
-        title: "Error",
+        title: "Submit Failed",
         description: message,
         variant: "destructive",
       });
@@ -677,6 +756,12 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* ── Confetti on successful transaction save ── */}
+      <SuccessConfetti
+        trigger={showConfetti}
+        onDone={() => setShowConfetti(false)}
+        pieces={200}
+      />
 
       {/* ── Draft resume banner ─────────────────────────────────────────── */}
       {hasDraft && !transactionCreated && (
@@ -1224,8 +1309,8 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                           </SelectTrigger>
                           <SelectContent>
                             {suppliers.map((supplier) => (
-                              <SelectItem key={supplier.id} value={supplier.id}>
-                                {supplier.name} - {supplier.contact_number}
+                              <SelectItem key={supplier.id} value={String(supplier.id)}>
+                                {supplier.name} - {supplier.contactNumber || supplier.contact_number || ""}
                               </SelectItem>
                             ))}
                             <SelectItem value="Other">+ Add New Supplier</SelectItem>
@@ -1439,8 +1524,8 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                 </SelectTrigger>
                                 <SelectContent>
                                   {suppliers.map((supplier) => (
-                                    <SelectItem key={supplier.id} value={supplier.id}>
-                                      {supplier.name} - {supplier.contact_number}
+                                    <SelectItem key={supplier.id} value={String(supplier.id)}>
+                                      {supplier.name} - {supplier.contactNumber || supplier.contact_number || ""}
                                     </SelectItem>
                                   ))}
                                   <SelectItem value="Other">+ Add New Supplier</SelectItem>
