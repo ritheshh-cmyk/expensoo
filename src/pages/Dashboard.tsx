@@ -724,46 +724,72 @@ export default function Dashboard() {
                   style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)' }}
                   onClick={() => setExpandedCard(null)}
                 />
-                {/* Glass panel */}
+                {/* Glass panel — centered via CSS margin trick, animation only touches scale+opacity */}
                 <motion.div
                   id="glassmorphism-overlay-panel"
-                  initial={{ opacity: 0, scale: 0.94, y: 16 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.94, y: 16 }}
-                  transition={{ type: 'spring', stiffness: 340, damping: 30, mass: 0.8 }}
+                  initial={{ opacity: 0, scale: 0.93 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.93 }}
+                  transition={{ type: 'spring', stiffness: 360, damping: 32, mass: 0.8 }}
                   style={{
                     position: 'fixed',
                     zIndex: 9999,
+                    /* Centre via left+marginLeft — framer never overrides this */
                     left: '50%',
                     top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: 'min(92vw, 400px)',
-                    background: 'rgba(12, 12, 20, 0.88)',
-                    backdropFilter: 'blur(32px) saturate(180%)',
-                    WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+                    marginLeft: 'calc(min(92vw, 520px) / -2)',
+                    marginTop: 'clamp(-320px, -42.5dvh, -200px)',
+                    width: 'min(92vw, 520px)',
+                    /* Panel total height is clamped — header + body together never exceed viewport */
+                    maxHeight: 'min(85dvh, 640px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: 'rgba(12, 12, 20, 0.92)',
+                    backdropFilter: 'blur(40px) saturate(200%)',
+                    WebkitBackdropFilter: 'blur(40px) saturate(200%)',
                     border: '1px solid rgba(255,255,255,0.12)',
                     borderRadius: '24px',
-                    boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
+                    boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)',
+                    overflow: 'hidden',   /* clips accent glow to border-radius */
                   }}
                 >
                   {/* Accent glow line at top */}
-                  <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${meta.accentBg} to-transparent rounded-t-[24px]`} />
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-5 pt-5 pb-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="rounded-xl p-2 bg-white/5 border border-white/10">{meta.icon}</div>
-                      <span className={`text-sm font-semibold ${meta.accent}`}>{meta.label}</span>
+                  <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${meta.accentBg} to-transparent`} />
+
+                  {/* ── Sticky header — always visible regardless of scroll ── */}
+                  <div
+                    style={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1,
+                      flexShrink: 0,
+                      backdropFilter: 'blur(40px)',
+                      WebkitBackdropFilter: 'blur(40px)',
+                      background: 'rgba(12, 12, 20, 0.6)',
+                    }}
+                  >
+                    <div className="flex items-center justify-between px-5 pt-5 pb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="rounded-xl p-2 bg-white/5 border border-white/10">{meta.icon}</div>
+                        <span className={`text-sm font-semibold ${meta.accent}`}>{meta.label}</span>
+                      </div>
+                      <button
+                        onClick={() => setExpandedCard(null)}
+                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '50%', width: 32, height: 32, minWidth: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', flexShrink: 0 }}
+                        aria-label="Close"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setExpandedCard(null)}
-                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                    </button>
+                    <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0 20px 0' }} />
                   </div>
-                  <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
-                  {/* Scrollable body */}
-                  <div className="px-5 py-4 space-y-2" style={{ maxHeight: '60vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+
+                  {/* ── Scrollable body — grows to fill remaining panel height ── */}
+                  <div
+                    className="px-5 py-4 space-y-2"
+                    style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
 
                     {/* TODAY */}
                     {expandedCard === 'today' && (
