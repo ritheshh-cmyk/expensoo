@@ -667,6 +667,40 @@ class ApiClient {
       body: JSON.stringify(payload),
     });
   }
+
+  // ─── Expenditures ─────────────────────────────────────────────────────────
+
+  async getExpenditures(): Promise<ApiResponse> {
+    this.debug('💸 Fetching expenditures...');
+    const response = await this.request('/api/expenditures');
+    if (response.success) {
+      const data = response.data?.expenditures ?? response.data?.data ?? response.data;
+      return { success: true, data: Array.isArray(data) ? data : [] };
+    }
+    this.error('❌ Expenditures fetch failed:', response.error);
+    return { success: false, data: [], error: response.error };
+  }
+
+  async createExpenditure(data: any): Promise<ApiResponse> {
+    this.debug('💸 Creating expenditure:', data);
+    return this.request('/api/expenditures', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateExpenditure(id: string, data: any): Promise<ApiResponse> {
+    this.debug('💸 Updating expenditure:', id, data);
+    return this.request(`/api/expenditures/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteExpenditure(id: string): Promise<ApiResponse> {
+    this.debug('💸 Deleting expenditure:', id);
+    return this.request(`/api/expenditures/${id}`, { method: 'DELETE' });
+  }
 }
 
 export const apiClient = new ApiClient();
