@@ -18,7 +18,8 @@ import {
   Plus,
   ArrowUpRight,
   Wallet,
-  Activity
+  Activity,
+  CalendarDays,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -43,6 +44,104 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirm } from "@/components/ui/ConfirmModal";
 import { SkeletonCard, SkeletonRow } from "@/components/ui/skeleton";
+
+// ─── Filter period helpers ────────────────────────────────────────────────────
+type FilterPeriod = 'today' | 'week' | 'month' | 'year' | 'all';
+
+const FILTER_OPTIONS: { value: FilterPeriod; label: string }[] = [
+  { value: 'today', label: 'Today' },
+  { value: 'week',  label: 'This Week' },
+  { value: 'month', label: 'This Month' },
+  { value: 'year',  label: 'This Year' },
+  { value: 'all',   label: 'All Time' },
+];
+
+function getFilterStart(period: FilterPeriod): Date | null {
+  const now = new Date();
+  switch (period) {
+    case 'today': {
+      const d = new Date(now); d.setHours(0, 0, 0, 0); return d;
+    }
+    case 'week': {
+      const d = new Date(now); d.setDate(now.getDate() - now.getDay()); d.setHours(0, 0, 0, 0); return d;
+    }
+    case 'month': {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1); return d;
+    }
+    case 'year': {
+      const d = new Date(now.getFullYear(), 0, 1); return d;
+    }
+    default: return null;
+  }
+}
+
+function filterTxByPeriod(txs: any[], period: FilterPeriod): any[] {
+  const start = getFilterStart(period);
+  if (!start) return txs;
+  return txs.filter((tx: any) => {
+    const dStr = tx.createdAt || tx.created_at || tx.date;
+    if (!dStr) return false;
+    const d = new Date(dStr);
+    return !isNaN(d.getTime()) && d >= start;
+  });
+}
+
+function buildChartData(txs: any[], period: FilterPeriod) {
+  const now = new Date();
+  let days: { dateStr: string; dateObj: Date; total: number }[] = [];
+
+  if (period === 'today') {
+    // Hourly buckets for today
+    days = Array.from({ length: 24 }).map((_, h) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h);
+      return { dateStr: `${h}:00`, dateObj: d, total: 0 };
+    });
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      const h = d.getHours();
+      days[h].total += Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
+    });
+  } else if (period === 'week') {
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    days = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(startOfWeek); d.setDate(startOfWeek.getDate() + i);
+      return { dateStr: names[d.getDay()], dateObj: d, total: 0 };
+    });
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      const idx = Math.floor((d.getTime() - startOfWeek.getTime()) / 86400000);
+      if (idx >= 0 && idx < 7) days[idx].total += Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
+    });
+  } else if (period === 'year') {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    days = months.map((m, i) => ({ dateStr: m, dateObj: new Date(now.getFullYear(), i, 1), total: 0 }));
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime()) || d.getFullYear() !== now.getFullYear()) return;
+      days[d.getMonth()].total += Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
+    });
+  } else {
+    // month / all: last 30 days sliding window
+    const windowDays = period === 'all' ? 30 : 30;
+    days = Array.from({ length: windowDays }).map((_, i) => {
+      const d = new Date(now); d.setDate(now.getDate() - (windowDays - 1 - i));
+      return { dateStr: d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }), dateObj: d, total: 0 };
+    });
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      const dateStr = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+      const match = days.find(day => day.dateStr === dateStr);
+      if (match) match.total += Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
+    });
+  }
+  return days.map(d => ({ name: d.dateStr, total: d.total }));
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -84,6 +183,7 @@ export default function Dashboard() {
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [backendWaking, setBackendWaking] = useState(false);
   const wakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('month');
 
   const [showProfits, setShowProfits] = useState(
     localStorage.getItem("showProfits") === "true",
@@ -180,30 +280,8 @@ export default function Dashboard() {
       setRecentTransactions(sortedTxns.slice(0, 5));
       setAllTransactions(raw);
 
-      // Build 7-day chart data
-      const last7Days = Array.from({ length: 7 }).map((_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (6 - i));
-        return {
-          dateStr: d.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
-          dateObj: d,
-          total: 0
-        };
-      });
-
-      sortedTxns.forEach(tx => {
-        const d = new Date(tx.createdAt || tx.created_at || tx.date);
-        if (!isNaN(d.getTime())) {
-          const dateStr = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
-          const dayMatch = last7Days.find(day => day.dateStr === dateStr);
-          if (dayMatch) {
-            const cost = Number(getField(tx, "repairCost", "repair_cost", "amountGiven", "amount_given") || 0);
-            dayMatch.total += cost;
-          }
-        }
-      });
-
-      setChartData(last7Days.map(d => ({ name: d.dateStr, total: d.total })));
+      // Chart data is built reactively from filterPeriod — set raw txns only
+      setChartData(buildChartData(sortedTxns, filterPeriod));
 
       if (showToast) {
         toast({ title: "Refreshed", description: "Dashboard data updated." });
@@ -258,10 +336,48 @@ export default function Dashboard() {
   }, [user, fetchDashboardData]);
 
   const isOwnerOrAdmin = hasAccess(["admin", "owner"]);
-  
-  // BUG 10 FIX: removed bogus pendingTransactions × avgTransactionValue formula.
+
+  // ── Filtered transactions for the selected period ──────────────────────────
+  const filteredTransactions = useMemo(
+    () => filterTxByPeriod(allTransactions, filterPeriod),
+    [allTransactions, filterPeriod]
+  );
+
+  // Recompute chart whenever filter or raw data changes
+  const filteredChartData = useMemo(
+    () => buildChartData(allTransactions, filterPeriod),
+    [allTransactions, filterPeriod]
+  );
+
+  // Filtered metric values
+  const filteredRevenue = useMemo(() =>
+    filteredTransactions.reduce((s, tx) => s + Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0), 0),
+    [filteredTransactions]
+  );
+  const filteredCount = filteredTransactions.length;
+  const filteredCompleted = useMemo(() =>
+    filteredTransactions.filter(tx => (tx.status || '').toLowerCase() === 'completed').length,
+    [filteredTransactions]
+  );
+  const filteredPending = useMemo(() =>
+    filteredTransactions.filter(tx => (tx.status || '').toLowerCase() === 'pending').length,
+    [filteredTransactions]
+  );
+  const filteredUnpaid = useMemo(() =>
+    filteredTransactions.filter(tx => (tx.status || '').toLowerCase() === 'unpaid'),
+    [filteredTransactions]
+  );
+  const filteredUnpaidOutstanding = useMemo(() =>
+    filteredUnpaid.reduce((s, tx) => {
+      const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+      const given = Number(tx.amountGiven ?? tx.amount_given ?? 0);
+      return s + Math.max(0, cost - given);
+    }, 0),
+    [filteredUnpaid]
+  );
+
   // The card now shows plain pending count which is accurate and meaningful.
-  const pendingCount = dashboardData.pendingTransactions;
+  const pendingCount = filteredPending;
 
   // Custom Tooltip for the Recharts graph
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -527,6 +643,28 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── Date Filter Pills ──────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+        {FILTER_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => setFilterPeriod(opt.value)}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer",
+              filterPeriod === opt.value
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-muted-foreground">
+          {filteredCount} transaction{filteredCount !== 1 ? 's' : ''}
+        </span>
+      </div>
+
       {/* ── Premium Metric Cards ───────────────────────────────────────── */}
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
@@ -536,7 +674,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-        {/* Today Revenue */}
+        {/* Revenue for period */}
         <Card 
           id="dashboard-today-card" 
           onClick={() => toggleCard('today')}
@@ -548,7 +686,7 @@ export default function Dashboard() {
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-green/10 blur-2xl group-hover:bg-brand-green/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("today-revenue")}
+              Revenue
             </CardTitle>
             <div className="rounded-xl bg-brand-green/10 p-2 shrink-0 group-hover:scale-110 transition-transform">
               <DollarSign className="h-4 w-4 text-brand-green" />
@@ -556,25 +694,17 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
             <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
-              ₹<CountUp to={dashboardData.todayRevenue} separator="," duration={0.7} />
+              ₹<CountUp to={filteredRevenue} separator="," duration={0.7} />
             </div>
-            {isOwnerOrAdmin && showProfits && (
-              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 animate-in slide-in-from-bottom-1 fade-in">
-                <span className="inline-flex items-center text-brand-green font-medium bg-brand-green/10 px-1.5 py-0.5 rounded-sm gap-0.5">
-                  Profit: ₹<CountUp to={dashboardData.todayProfit} separator="," duration={0.7} />
-                </span>
-              </p>
-            )}
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               <ArrowUpRight className="h-3 w-3 text-brand-green" />
-              <span className="text-brand-green font-medium">+₹{formatCurrency(dashboardData.todayRevenue)}</span> today
+              <span className="text-brand-green font-medium">{filteredCount} txns</span>
+              {' '}· {FILTER_OPTIONS.find(o => o.value === filterPeriod)?.label}
             </p>
-
-
           </CardContent>
         </Card>
 
-        {/* Week Overview */}
+        {/* Transactions count for period */}
         <Card 
           id="dashboard-week-card" 
           onClick={() => toggleCard('week')}
@@ -586,7 +716,7 @@ export default function Dashboard() {
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-blue/10 blur-2xl group-hover:bg-brand-blue/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              This Week
+              Transactions
             </CardTitle>
             <div className="rounded-xl bg-brand-blue/10 p-2 shrink-0 group-hover:scale-110 transition-transform">
               <TrendingUp className="h-4 w-4 text-brand-blue" />
@@ -594,20 +724,11 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
             <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
-              ₹<CountUp to={dashboardData.weekRevenue} separator="," duration={0.7} />
+              <CountUp to={filteredCount} duration={0.7} />
             </div>
-            {isOwnerOrAdmin && showProfits && (
-              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 animate-in slide-in-from-bottom-1 fade-in">
-                <span className="inline-flex items-center text-brand-blue font-medium bg-brand-blue/10 px-1.5 py-0.5 rounded-sm gap-0.5">
-                  Profit: ₹<CountUp to={dashboardData.weekProfit} separator="," duration={0.7} />
-                </span>
-              </p>
-            )}
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-              <span className="text-brand-blue font-medium">{dashboardData.completedTransactions}</span> completed this week
+              <span className="text-brand-blue font-medium">{filteredCompleted}</span> completed
             </p>
-
-
           </CardContent>
         </Card>
 
@@ -633,18 +754,9 @@ export default function Dashboard() {
             <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
               ₹<CountUp to={dashboardData.totalRevenue} separator="," duration={0.7} />
             </div>
-            {isOwnerOrAdmin && showProfits && (
-              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 animate-in slide-in-from-bottom-1 fade-in">
-                <span className="inline-flex items-center text-primary font-medium bg-primary/10 px-1.5 py-0.5 rounded-sm gap-0.5">
-                  Profit: ₹<CountUp to={dashboardData.totalProfit} separator="," duration={0.7} />
-                </span>
-              </p>
-            )}
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               Over <span className="font-medium text-foreground">{dashboardData.totalTransactions}</span> lifetime transactions
             </p>
-
-
           </CardContent>
         </Card>
 
@@ -671,14 +783,12 @@ export default function Dashboard() {
               <CountUp to={pendingCount} duration={0.6} />
             </div>
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-              <span className="font-medium text-red-500">{pendingCount}</span> repairs awaiting completion
+              <span className="font-medium text-red-500">{pendingCount}</span> repairs awaiting
             </p>
-
-
           </CardContent>
         </Card>
 
-        {/* Unpaid Transactions */}
+        {/* Unpaid */}
         <Card 
           id="dashboard-unpaid-card" 
           onClick={() => toggleCard('unpaid')}
@@ -690,7 +800,7 @@ export default function Dashboard() {
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-orange/10 blur-2xl group-hover:bg-brand-orange/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Unpaid Transactions
+              Unpaid
             </CardTitle>
             <div className="rounded-xl bg-brand-orange/10 p-2 shrink-0 group-hover:scale-110 transition-transform">
               <AlertCircle className="h-4 w-4 text-brand-orange" />
@@ -698,14 +808,12 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
             <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight">
-              <CountUp to={unpaidCount} duration={0.6} />
+              <CountUp to={filteredUnpaid.length} duration={0.6} />
             </div>
             <p className="text-xs text-muted-foreground mt-2 flex flex-wrap items-center gap-1">
-              <span className="font-semibold text-brand-orange-light">{unpaidCount} unpaid</span>
-              <span>· ₹{formatCurrency(unpaidOutstanding)} outstanding</span>
+              <span className="font-semibold text-brand-orange-light">{filteredUnpaid.length} unpaid</span>
+              <span>· ₹{formatCurrency(filteredUnpaidOutstanding)} due</span>
             </p>
-
-
           </CardContent>
         </Card>
       </div>
@@ -958,7 +1066,7 @@ export default function Dashboard() {
               <div className="w-full">
                 <AspectRatio ratio={16 / 9} className="w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <AreaChart data={filteredChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
