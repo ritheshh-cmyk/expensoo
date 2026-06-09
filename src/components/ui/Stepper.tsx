@@ -142,12 +142,18 @@ export default function Stepper({
                 <button
                   onClick={handleBack}
                   className={`back-button ${currentStep === 1 ? 'inactive' : ''}`}
+                  id={backButtonProps.id || "back-btn"}
                   {...backButtonProps}
                 >
                   {backButtonText}
                 </button>
               )}
-              <button onClick={isLastStep ? handleComplete : handleNext} className="next-button" {...nextButtonProps}>
+              <button
+                onClick={isLastStep ? handleComplete : handleNext}
+                className="next-button"
+                id={nextButtonProps.id || (isLastStep ? "submit-btn" : "next-btn")}
+                {...nextButtonProps}
+              >
                 {isLastStep ? completeButtonText : nextButtonText}
               </button>
             </div>

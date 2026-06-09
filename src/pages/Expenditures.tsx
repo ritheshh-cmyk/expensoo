@@ -54,10 +54,12 @@ import {
   Smartphone,
   Building,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiClient } from "@/lib/api";
 import { io } from "socket.io-client";
 import { useToast } from "@/hooks/use-toast";
+import { FieldInputGroup } from "@/components/ui/field-input-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirm } from "@/components/ui/ConfirmModal";
@@ -74,6 +76,10 @@ import {
   Pie,
   Cell,
 } from "recharts";
+
+import { useSearchParams } from "react-router-dom";
+import { SkeletonRow, SkeletonTableRow } from "@/components/ui/skeleton";
+import { Pagination } from "@/components/ui/pagination";
 
 export default function Expenditures() {
   const { t } = useLanguage();
@@ -98,6 +104,16 @@ export default function Expenditures() {
   const [loading, setLoading] = useState(true);
   // BUG 5 FIX: userId was declared as useState but setUserId was never called,
   // so it was always null. Derive it directly from the auth context instead.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageParam = parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = isNaN(pageParam) ? 1 : pageParam;
+
+  const setCurrentPage = (page: number) => {
+    setSearchParams(prev => {
+      prev.set("page", String(page));
+      return prev;
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -185,7 +201,8 @@ export default function Expenditures() {
   };
 
   // Filter expenditures
-  const filteredExpenditures = expenditures.filter((exp) => {
+  const filteredExpenditures = (expenditures || []).filter((exp) => {
+    if (!exp) return false;
     const desc = (exp.description ?? exp.category ?? '').toLowerCase();
     const sup  = (exp.recipient ?? exp.supplier ?? '').toLowerCase();
     const note = (exp.items ?? exp.notes ?? exp.remarks ?? '').toLowerCase();
@@ -204,30 +221,41 @@ export default function Expenditures() {
     return matchesSearch && matchesCategory && matchesPayment;
   });
 
+  const itemsPerPage = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredExpenditures.length / itemsPerPage));
+  
+  // Slice data for the current page
+  const paginatedExpenditures = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredExpenditures.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredExpenditures, currentPage, itemsPerPage]);
+
   // Calculate totals
-  const totalExpenses = expenditures.reduce((sum, exp) => sum + Number(exp.amount ?? 0), 0);
+  const totalExpenses = (expenditures || []).reduce((sum, exp) => sum + Number(exp?.amount ?? 0), 0);
   // Dynamic current-month filter (not hardcoded 2024-01)
   const now = new Date();
   const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const monthlyExpenses = expenditures
+  const monthlyExpenses = (expenditures || [])
     .filter((exp) => {
+      if (!exp) return false;
       const d = exp.createdAt ?? exp.date ?? '';
       return d.toString().startsWith(currentYearMonth);
     })
-    .reduce((sum, exp) => sum + Number(exp.amount ?? 0), 0);
+    .reduce((sum, exp) => sum + Number(exp?.amount ?? 0), 0);
 
-  const monthlyRevenue = transactions
+  const monthlyRevenue = (transactions || [])
     .filter((txn) => {
+      if (!txn) return false;
       const d = txn.createdAt ?? txn.date ?? '';
       return d.toString().startsWith(currentYearMonth);
     })
-    .reduce((sum, txn) => sum + (Number(txn.repairCost || txn.amountGiven) || 0), 0);
+    .reduce((sum, txn) => sum + (Number(txn?.repairCost || txn?.amountGiven) || 0), 0);
     
   const monthlyProfit = monthlyRevenue - monthlyExpenses;
 
-  const categories = [...new Set(expenditures.map((exp) => exp.category))];
+  const categories = [...new Set((expenditures || []).map((exp) => exp?.category).filter(Boolean))];
   const paymentMethods = [
-    ...new Set(expenditures.map((exp) => exp.paymentMethod)),
+    ...new Set((expenditures || []).map((exp) => exp?.paymentMethod).filter(Boolean)),
   ];
 
   // Add, update, delete handlers
@@ -317,8 +345,10 @@ export default function Expenditures() {
   };
 
   const categoryDataToShow = Object.entries(
-        expenditures.reduce((acc, exp) => {
-          acc[exp.category] = (acc[exp.category] || 0) + (Number(exp.amount) || 0);
+        (expenditures || []).reduce((acc, exp) => {
+          if (exp && exp.category) {
+            acc[exp.category] = (acc[exp.category] || 0) + (Number(exp.amount) || 0);
+          }
           return acc;
         }, {} as Record<string, number>)
       ).map(([name, amount]) => ({
@@ -338,7 +368,8 @@ export default function Expenditures() {
     const dataMap: Record<string, { month: string, expenses: number, revenue: number, profit: number, dateObj: Date }> = {};
     
     // Process expenditures (expenses)
-    expenditures.forEach(exp => {
+    (expenditures || []).forEach(exp => {
+      if (!exp) return;
       const dateStr = exp.date ?? exp.createdAt;
       if (!dateStr) return;
       const date = new Date(dateStr);
@@ -352,7 +383,8 @@ export default function Expenditures() {
     });
 
     // Process transactions (revenue)
-    transactions.forEach(txn => {
+    (transactions || []).forEach(txn => {
+      if (!txn) return;
       const dateStr = txn.date ?? txn.createdAt ?? txn.created_at;
       if (!dateStr) return;
       const date = new Date(dateStr);
@@ -619,36 +651,8 @@ export default function Expenditures() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    Array.from({ length: 5 }).map((_, idx) => (
-                      <TableRow key={`exp-row-skeleton-${idx}`} className="animate-pulse">
-                        <TableCell>
-                          <div className="h-4 bg-white/10 rounded w-20" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-2">
-                            <div className="h-4 bg-white/10 rounded w-32" />
-                            <div className="h-3 bg-white/5 rounded w-24" />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-5 bg-white/10 rounded w-16" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-4 bg-white/10 rounded w-20" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-4 bg-white/10 rounded w-24" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="h-4 bg-white/10 rounded w-16" />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <div className="h-8 w-8 rounded bg-white/10" />
-                            <div className="h-8 w-8 rounded bg-white/10" />
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                    Array.from({ length: 8 }).map((_, idx) => (
+                      <SkeletonTableRow key={`exp-row-skeleton-${idx}`} cols={7} />
                     ))
                   ) : filteredExpenditures.length === 0 ? (
                     <TableRow>
@@ -661,7 +665,7 @@ export default function Expenditures() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredExpenditures.map((expenditure) => (
+                    paginatedExpenditures.map((expenditure) => (
                       <TableRow key={expenditure.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -740,20 +744,8 @@ export default function Expenditures() {
             {/* Mobile Card View (hidden md+) */}
             <div className="md:hidden grid gap-4 mt-4">
               {loading ? (
-                Array.from({ length: 5 }).map((_, idx) => (
-                  <div key={`exp-mobile-skeleton-${idx}`} className="border border-border/50 rounded-lg p-4 space-y-3 bg-card shadow-sm animate-pulse">
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="h-4 bg-white/10 rounded w-2/3" />
-                        <div className="h-3 bg-white/5 rounded w-1/2" />
-                      </div>
-                      <div className="h-4 bg-white/10 rounded w-16 shrink-0" />
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-border/30">
-                      <div className="h-3 bg-white/5 rounded w-20" />
-                      <div className="h-3 bg-white/5 rounded w-24" />
-                    </div>
-                  </div>
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <SkeletonRow key={`exp-mobile-skeleton-${idx}`} />
                 ))
               ) : filteredExpenditures.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-muted-foreground bg-card border rounded-lg">
@@ -761,7 +753,7 @@ export default function Expenditures() {
                   <span className="text-sm font-medium">No expenditures found</span>
                 </div>
               ) : (
-                filteredExpenditures.map((expenditure) => (
+                paginatedExpenditures.map((expenditure) => (
                   <div key={expenditure.id} className="border border-border/50 rounded-lg p-4 space-y-3 bg-card shadow-sm">
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
@@ -803,6 +795,19 @@ export default function Expenditures() {
               )}
             </div>
           </CardContent>
+          {/* Pagination */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-6 py-4 pb-24 lg:pb-4 border-t border-border bg-muted/20">
+            <div className="text-xs text-muted-foreground text-center sm:text-left">
+              Showing page {currentPage} of {totalPages} ({filteredExpenditures.length} expenditures found)
+            </div>
+            <div className="flex-1 flex justify-center sm:justify-end">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          </div>
         </Card>
       </div>
   );
@@ -849,14 +854,18 @@ function EditExpenditureDialog({ expenditure, suppliers, onSave, onClose }: { ex
           <DialogDescription>Update this business expense</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <FieldInputGroup
+            label="Description"
+            name="description"
+            value={formData.description}
+            onChange={value => setFormData({ ...formData, description: value })}
+            required
+            placeholder="What was purchased or paid for?"
+          />
           <div>
-            <Label htmlFor="edit-description">Description</Label>
-            <Input id="edit-description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} required />
-          </div>
-          <div>
-            <Label htmlFor="edit-category">Category</Label>
+            <Label htmlFor="edit-category" className="text-sm font-medium text-foreground/80 mb-1.5 block">Category</Label>
             <Select value={formData.category} onValueChange={value => setFormData({ ...formData, category: value, supplierId: value !== "Suppliers" ? "" : formData.supplierId })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="edit-category"><SelectValue /></SelectTrigger>
               <SelectContent side="bottom" avoidCollisions={false}>
                 <SelectItem value="Suppliers">Suppliers</SelectItem>
                 <SelectItem value="Electricity Bill">Electricity Bill</SelectItem>
@@ -869,9 +878,9 @@ function EditExpenditureDialog({ expenditure, suppliers, onSave, onClose }: { ex
           {formData.category === "Suppliers" && (
             <>
               <div>
-                <Label htmlFor="edit-supplier">Supplier <span className="text-destructive">*</span></Label>
+                <Label htmlFor="edit-supplier" className="text-sm font-medium text-foreground/80 mb-1.5 block">Supplier <span className="text-destructive">*</span></Label>
                 <Select value={formData.supplierId} onValueChange={value => setFormData({ ...formData, supplierId: value })}>
-                  <SelectTrigger><SelectValue placeholder="Select a supplier" /></SelectTrigger>
+                  <SelectTrigger id="edit-supplier"><SelectValue placeholder="Select a supplier" /></SelectTrigger>
                   <SelectContent side="bottom" avoidCollisions={false}>
                     {suppliers.map(s => (
                       <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
@@ -879,26 +888,34 @@ function EditExpenditureDialog({ expenditure, suppliers, onSave, onClose }: { ex
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="edit-status">Payment Status</Label>
-                <Select value={formData.status} onValueChange={value => setFormData({ ...formData, status: value })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent side="bottom" avoidCollisions={false}>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-sm font-medium text-foreground/80">Payment Status</Label>
+                <RadioGroup
+                  value={formData.status}
+                  onValueChange={value => setFormData({ ...formData, status: value })}
+                  className="flex flex-row gap-4 mt-1"
+                >
+                  <RadioGroupItem value="paid" label="Paid" />
+                  <RadioGroupItem value="pending" label="Pending" />
+                </RadioGroup>
               </div>
             </>
           )}
+          <FieldInputGroup
+            label="Amount"
+            name="amount"
+            type="number"
+            value={formData.amount}
+            onChange={value => setFormData({ ...formData, amount: value })}
+            min="0"
+            step="0.01"
+            required
+            placeholder="0.00"
+          />
           <div>
-            <Label htmlFor="edit-amount">Amount</Label>
-            <Input id="edit-amount" type="number" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} min="0" step="0.01" required />
-          </div>
-          <div>
-            <Label htmlFor="edit-payment">Payment Method</Label>
+            <Label htmlFor="edit-payment" className="text-sm font-medium text-foreground/80 mb-1.5 block">Payment Method</Label>
             <Select value={formData.paymentMethod} onValueChange={value => setFormData({ ...formData, paymentMethod: value })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="edit-payment"><SelectValue /></SelectTrigger>
               <SelectContent side="bottom" avoidCollisions={false}>
                 <SelectItem value="cash">Cash</SelectItem>
                 <SelectItem value="card">Card</SelectItem>
@@ -909,15 +926,24 @@ function EditExpenditureDialog({ expenditure, suppliers, onSave, onClose }: { ex
             </Select>
           </div>
           {formData.category !== "Suppliers" && (
-            <div>
-              <Label htmlFor="edit-recipient">Supplier / Vendor</Label>
-              <Input id="edit-recipient" value={formData.recipient} onChange={e => setFormData({ ...formData, recipient: e.target.value })} />
-            </div>
+            <FieldInputGroup
+              label="Supplier / Vendor"
+              name="recipient"
+              value={formData.recipient}
+              onChange={value => setFormData({ ...formData, recipient: value })}
+              placeholder="Who was paid?"
+              required
+            />
           )}
-          <div>
-            <Label htmlFor="edit-items">Items / Notes</Label>
-            <Textarea id="edit-items" value={formData.items} onChange={e => setFormData({ ...formData, items: e.target.value })} rows={2} />
-          </div>
+          <FieldInputGroup
+            label="Items / Notes"
+            name="items"
+            type="textarea"
+            value={formData.items}
+            onChange={value => setFormData({ ...formData, items: value })}
+            rows={2}
+            placeholder="Additional details..."
+          />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={!formData.description || !formData.amount || (formData.category === "Suppliers" && !formData.supplierId)}>Save Changes</Button>
@@ -976,27 +1002,23 @@ function AddExpenditureDialog({ onAdd, suppliers = [] }: { onAdd: (data: any) =>
         <DialogDescription>Record a new business expense</DialogDescription>
       </DialogHeader>
       <form onSubmit={handleSubmit} className="space-y-4">
+        <FieldInputGroup
+          label="Description"
+          name="description"
+          value={formData.description}
+          onChange={(value) => setFormData({ ...formData, description: value })}
+          placeholder="What was purchased or paid for?"
+          required
+        />
         <div>
-          <Label htmlFor="description">Description</Label>
-          <Input
-            id="description"
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            placeholder="What was purchased or paid for?"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="category">Category</Label>
+          <Label htmlFor="category" className="text-sm font-medium text-foreground/80 mb-1.5 block">Category</Label>
           <Select
             value={formData.category}
             onValueChange={(value) =>
               setFormData({ ...formData, category: value, supplierId: value !== "Suppliers" ? "" : formData.supplierId })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger id="category">
               <SelectValue />
             </SelectTrigger>
             <SelectContent side="bottom" avoidCollisions={false}>
@@ -1011,14 +1033,14 @@ function AddExpenditureDialog({ onAdd, suppliers = [] }: { onAdd: (data: any) =>
         {formData.category === "Suppliers" && (
           <>
             <div>
-              <Label htmlFor="supplier">Supplier <span className="text-destructive">*</span></Label>
+              <Label htmlFor="supplier" className="text-sm font-medium text-foreground/80 mb-1.5 block">Supplier <span className="text-destructive">*</span></Label>
               <Select
                 value={formData.supplierId}
                 onValueChange={(value) =>
                   setFormData({ ...formData, supplierId: value })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger id="supplier">
                   <SelectValue placeholder="Select a supplier" />
                 </SelectTrigger>
                 <SelectContent side="bottom" avoidCollisions={false}>
@@ -1030,49 +1052,39 @@ function AddExpenditureDialog({ onAdd, suppliers = [] }: { onAdd: (data: any) =>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="status">Payment Status</Label>
-              <Select
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-medium text-foreground/80">Payment Status</Label>
+              <RadioGroup
                 value={formData.status}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, status: value })
-                }
+                onValueChange={(value) => setFormData({ ...formData, status: value })}
+                className="flex flex-row gap-4 mt-1"
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent side="bottom" avoidCollisions={false}>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
+                <RadioGroupItem value="paid" label="Paid" />
+                <RadioGroupItem value="pending" label="Pending" />
+              </RadioGroup>
             </div>
           </>
         )}
+        <FieldInputGroup
+          label="Amount"
+          name="amount"
+          type="number"
+          value={formData.amount}
+          onChange={(value) => setFormData({ ...formData, amount: value })}
+          placeholder="0.00"
+          min="0"
+          step="0.01"
+          required
+        />
         <div>
-          <Label htmlFor="amount">Amount</Label>
-          <Input
-            id="amount"
-            type="number"
-            value={formData.amount}
-            onChange={(e) =>
-              setFormData({ ...formData, amount: e.target.value })
-            }
-            placeholder="0.00"
-            min="0"
-            step="0.01"
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="paymentMethod">Payment Method</Label>
+          <Label htmlFor="paymentMethod" className="text-sm font-medium text-foreground/80 mb-1.5 block">Payment Method</Label>
           <Select
             value={formData.paymentMethod}
             onValueChange={(value) =>
               setFormData({ ...formData, paymentMethod: value })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger id="paymentMethod">
               <SelectValue />
             </SelectTrigger>
             <SelectContent side="bottom" avoidCollisions={false}>
@@ -1085,31 +1097,24 @@ function AddExpenditureDialog({ onAdd, suppliers = [] }: { onAdd: (data: any) =>
           </Select>
         </div>
         {formData.category !== "Suppliers" && (
-          <div>
-            <Label htmlFor="recipient">Supplier / Vendor</Label>
-            <Input
-              id="recipient"
-              value={formData.recipient}
-              onChange={(e) =>
-                setFormData({ ...formData, recipient: e.target.value })
-              }
-              placeholder="Who was paid?"
-              required
-            />
-          </div>
-        )}
-        <div>
-          <Label htmlFor="items">Items / Notes (Optional)</Label>
-          <Textarea
-            id="items"
-            value={formData.items}
-            onChange={(e) =>
-              setFormData({ ...formData, items: e.target.value })
-            }
-            placeholder="What was purchased? Any additional details..."
-            rows={3}
+          <FieldInputGroup
+            label="Supplier / Vendor"
+            name="recipient"
+            value={formData.recipient}
+            onChange={(value) => setFormData({ ...formData, recipient: value })}
+            placeholder="Who was paid?"
+            required
           />
-        </div>
+        )}
+        <FieldInputGroup
+          label="Items / Notes (Optional)"
+          name="items"
+          type="textarea"
+          value={formData.items}
+          onChange={(value) => setFormData({ ...formData, items: value })}
+          placeholder="What was purchased? Any additional details..."
+          rows={3}
+        />
         <DialogFooter>
           <Button
             type="submit"

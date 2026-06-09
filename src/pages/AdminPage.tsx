@@ -1,10 +1,11 @@
-import { useState, lazy, Suspense, useRef, useEffect } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Shield, Users, Activity, Download, Monitor,
-  Zap, BarChart3, ChevronRight, Loader2,
+  Zap, BarChart3, Loader2,
 } from 'lucide-react';
 
 // ── Lazy-load every heavy panel — only renders when its tab is active ──────────
@@ -35,52 +36,6 @@ function PanelSkeleton() {
       <div className="h-20 rounded-xl bg-muted/40" />
       <div className="h-20 rounded-xl bg-muted/40" />
       <div className="h-20 rounded-xl bg-muted/40" />
-    </div>
-  );
-}
-
-// ── Tab bar — horizontal scroll on mobile, wraps on desktop ───────────────────
-function TabBar({ active, onChange }: { active: TabId; onChange: (id: TabId) => void }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { t } = useLanguage();
-
-  // Auto-scroll active tab into view on mobile
-  useEffect(() => {
-    const el = scrollRef.current?.querySelector(`[data-tab="${active}"]`) as HTMLElement;
-    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-  }, [active]);
-
-  return (
-    <div
-      ref={scrollRef}
-      className="flex gap-1 overflow-x-auto no-scrollbar pb-0.5 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap"
-      role="tablist"
-    >
-      {TABS.map(tab => {
-        const Icon = tab.icon;
-        const isActive = active === tab.id;
-        return (
-          <button
-            key={tab.id}
-            data-tab={tab.id}
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onChange(tab.id)}
-            className={[
-              'flex items-center gap-2 shrink-0 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-              'min-h-[44px] min-w-[44px] active:scale-95 select-none',
-              isActive
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            ].join(' ')}
-          >
-            <Icon className={`h-4 w-4 shrink-0 ${isActive ? '' : tab.color}`} />
-            {/* Short label on small screens, full label on sm+ */}
-            <span className="sm:hidden">{t(tab.shortLabelKey)}</span>
-            <span className="hidden sm:inline">{t(tab.labelKey)}</span>
-          </button>
-        );
-      })}
     </div>
   );
 }
@@ -147,22 +102,52 @@ export default function AdminPage() {
         </Badge>
       </div>
 
-      {/* ── Sticky tab bar — sticks below header on mobile ──────────────── */}
-      <div className="sticky top-[57px] z-10 bg-background/95 backdrop-blur-sm py-2 border-b -mx-4 px-4 sm:mx-0 sm:px-0 sm:relative sm:top-auto sm:z-auto sm:bg-transparent sm:backdrop-blur-none sm:border-b-0 sm:py-0">
-        <TabBar active={activeTab} onChange={setActiveTab} />
-      </div>
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as TabId)} className="w-full space-y-4">
+        {/* ── Sticky tab bar — sticks below header on mobile ──────────────── */}
+        <div className="sticky top-[57px] z-10 bg-background/95 backdrop-blur-sm py-2 border-b -mx-4 px-4 sm:mx-0 sm:px-0 sm:relative sm:top-auto sm:z-auto sm:bg-transparent sm:backdrop-blur-none sm:border-b-0 sm:py-0">
+          <TabsList className="w-full justify-start h-auto p-1 bg-muted/60">
+            {TABS.map(tab => {
+              const Icon = tab.icon;
+              return (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  data-tab={tab.id}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium transition-all"
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="sm:hidden">{t(tab.shortLabelKey)}</span>
+                  <span className="hidden sm:inline">{t(tab.labelKey)}</span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
 
-      {/* ── Panel content — only active tab rendered ─────────────────────── */}
-      <div className="pb-20 lg:pb-6">
-        <Suspense fallback={<PanelSkeleton />}>
-          {activeTab === 'overview'    && <SystemStatsPanel />}
-          {activeTab === 'users'       && <UserManagement />}
-          {activeTab === 'permissions' && <AdminControlSystem />}
-          {activeTab === 'audit'       && <AuditLogPanel />}
-          {activeTab === 'export'      && <DataExportPanel />}
-          {activeTab === 'sessions'    && <SessionsPanel />}
-        </Suspense>
-      </div>
+        {/* ── Panel content — only active tab rendered ─────────────────────── */}
+        <div className="pb-20 lg:pb-6">
+          <Suspense fallback={<PanelSkeleton />}>
+            <TabsContent value="overview" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+              <SystemStatsPanel />
+            </TabsContent>
+            <TabsContent value="users" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+              <UserManagement />
+            </TabsContent>
+            <TabsContent value="permissions" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+              <AdminControlSystem />
+            </TabsContent>
+            <TabsContent value="audit" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+              <AuditLogPanel />
+            </TabsContent>
+            <TabsContent value="export" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+              <DataExportPanel />
+            </TabsContent>
+            <TabsContent value="sessions" className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+              <SessionsPanel />
+            </TabsContent>
+          </Suspense>
+        </div>
+      </Tabs>
     </div>
   );
 }

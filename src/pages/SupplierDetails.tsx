@@ -19,6 +19,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -71,9 +77,27 @@ export default function SupplierDetails() {
   const [supplier, setSupplier] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("overview");
   const { can } = usePermissions();
+
+  const [expenditures, setExpenditures] = useState<any[]>([]);
+  const [loadingExpenditures, setLoadingExpenditures] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoadingExpenditures(true);
+    apiClient.makeRequest(`/api/expenditures/by-supplier/${id}`)
+      .then(res => {
+        if (res.success && res.data) {
+          setExpenditures(res.data);
+        } else if (Array.isArray(res)) {
+          setExpenditures(res);
+        } else if (Array.isArray(res?.data)) {
+          setExpenditures(res.data);
+        }
+      })
+      .catch(err => console.warn(err))
+      .finally(() => setLoadingExpenditures(false));
+  }, [id]);
 
   useEffect(() => {
     // Only fetch data if user is authenticated and token is available
@@ -111,6 +135,15 @@ export default function SupplierDetails() {
   const handleDeleteSupplier = async () => {
     await apiClient.deleteSupplier(id);
   };
+  const paidExpenditures = expenditures.filter(
+    (exp: any) => (exp.status || exp.paymentStatus || "").toLowerCase() === "paid"
+  );
+  const pendingExpenditures = expenditures.filter(
+    (exp: any) =>
+      (exp.status || exp.paymentStatus || "").toLowerCase() === "pending" ||
+      (exp.status || exp.paymentStatus || "").toLowerCase() === "overdue" ||
+      (exp.status || exp.paymentStatus || "").toLowerCase() === "unpaid"
+  );
 
   if (!id) {
     return (
@@ -417,139 +450,135 @@ export default function SupplierDetails() {
           </Card>
         </div>
 
-        {/* Tabs for History */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <CardTitle>Transaction History</CardTitle>
-                <CardDescription>
-                  Purchase orders and payment records
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={activeTab === "overview" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveTab("overview")}
-                >
-                  Overview
-                </Button>
-                <Button
-                  variant={activeTab === "purchases" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveTab("purchases")}
-                >
-                  <Package className="mr-2 h-4 w-4" />
-                  Purchases
-                </Button>
-                <Button
-                  variant={activeTab === "payments" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveTab("payments")}
-                >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Payments
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {activeTab === "overview" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium mb-3">Recent Purchase Orders</h4>
-                  <div className="space-y-3">
-                    {supplier?.recentPurchaseOrders?.map((order: any) => (
-                      <div
-                        key={order.id}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div>
-                          <div className="font-medium">
-                            {order.invoiceNumber}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {order.date}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium">
-                            ₹{typeof order.amount === "number" ? order.amount.toLocaleString() : "0"}
-                          </div>
-                          <Badge
-                            className={getPaymentStatusColor(
-                              order.paymentStatus,
-                            )}
-                            size="sm"
-                          >
-                            {order.paymentStatus}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-3">Recent Payments</h4>
-                  <div className="space-y-3">
-                    {supplier?.recentPayments?.map((payment: any) => (
-                      <div
-                        key={payment.id}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div>
-                          <div className="font-medium">
-                            ₹{typeof payment.amount === "number" ? payment.amount.toLocaleString() : "0"}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {payment.date}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-1 text-sm">
-                            {getPaymentMethodIcon(payment.method)}
-                            {getPaymentMethodLabel(payment.method)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "purchases" && (
-              <div>
-                <div className="flex gap-4 mb-6">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search purchase orders..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filter
-                  </Button>
-                </div>
-                <div className="overflow-x-auto rounded-md border">
-                  <Table>
-                    <TableHeader>
+        {/* Accordions for History */}
+        <Accordion type="multiple" defaultValue={["paid-expenditures", "pending-expenditures", "linked-invoices"]} className="w-full space-y-4">
+          <AccordionItem value="paid-expenditures" className="border border-border rounded-xl overflow-hidden bg-card/65 backdrop-blur-md">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline font-bold text-lg text-foreground flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-500" />
+                Paid Expenditures
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6 pt-2">
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Payment Method</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paidExpenditures.length === 0 ? (
                       <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Items</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Payment</TableHead>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                          No paid expenditures found
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {supplier?.purchaseHistory?.map((order: any) => (
+                    ) : (
+                      paidExpenditures.map((exp: any) => {
+                        const rawDate = exp.date ?? exp.createdAt;
+                        const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString() : '-';
+                        return (
+                          <TableRow key={exp.id}>
+                            <TableCell className="font-medium">{exp.description}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="capitalize">{exp.category}</Badge>
+                            </TableCell>
+                            <TableCell>₹{Number(exp.amount || 0).toLocaleString()}</TableCell>
+                            <TableCell className="capitalize">{exp.paymentMethod || 'cash'}</TableCell>
+                            <TableCell>{formattedDate}</TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="pending-expenditures" className="border border-border rounded-xl overflow-hidden bg-card/65 backdrop-blur-md">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline font-bold text-lg text-foreground flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-yellow-500" />
+                Pending Expenditures
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6 pt-2">
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Payment Method</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingExpenditures.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                          No pending expenditures found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      pendingExpenditures.map((exp: any) => {
+                        const rawDate = exp.date ?? exp.createdAt;
+                        const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString() : '-';
+                        return (
+                          <TableRow key={exp.id}>
+                            <TableCell className="font-medium">{exp.description}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="capitalize">{exp.category}</Badge>
+                            </TableCell>
+                            <TableCell>₹{Number(exp.amount || 0).toLocaleString()}</TableCell>
+                            <TableCell className="capitalize">{exp.paymentMethod || 'cash'}</TableCell>
+                            <TableCell>{formattedDate}</TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="linked-invoices" className="border border-border rounded-xl overflow-hidden bg-card/65 backdrop-blur-md">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline font-bold text-lg text-foreground flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-brand-orange" />
+                Linked Invoices
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6 pt-2">
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order ID</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Payment</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {!supplier?.purchaseHistory || supplier.purchaseHistory.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                          No linked invoices found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      supplier.purchaseHistory.map((order: any) => (
                         <TableRow key={order.id}>
                           <TableCell>
                             <div>
@@ -581,67 +610,14 @@ export default function SupplierDetails() {
                             </Badge>
                           </TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-            )}
-
-            {activeTab === "payments" && (
-              <div>
-                <div className="flex gap-4 mb-6">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search payments..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filter
-                  </Button>
-                </div>
-                <div className="overflow-x-auto rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Payment ID</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Method</TableHead>
-                        <TableHead>Reference</TableHead>
-                        <TableHead>Invoice</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {supplier?.paymentHistory?.map((payment: any) => (
-                        <TableRow key={payment.id}>
-                          <TableCell>{payment.id}</TableCell>
-                          <TableCell>{payment.date}</TableCell>
-                          <TableCell>
-                            ₹{typeof payment.amount === "number" ? payment.amount.toLocaleString() : "0"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {getPaymentMethodIcon(payment.method)}
-                              {getPaymentMethodLabel(payment.method)}
-                            </div>
-                          </TableCell>
-                          <TableCell>{payment.reference}</TableCell>
-                          <TableCell>{payment.invoiceNumber}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
   );
 }

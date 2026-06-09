@@ -83,12 +83,14 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onClose }) =
               </p>
             </div>
           </div>
-          <button
+          <Button
             onClick={handleClose}
-            className="flex-shrink-0 text-muted-foreground hover:text-muted-foreground dark:hover:text-gray-300"
+            variant="ghost"
+            size="icon"
+            className="flex-shrink-0 h-11 w-11 rounded-full text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
         
         <div className="mt-4 flex space-x-2">

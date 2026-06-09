@@ -24,6 +24,8 @@ import {
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api";
 import { AvatarDropzone } from "@/components/ui/AvatarDropzone";
+import { FieldInputGroup } from "@/components/ui/field-input-group";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 
 
@@ -223,14 +225,14 @@ export default function Profile() {
           <Card className="overflow-hidden border-border/50 shadow-sm">
             <div className="h-24 bg-gradient-to-br from-primary/20 to-primary/5 w-full" />
             <CardContent className="px-6 pb-6 pt-0 text-center flex flex-col items-center">
-              <div className="relative -mt-12 mb-4">
-                <div className="w-24 h-24 rounded-full border-4 border-background overflow-hidden bg-muted flex items-center justify-center shadow-sm">
+              <div className="relative -mt-12 mb-4 w-24 h-24">
+                <AspectRatio ratio={1} className="w-full h-full rounded-full border-4 border-background overflow-hidden bg-muted flex items-center justify-center shadow-sm">
                   {avatarSrc ? (
                     <img src={avatarSrc} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     <User className="h-10 w-10 text-muted-foreground/50" />
                   )}
-                </div>
+                </AspectRatio>
               </div>
 
               {/* Drag-and-drop avatar upload zone */}
@@ -271,28 +273,30 @@ export default function Profile() {
             <form onSubmit={handleUpdateInfo}>
               <CardContent className="space-y-4 pt-6">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Display Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input id="name" name="name" className="pl-9" placeholder="Your full name" defaultValue={user?.name || ''} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <div className="relative">
-                      <AtSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input id="username" name="username" className="pl-9" placeholder="Your username" defaultValue={user?.username || ''} />
-                    </div>
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input id="email" className="pl-9 bg-muted/50" value={user?.email || ''} readOnly disabled />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">Email cannot be changed currently.</p>
-                  </div>
+                  <FieldInputGroup
+                    label="Display Name"
+                    name="name"
+                    placeholder="Your full name"
+                    defaultValue={user?.name || ''}
+                    prefixIcon={<User className="h-4 w-4" />}
+                  />
+                  <FieldInputGroup
+                    label="Username"
+                    name="username"
+                    placeholder="Your username"
+                    defaultValue={user?.username || ''}
+                    prefixIcon={<AtSign className="h-4 w-4" />}
+                  />
+                  <FieldInputGroup
+                    label="Email Address"
+                    name="email"
+                    defaultValue={user?.email || ''}
+                    disabled
+                    readOnly
+                    className="sm:col-span-2"
+                    prefixIcon={<Mail className="h-4 w-4" />}
+                    helperText="Email cannot be changed currently."
+                  />
                 </div>
               </CardContent>
               <CardFooter className="bg-muted/20 border-t border-border/50 px-6 py-4">
@@ -315,14 +319,14 @@ export default function Profile() {
             </CardHeader>
             <form onSubmit={handleUpdatePassword}>
               <CardContent className="space-y-4 pt-6">
-                <div className="space-y-2 max-w-md">
-                  <Label htmlFor="password">New Password</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
+                <div className="max-w-md space-y-4">
+                  <FieldInputGroup
+                    label="New Password"
+                    name="password"
+                    type="password"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter a strong password" 
+                    onChange={setNewPassword}
+                    placeholder="Enter a strong password"
                   />
                   <PasswordStrengthMeter password={newPassword} />
                 </div>

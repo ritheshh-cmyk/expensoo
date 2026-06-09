@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { SkeletonCard } from '@/components/ui/skeleton';
+import { Pagination } from '@/components/ui/pagination';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { FieldInputGroup } from '@/components/ui/field-input-group';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { apiClient } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
@@ -89,6 +95,17 @@ export default function Suppliers() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageParam = parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = isNaN(pageParam) ? 1 : pageParam;
+
+  const setCurrentPage = (page: number) => {
+    setSearchParams(prev => {
+      prev.set("page", String(page));
+      return prev;
+    });
+  };
 
   // Add supplier dialog state
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -231,7 +248,7 @@ export default function Suppliers() {
     const isConfirmed = await confirm({
       title: 'Delete Supplier',
       description: `Are you sure you want to delete ${supplier.name}? This will unlink any expenditures associated with this supplier.`,
-      confirmLabel: 'Delete',
+      confirmLabel: 'Delete Supplier',
       cancelLabel: 'Cancel',
       variant: 'danger'
     });
@@ -344,7 +361,62 @@ export default function Suppliers() {
   };
 
   const getExpendituresForSupplier = (supplier: Supplier) => {
-    return expenditures.filter(e => e.category === 'Supplier' && String(e.supplierId) === String(supplier.id));
+    return (expenditures || []).filter(
+      (e) =>
+        (e.category === 'Supplier' || e.category === 'Suppliers') &&
+        String(e.supplierId) === String(supplier.id)
+    );
+  };
+
+  interface HistoryEvent {
+    type: 'purchase' | 'payment';
+    id: string;
+    description: string;
+    amount: number;
+    date: string;
+    ref: string;
+  }
+
+  const getSortedHistory = (parts: PurchasedPart[], exps: any[]): (HistoryEvent & { runningBalance: number })[] => {
+    const events: HistoryEvent[] = [];
+    
+    parts.forEach(p => {
+      events.push({
+        type: 'purchase',
+        id: p.transactionId,
+        description: `${p.partName} (${p.deviceModel})`,
+        amount: p.cost,
+        date: p.date,
+        ref: `TXN-${p.transactionId.slice(-5).toUpperCase()}`
+      });
+    });
+
+    exps.forEach(e => {
+      const paid = Number(e.paidAmount ?? (e.status === 'paid' ? e.amount : 0) ?? 0);
+      events.push({
+        type: 'payment',
+        id: String(e.id),
+        description: e.description || 'Payment',
+        amount: paid,
+        date: e.date ?? e.createdAt,
+        ref: `EXP-${String(e.id).slice(-5).toUpperCase()}`
+      });
+    });
+
+    events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    let currentBalance = 0;
+    return events.map(event => {
+      if (event.type === 'purchase') {
+        currentBalance += event.amount;
+      } else {
+        currentBalance -= event.amount;
+      }
+      return {
+        ...event,
+        runningBalance: currentBalance
+      };
+    });
   };
 
   // ── stats ──────────────────────────────────────────────────────────────────
@@ -357,10 +429,26 @@ export default function Suppliers() {
     (s.contactNumber ?? s.contact_number ?? s.phone ?? '').includes(searchTerm)
   );
 
+  const itemsPerPage = 6;
+  const totalPages = Math.max(1, Math.ceil(filteredSuppliers.length / itemsPerPage));
+  
+  const paginatedSuppliers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredSuppliers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredSuppliers, currentPage, itemsPerPage]);
+
   const selectedParts = selectedSupplier ? getPartsForSupplier(selectedSupplier) : [];
   const selectedExpenditures = selectedSupplier ? getExpendituresForSupplier(selectedSupplier) : [];
   const totalExpendituresSpend = selectedExpenditures.reduce((s, e) => s + Number(e.amount || 0), 0);
   const totalSpentOnSelected = selectedParts.reduce((s, p) => s + p.cost, 0) + totalExpendituresSpend;
+
+  const selectedPartsTotal = selectedParts.reduce((s, p) => s + p.cost, 0);
+  const selectedPaidExpsTotal = selectedExpenditures.reduce((s, e) => s + Number(e.paidAmount ?? (e.status === 'paid' ? e.amount : 0) ?? 0), 0);
+  const selectedOutstandingAmount = selectedPartsTotal - selectedPaidExpsTotal;
+
+  const sortedHistory = useMemo(() => {
+    return getSortedHistory(selectedParts, selectedExpenditures);
+  }, [selectedParts, selectedExpenditures]);
 
   // ─── render ─────────────────────────────────────────────────────────────────
   return (
@@ -434,8 +522,8 @@ export default function Suppliers() {
       {/* Cards grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-36 rounded-xl bg-background animate-pulse" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : filteredSuppliers.length === 0 ? (
@@ -448,95 +536,140 @@ export default function Suppliers() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSuppliers.map((supplier) => {
-            const parts = getPartsForSupplier(supplier);
-            const partsTotal = parts.reduce((s, p) => s + p.cost, 0);
-            const exps = getExpendituresForSupplier(supplier);
-            const expsTotal = exps.reduce((s, e) => s + Number(e.amount || 0), 0);
-            const phone = supplier.contactNumber ?? supplier.contact_number ?? supplier.phone ?? '';
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedSuppliers.map((supplier) => {
+              const parts = getPartsForSupplier(supplier);
+              const partsTotal = parts.reduce((s, p) => s + p.cost, 0);
+              const exps = getExpendituresForSupplier(supplier);
+              const paidExpsTotal = exps.reduce((s, e) => s + Number(e.paidAmount ?? (e.status === 'paid' ? e.amount : 0) ?? 0), 0);
+              const pendingBalance = partsTotal - paidExpsTotal;
+              const phone = supplier.contactNumber ?? supplier.contact_number ?? supplier.phone ?? '';
 
-            return (
-              <button
-                key={supplier.id}
-                type="button"
-                onClick={() => setSelectedSupplier(supplier)}
-                className="text-left w-full cursor-pointer min-h-[44px]"
-              >
-                <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-sm hover:border-brand-orange/30 hover:-translate-y-0.5 transition-all duration-200 group">
-                  <div className="p-4 pb-3">
-                    <div className="flex items-start justify-between gap-2 min-w-0 w-full">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 bg-brand-orange/10 rounded-lg shrink-0">
-                          <Building2 className="h-5 w-5 text-brand-orange-light" />
+              return (
+                <button
+                  key={supplier.id}
+                  type="button"
+                  onClick={() => setSelectedSupplier(supplier)}
+                  className="text-left w-full cursor-pointer min-h-[44px]"
+                >
+                  <div className="relative overflow-hidden rounded-xl border border-border bg-background backdrop-blur-sm hover:border-brand-orange/30 hover:-translate-y-0.5 transition-all duration-200 group">
+                    <div className="p-4 pb-3">
+                      <div className="flex items-start justify-between gap-2 min-w-0 w-full">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2 bg-brand-orange/10 rounded-lg shrink-0">
+                            <Building2 className="h-5 w-5 text-brand-orange-light" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-foreground leading-tight truncate">
+                              {supplier.name}
+                            </h3>
+                            {(supplier.contact_person ?? supplier.address) && (
+                              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                {supplier.contact_person ?? supplier.address}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-foreground leading-tight truncate">
-                            {supplier.name}
-                          </h3>
-                          {(supplier.contact_person ?? supplier.address) && (
-                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                              {supplier.contact_person ?? supplier.address}
-                            </p>
-                          )}
+                        <div className="flex flex-wrap items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            data-testid="edit-supplier-btn"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-white/10 border-0 p-0"
+                            onClick={(e) => handleEditClick(e, supplier)}
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            data-testid="delete-supplier-btn"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-0 p-0"
+                            onClick={(e) => handleDeleteClick(e, supplier)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border shrink-0', statusClass(supplier.status))}>
+                            {supplier.status ?? 'active'}
+                          </span>
+                          {(() => {
+                            if (pendingBalance > 0) {
+                              return (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 bg-amber-500/10 text-amber-500 border-amber-500/25">
+                                  Pending
+                                </span>
+                              );
+                            } else if (pendingBalance < 0) {
+                              return (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 bg-red-500/10 text-red-500 border-red-500/25">
+                                  Overpaid
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 bg-green-500/10 text-green-500 border-green-500/25">
+                                  Settled
+                                </span>
+                              );
+                            }
+                          })()}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          data-testid="edit-supplier-btn"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-white/10 border-0 p-0"
-                          onClick={(e) => handleEditClick(e, supplier)}
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          data-testid="delete-supplier-btn"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-0 p-0"
-                          onClick={(e) => handleDeleteClick(e, supplier)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border shrink-0', statusClass(supplier.status))}>
-                          {supplier.status ?? 'active'}
-                        </span>
+                    </div>
+
+                    <div className="px-4 pb-4 pt-0">
+                      {phone && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                          <Phone className="h-3.5 w-3.5 shrink-0" />
+                          <span>{phone}</span>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Total Transactions</p>
+                          <p className="font-semibold text-foreground mt-0.5">{fmt(partsTotal)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Total Paid</p>
+                          <p className="font-semibold text-foreground mt-0.5">{fmt(paidExpsTotal)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Pending Balance</p>
+                          <p className={cn("font-bold mt-0.5", pendingBalance > 0 ? "text-amber-500" : pendingBalance < 0 ? "text-red-500" : "text-green-500")}>
+                            {fmt(pendingBalance)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Lifetime Total</p>
+                          <p className="font-semibold text-brand-orange-light mt-0.5">{fmt(partsTotal)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end mt-3 text-xs text-muted-foreground group-hover:text-brand-orange-light transition-colors">
+                        View details & history
+                        <ChevronRight className="h-3.5 w-3.5 ml-1" />
                       </div>
                     </div>
                   </div>
-
-                  <div className="px-4 pb-4 pt-0">
-                    {phone && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                        <Phone className="h-3.5 w-3.5 shrink-0" />
-                        <span>{phone}</span>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Parts Bought</p>
-                        <p className="font-semibold text-foreground mt-0.5">{parts.length} items</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Total Spent</p>
-                        <p className="font-semibold text-brand-orange-light mt-0.5">
-                          {(partsTotal + expsTotal) > 0 ? fmt(partsTotal + expsTotal) : '—'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end mt-3 text-xs text-muted-foreground group-hover:text-brand-orange-light transition-colors">
-                      View parts history
-                      <ChevronRight className="h-3.5 w-3.5 ml-1" />
-                    </div>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-6 py-4 border border-border bg-background backdrop-blur-md rounded-xl mt-6">
+            <div className="text-xs text-muted-foreground text-center sm:text-left">
+              Showing page {currentPage} of {totalPages} ({filteredSuppliers.length} suppliers found)
+            </div>
+            <div className="flex-1 flex justify-center sm:justify-end">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -552,44 +685,39 @@ export default function Suppliers() {
 
           <div className="space-y-4 py-2">
             {/* Supplier Name */}
-            <div className="space-y-1.5">
-              <Label htmlFor="sup-name">
-                Supplier / Shop Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="sup-name"
-                placeholder="e.g. Global Electronics"
-                value={addForm.name}
-                onChange={(e) => { setAddForm(f => ({ ...f, name: e.target.value })); setFormError(''); }}
-                disabled={addLoading}
-                autoFocus
-              />
-            </div>
+            <FieldInputGroup
+              id="sup-name"
+              label="Supplier / Shop Name"
+              name="name"
+              placeholder="e.g. Global Electronics"
+              value={addForm.name}
+              onChange={(val) => { setAddForm(f => ({ ...f, name: val })); setFormError(''); }}
+              disabled={addLoading}
+              required
+            />
 
             {/* Contact Person */}
-            <div className="space-y-1.5">
-              <Label htmlFor="sup-person">Contact Person</Label>
-              <Input
-                id="sup-person"
-                placeholder="e.g. Rajesh Kumar"
-                value={addForm.contact_person}
-                onChange={(e) => setAddForm(f => ({ ...f, contact_person: e.target.value }))}
-                disabled={addLoading}
-              />
-            </div>
+            <FieldInputGroup
+              id="sup-person"
+              label="Contact Person"
+              name="contact_person"
+              placeholder="e.g. Rajesh Kumar"
+              value={addForm.contact_person}
+              onChange={(val) => setAddForm(f => ({ ...f, contact_person: val }))}
+              disabled={addLoading}
+            />
 
             {/* Phone */}
-            <div className="space-y-1.5">
-              <Label htmlFor="sup-phone">Phone Number</Label>
-              <Input
-                id="sup-phone"
-                placeholder="e.g. +91-9876543210"
-                value={addForm.contact_number}
-                onChange={(e) => setAddForm(f => ({ ...f, contact_number: e.target.value }))}
-                disabled={addLoading}
-                type="tel"
-              />
-            </div>
+            <FieldInputGroup
+              id="sup-phone"
+              label="Phone Number"
+              name="contact_number"
+              type="tel"
+              placeholder="e.g. +91-9876543210"
+              value={addForm.contact_number}
+              onChange={(val) => setAddForm(f => ({ ...f, contact_number: val }))}
+              disabled={addLoading}
+            />
 
             {/* Error */}
             {formError && (
@@ -664,7 +792,7 @@ export default function Suppliers() {
               </DialogHeader>
 
               {/* Summary row */}
-              <div className="grid grid-cols-3 gap-3 mt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
                 <div className="rounded-lg bg-background border border-border p-3 text-center">
                   <p className="text-xs text-muted-foreground">Items</p>
                   <p className="text-xl font-bold mt-1 text-foreground">{selectedParts.length + selectedExpenditures.length}</p>
@@ -672,13 +800,19 @@ export default function Suppliers() {
                 <div className="rounded-lg bg-brand-orange/10 border border-brand-orange/20 p-3 text-center">
                   <p className="text-xs text-muted-foreground">Total Spent</p>
                   <p className="text-xl font-bold mt-1 text-brand-orange-light">
-                    {totalSpentOnSelected > 0 ? fmt(totalSpentOnSelected) : '—'}
+                    {selectedPartsTotal > 0 ? fmt(selectedPartsTotal) : '—'}
                   </p>
                 </div>
                 <div className="rounded-lg bg-background border border-border p-3 text-center">
-                  <p className="text-xs text-muted-foreground">Transactions</p>
+                  <p className="text-xs text-muted-foreground">Total Paid</p>
                   <p className="text-xl font-bold mt-1 text-foreground">
-                    {new Set(selectedParts.map(p => p.transactionId)).size}
+                    {selectedPaidExpsTotal > 0 ? fmt(selectedPaidExpsTotal) : '—'}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-background border border-border p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Pending Balance</p>
+                  <p className={cn("text-xl font-bold mt-1", selectedOutstandingAmount > 0 ? "text-amber-500" : selectedOutstandingAmount < 0 ? "text-red-500" : "text-green-500")}>
+                    {fmt(selectedOutstandingAmount)}
                   </p>
                 </div>
               </div>
@@ -688,114 +822,174 @@ export default function Suppliers() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Package className="h-4 w-4 text-primary" />
-                    Purchases & Expenditures for {selectedSupplier.name}
+                    Transaction & Payment History
                   </h3>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-xs flex items-center gap-1.5 border-brand-orange text-brand-orange-light hover:bg-brand-orange/10 font-semibold"
-                    onClick={() => {
-                      setShowAddExpenseDialog(true);
-                    }}
-                  >
-                    <Plus className="h-3 w-3" />
-                    Add Expense
-                  </Button>
+                  <div className="flex gap-2">
+                    {selectedOutstandingAmount > 0 && (
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold border-0"
+                        onClick={() => {
+                          setNewExpense({
+                            description: `Payment for outstanding balance of ${selectedSupplier.name}`,
+                            amount: String(selectedOutstandingAmount),
+                            paymentMethod: 'cash',
+                            status: 'paid'
+                          });
+                          setShowAddExpenseDialog(true);
+                        }}
+                      >
+                        <IndianRupee className="h-3 w-3" />
+                        Pay Outstanding ({fmt(selectedOutstandingAmount)})
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs flex items-center gap-1.5 border-brand-orange text-brand-orange-light hover:bg-brand-orange/10 font-semibold"
+                      onClick={() => {
+                        setShowAddExpenseDialog(true);
+                      }}
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add Expense
+                    </Button>
+                  </div>
                 </div>
 
                 {selectedParts.length === 0 && selectedExpenditures.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground border border-dashed border-border rounded-xl">
                     <ShoppingCart className="h-10 w-10 mb-3 opacity-30" />
-                    <p className="font-medium text-muted-foreground">No parts recorded yet</p>
+                    <p className="font-medium text-muted-foreground">No records found</p>
                     <p className="text-sm mt-1">
-                      Parts appear here when added via the New Transaction form
+                      Transactions and expenditures linked to this supplier will show here.
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {selectedParts.map((part, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-start justify-between gap-3 p-3 rounded-lg border border-border bg-background hover:bg-white/[0.08] transition-colors"
-                      >
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="shrink-0 mt-0.5 p-1.5 bg-brand-orange/10 rounded">
-                            <Package className="h-3.5 w-3.5 text-brand-orange-light" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm text-foreground">{part.partName}</p>
-                            <div className="flex flex-wrap items-center gap-x-2 mt-1">
-                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Smartphone className="h-3 w-3" />
-                                {part.deviceModel}
-                              </span>
-                              <span className="text-xs text-muted-foreground">· {part.repairType}</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Customer: {part.customerName}
-                            </p>
-                            <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                              <CalendarDays className="h-3 w-3" />
-                              {fmtDate(part.date)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <p className="font-semibold text-sm text-brand-orange-light">{fmt(part.cost)}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
-                            TXN-{part.transactionId.slice(-5).toUpperCase()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-
-                    <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-brand-orange/10 border border-brand-orange/20 mt-3">
-                      <span className="text-sm font-semibold text-foreground">Total Parts Cost</span>
-                      <span className="text-sm font-bold text-brand-orange-light">{fmt(selectedParts.reduce((s, p) => s + p.cost, 0))}</span>
-                    </div>
-
-                    {selectedExpenditures.length > 0 && (
-                      <div className="mt-6">
-                        <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2 border-t border-border pt-4">
-                          Expenditures
-                        </h4>
-                        <div className="space-y-2">
-                          {selectedExpenditures.map((exp, idx) => (
-                            <div
-                              key={`exp-${idx}`}
-                              className="flex items-start justify-between gap-3 p-3 rounded-lg border border-border bg-background hover:bg-white/[0.08] transition-colors"
-                            >
-                              <div className="flex items-start gap-3 min-w-0">
-                                <div className="shrink-0 mt-0.5 p-1.5 bg-brand-orange/10 rounded">
-                                  <Building2 className="h-3.5 w-3.5 text-brand-orange-light" />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="font-medium text-sm text-foreground">{exp.description}</p>
-                                  <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                                    <CalendarDays className="h-3 w-3" />
-                                    {fmtDate(exp.date ?? exp.createdAt)}
+                  <div className="space-y-4">
+                    <Accordion type="multiple" defaultValue={["parts"]} className="w-full space-y-3">
+                      <AccordionItem value="parts" className="border border-border rounded-lg overflow-hidden bg-white/[0.02]">
+                        <AccordionTrigger className="hover:no-underline px-4 py-3 bg-white/[0.04] text-sm font-semibold flex justify-between items-center">
+                          <span className="flex items-center gap-2 text-foreground">
+                            <Package className="h-4 w-4 text-brand-orange-light" />
+                            Transaction History (Purchased Parts: {selectedParts.length})
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 space-y-2">
+                          {selectedParts.length === 0 ? (
+                            <p className="text-xs text-muted-foreground text-center py-4">No parts purchased from this supplier</p>
+                          ) : (
+                            <>
+                              {selectedParts.map((part, idx) => {
+                                const histItem = sortedHistory.find(h => h.type === 'purchase' && h.id === part.transactionId);
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="flex items-start justify-between gap-3 p-3 rounded-lg border border-border/60 bg-background/50 hover:bg-white/[0.04] transition-colors"
+                                  >
+                                    <div className="flex items-start gap-3 min-w-0">
+                                      <div className="shrink-0 mt-0.5 p-1.5 bg-brand-orange/10 rounded">
+                                        <Package className="h-3.5 w-3.5 text-brand-orange-light" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-medium text-sm text-foreground">{part.partName}</p>
+                                        <div className="flex flex-wrap items-center gap-x-2 mt-1">
+                                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <Smartphone className="h-3 w-3" />
+                                            {part.deviceModel}
+                                          </span>
+                                          <span className="text-xs text-muted-foreground">· {part.repairType}</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                          Customer: {part.customerName}
+                                        </p>
+                                        <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                                          <CalendarDays className="h-3 w-3" />
+                                          {fmtDate(part.date)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                      <p className="font-semibold text-sm text-brand-orange-light">{fmt(part.cost)}</p>
+                                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                                        TXN-{part.transactionId.slice(-5).toUpperCase()}
+                                      </p>
+                                      {histItem && (
+                                        <p className="text-[10px] text-muted-foreground mt-1 bg-white/[0.04] px-1 py-0.5 rounded">
+                                          Bal: {fmt(histItem.runningBalance)}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
+                                );
+                              })}
+                              <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-brand-orange/15 border border-brand-orange/20 mt-3">
+                                <span className="text-xs font-semibold text-foreground">Total Parts Cost</span>
+                                <span className="text-sm font-bold text-brand-orange-light">{fmt(selectedPartsTotal)}</span>
                               </div>
-                              <div className="shrink-0 text-right">
-                                <p className="font-semibold text-sm text-brand-orange-light">{fmt(Number(exp.amount || 0))}</p>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">
-                                  EXP-{String(exp.id).slice(-5).toUpperCase()}
-                                </p>
+                            </>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+
+                      <AccordionItem value="expenditures" className="border border-border rounded-lg overflow-hidden bg-white/[0.02]">
+                        <AccordionTrigger className="hover:no-underline px-4 py-3 bg-white/[0.04] text-sm font-semibold flex justify-between items-center">
+                          <span className="flex items-center gap-2 text-foreground">
+                            <Building2 className="h-4 w-4 text-brand-orange-light" />
+                            Payment History (Direct Expenditures: {selectedExpenditures.length})
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4 space-y-2">
+                          {selectedExpenditures.length === 0 ? (
+                            <p className="text-xs text-muted-foreground text-center py-4">No expenditures recorded for this supplier</p>
+                          ) : (
+                            <>
+                              {selectedExpenditures.map((exp, idx) => {
+                                const histItem = sortedHistory.find(h => h.type === 'payment' && h.id === String(exp.id));
+                                return (
+                                  <div
+                                    key={`exp-${idx}`}
+                                    className="flex items-start justify-between gap-3 p-3 rounded-lg border border-border/60 bg-background/50 hover:bg-white/[0.04] transition-colors"
+                                  >
+                                    <div className="flex items-start gap-3 min-w-0">
+                                      <div className="shrink-0 mt-0.5 p-1.5 bg-brand-orange/10 rounded">
+                                        <Building2 className="h-3.5 w-3.5 text-brand-orange-light" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-medium text-sm text-foreground">{exp.description}</p>
+                                        <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                                          <CalendarDays className="h-3 w-3" />
+                                          {fmtDate(exp.date ?? exp.createdAt)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                      <p className="font-semibold text-sm text-brand-orange-light">{fmt(Number(exp.amount || 0))}</p>
+                                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                                        EXP-{String(exp.id).slice(-5).toUpperCase()}
+                                      </p>
+                                      {histItem && (
+                                        <p className="text-[10px] text-muted-foreground mt-1 bg-white/[0.04] px-1 py-0.5 rounded">
+                                          Bal: {fmt(histItem.runningBalance)}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-brand-orange/15 border border-brand-orange/20 mt-3">
+                                <span className="text-xs font-semibold text-foreground">Total Payments</span>
+                                <span className="text-sm font-bold text-brand-orange-light">{fmt(selectedPaidExpsTotal)}</span>
                               </div>
-                            </div>
-                          ))}
-                          <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-brand-orange/10 border border-brand-orange/20 mt-3">
-                            <span className="text-sm font-semibold text-foreground">Total Expenditures</span>
-                            <span className="text-sm font-bold text-brand-orange-light">{fmt(totalExpendituresSpend)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                            </>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
                     
-                    <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-brand-orange/10 border border-brand-orange/20 mt-3 shadow-sm border-2">
-                      <span className="text-base font-bold text-foreground">Grand Total</span>
-                      <span className="text-base font-bold text-brand-orange-light">{fmt(totalSpentOnSelected)}</span>
+                    <div className="flex justify-between items-center px-4 py-3 rounded-lg bg-[#d97757]/10 border border-[#d97757]/30 mt-4 shadow-sm">
+                      <span className="text-sm font-bold text-foreground">Grand Total Spent (Transactions)</span>
+                      <span className="text-lg font-black text-brand-orange-light">{fmt(selectedPartsTotal)}</span>
                     </div>
                   </div>
                 )}
@@ -817,44 +1011,39 @@ export default function Suppliers() {
 
           <div className="space-y-4 py-2">
             {/* Supplier Name */}
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-sup-name">
-                Supplier / Shop Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="edit-sup-name"
-                placeholder="e.g. Global Electronics"
-                value={editForm.name}
-                onChange={(e) => { setEditForm(f => ({ ...f, name: e.target.value })); setFormError(''); }}
-                disabled={editLoading}
-                autoFocus
-              />
-            </div>
+            <FieldInputGroup
+              id="edit-sup-name"
+              label="Supplier / Shop Name"
+              name="name"
+              placeholder="e.g. Global Electronics"
+              value={editForm.name}
+              onChange={(val) => { setEditForm(f => ({ ...f, name: val })); setFormError(''); }}
+              disabled={editLoading}
+              required
+            />
 
             {/* Contact Person */}
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-sup-person">Contact Person</Label>
-              <Input
-                id="edit-sup-person"
-                placeholder="e.g. Rajesh Kumar"
-                value={editForm.contact_person}
-                onChange={(e) => setEditForm(f => ({ ...f, contact_person: e.target.value }))}
-                disabled={editLoading}
-              />
-            </div>
+            <FieldInputGroup
+              id="edit-sup-person"
+              label="Contact Person"
+              name="contact_person"
+              placeholder="e.g. Rajesh Kumar"
+              value={editForm.contact_person}
+              onChange={(val) => setEditForm(f => ({ ...f, contact_person: val }))}
+              disabled={editLoading}
+            />
 
             {/* Phone */}
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-sup-phone">Phone Number</Label>
-              <Input
-                id="edit-sup-phone"
-                placeholder="e.g. +91-9876543210"
-                value={editForm.contact_number}
-                onChange={(e) => setEditForm(f => ({ ...f, contact_number: e.target.value }))}
-                disabled={editLoading}
-                type="tel"
-              />
-            </div>
+            <FieldInputGroup
+              id="edit-sup-phone"
+              label="Phone Number"
+              name="contact_number"
+              type="tel"
+              placeholder="e.g. +91-9876543210"
+              value={editForm.contact_number}
+              onChange={(val) => setEditForm(f => ({ ...f, contact_number: val }))}
+              disabled={editLoading}
+            />
 
             {/* Error */}
             {formError && (
@@ -899,60 +1088,57 @@ export default function Suppliers() {
 
           <div className="space-y-4 py-2">
             {/* Description */}
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-desc">Description <span className="text-destructive">*</span></Label>
-              <Input
-                id="exp-desc"
-                placeholder="e.g. Parts purchase, display screens"
-                value={newExpense.description}
-                onChange={(e) => setNewExpense(f => ({ ...f, description: e.target.value }))}
-                disabled={expenseLoading}
-              />
-            </div>
+            <FieldInputGroup
+              label="Description"
+              name="description"
+              placeholder="e.g. Parts purchase, display screens"
+              value={newExpense.description}
+              onChange={(val) => setNewExpense(f => ({ ...f, description: val }))}
+              disabled={expenseLoading}
+              required
+            />
 
             {/* Amount */}
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-amount">Amount (INR) <span className="text-destructive">*</span></Label>
-              <Input
-                id="exp-amount"
-                type="number"
-                placeholder="0.00"
-                value={newExpense.amount}
-                onChange={(e) => setNewExpense(f => ({ ...f, amount: e.target.value }))}
-                disabled={expenseLoading}
-              />
-            </div>
+            <FieldInputGroup
+              label="Amount (INR)"
+              name="amount"
+              type="number"
+              placeholder="0.00"
+              value={newExpense.amount}
+              onChange={(val) => setNewExpense(f => ({ ...f, amount: val }))}
+              disabled={expenseLoading}
+              required
+            />
 
             {/* Payment Method */}
             <div className="space-y-1.5">
-              <Label htmlFor="exp-method">Payment Method</Label>
+              <Label htmlFor="exp-method" className="text-sm font-medium text-foreground/80 block">Payment Method</Label>
               <select
                 id="exp-method"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
+                className="flex h-10 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#d97757]/30 focus-visible:border-[#d97757]/60 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
                 value={newExpense.paymentMethod}
                 onChange={(e) => setNewExpense(f => ({ ...f, paymentMethod: e.target.value }))}
                 disabled={expenseLoading}
               >
-                <option value="cash">Cash</option>
-                <option value="upi">UPI</option>
-                <option value="card">Card</option>
-                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cash" className="bg-[#0c0c14] text-foreground">Cash</option>
+                <option value="upi" className="bg-[#0c0c14] text-foreground">UPI</option>
+                <option value="card" className="bg-[#0c0c14] text-foreground">Card</option>
+                <option value="bank_transfer" className="bg-[#0c0c14] text-foreground">Bank Transfer</option>
               </select>
             </div>
 
             {/* Payment Status */}
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-status">Payment Status</Label>
-              <select
-                id="exp-status"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-medium text-foreground/80">Payment Status</Label>
+              <RadioGroup
                 value={newExpense.status}
-                onChange={(e) => setNewExpense(f => ({ ...f, status: e.target.value }))}
+                onValueChange={(val) => setNewExpense(f => ({ ...f, status: val }))}
                 disabled={expenseLoading}
+                className="flex flex-row gap-4 mt-1"
               >
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-              </select>
+                <RadioGroupItem value="paid" label="Paid" />
+                <RadioGroupItem value="pending" label="Pending" />
+              </RadioGroup>
             </div>
           </div>
 

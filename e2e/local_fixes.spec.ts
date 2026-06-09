@@ -40,7 +40,7 @@ test.describe('Expensoo E2E - Local Fixes Verification', () => {
 
     // Select Payment Method
     console.log('Selecting Payment Method...');
-    await page.click('button[role="combobox"]:has-text("Select payment method")');
+    await page.locator('button[role="combobox"]').nth(1).click();
     await page.waitForSelector('[role="option"]');
     await page.click('[role="option"]:has-text("Cash")');
 

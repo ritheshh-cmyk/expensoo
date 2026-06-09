@@ -33,6 +33,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/api";
 import { SuccessConfetti } from "@/components/ui/SuccessConfetti";
+import { FieldInputGroup } from "@/components/ui/field-input-group";
+import { DatePicker } from "@/components/ui/date-picker";
 
 import {
   User,
@@ -976,45 +978,35 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="customerName" className="text-sm font-medium text-muted-foreground mb-1.5">Customer Name *</Label>
-                      <Input
-                        id="customerName"
-                        {...register("customerName")}
-                        placeholder="Enter customer name"
-                        className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                      />
-                      {errors.customerName && (
-                        <p className="text-red-400 text-sm">{errors.customerName.message}</p>
-                      )}
-                    </div>
+                    <FieldInputGroup
+                      label="Customer Name"
+                      name="customerName"
+                      placeholder="Enter customer name"
+                      value={watch("customerName") || ""}
+                      onChange={(val) => setValue("customerName", val, { shouldValidate: true })}
+                      error={errors.customerName?.message}
+                      required
+                    />
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="phoneNumber" className="text-sm font-medium text-muted-foreground mb-1.5">Phone Number *</Label>
-                      <Input
-                        id="phoneNumber"
-                        {...register("phoneNumber")}
-                        placeholder="Enter phone number"
-                        className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                      />
-                      {errors.phoneNumber && (
-                        <p className="text-red-400 text-sm">{errors.phoneNumber.message}</p>
-                      )}
-                    </div>
+                    <FieldInputGroup
+                      label="Phone Number"
+                      name="phoneNumber"
+                      placeholder="Enter phone number"
+                      value={watch("phoneNumber") || ""}
+                      onChange={(val) => setValue("phoneNumber", val, { shouldValidate: true })}
+                      error={errors.phoneNumber?.message}
+                      required
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="deviceModel" className="text-sm font-medium text-muted-foreground mb-1.5">Device Model (Optional for Sales)</Label>
-                    <Input
-                      id="deviceModel"
-                      {...register("deviceModel")}
-                      placeholder="e.g., iPhone 15 Pro, Samsung Galaxy S24"
-                      className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                    />
-                    {errors.deviceModel && (
-                      <p className="text-red-400 text-sm">{errors.deviceModel.message}</p>
-                    )}
-                  </div>
+                  <FieldInputGroup
+                    label="Device Model (Optional for Sales)"
+                    name="deviceModel"
+                    placeholder="e.g., iPhone 15 Pro, Samsung Galaxy S24"
+                    value={watch("deviceModel") || ""}
+                    onChange={(val) => setValue("deviceModel", val, { shouldValidate: true })}
+                    error={errors.deviceModel?.message}
+                  />
                 </CardContent>
               </Card>
               </Step>
@@ -1062,21 +1054,28 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                   {isSales ? (
                     <>
                       {/* Item Name */}
-                      <div className="space-y-2">
-                        <Label htmlFor="itemName" className="text-sm font-medium text-muted-foreground mb-1.5">Item Name *</Label>
-                        <Input
-                          id="itemName"
-                          {...register("itemName" as any)}
-                          placeholder="e.g., iPhone 15 Pro Max 256GB, Samsung S24 Ultra"
-                          className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                        />
-                      </div>
+                      <FieldInputGroup
+                        label="Item Name"
+                        name="itemName"
+                        placeholder="e.g., iPhone 15 Pro Max 256GB, Samsung S24 Ultra"
+                        value={watch("itemName" as any) || ""}
+                        onChange={(val) => setValue("itemName" as any, val, { shouldValidate: true })}
+                        error={errors.itemName?.message}
+                        required
+                      />
 
                       {/* Our Cost + Sold Price + Profit */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <Label htmlFor="ourCost" className="text-sm font-medium text-muted-foreground">Our Cost (₹) *</Label>
+                        <FieldInputGroup
+                          label="Our Cost (₹)"
+                          name="ourCost"
+                          placeholder="0"
+                          type={showCp ? "number" : "password"}
+                          value={watch("ourCost" as any) ?? ""}
+                          onChange={(val) => setValue("ourCost" as any, Number(val) || 0, { shouldValidate: true })}
+                          error={errors.ourCost?.message}
+                          required
+                          suffixIcon={
                             <button
                               type="button"
                               onClick={() => setShowCp(v => !v)}
@@ -1084,32 +1083,20 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                               aria-label={showCp ? "Hide cost price" : "Show cost price"}
                             >
                               {showCp ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                              {showCp ? "Hide" : "Show"}
                             </button>
-                          </div>
-                          <Input
-                            id="ourCost"
-                            type={showCp ? "number" : "password"}
-                            inputMode="decimal"
-                            min={0}
-                            {...register("ourCost" as any, { valueAsNumber: true })}
-                            placeholder="0"
-                            className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                          />
-                        </div>
+                          }
+                        />
 
-                        <div className="space-y-2">
-                          <Label htmlFor="soldPrice" className="text-sm font-medium text-muted-foreground mb-1.5">Selling Price (₹) *</Label>
-                          <Input
-                            id="soldPrice"
-                            type="number"
-                            inputMode="decimal"
-                            min={0}
-                            {...register("soldPrice" as any, { valueAsNumber: true })}
-                            placeholder="0"
-                            className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                          />
-                        </div>
+                        <FieldInputGroup
+                          label="Selling Price (₹)"
+                          name="soldPrice"
+                          placeholder="0"
+                          type="number"
+                          value={watch("soldPrice" as any) ?? ""}
+                          onChange={(val) => setValue("soldPrice" as any, Number(val) || 0, { shouldValidate: true })}
+                          error={errors.soldPrice?.message}
+                          required
+                        />
                       </div>
 
                       {/* Live Profit Display */}
@@ -1133,107 +1120,90 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
 
                     </>
                   ) : (
-                    /* ── REPAIR MODE FIELDS (original, untouched) ── */
+                    /* ── REPAIR MODE FIELDS ── */
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="repairType" className="text-sm font-medium text-muted-foreground mb-1.5">Repair Type *</Label>
-                          <Select onValueChange={(value) => setValue("repairType", value)}>
-                            <SelectTrigger className="bg-background border border-border text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
-                              <SelectValue placeholder="Select repair type" />
-                            </SelectTrigger>
-                            <SelectContent position="popper" side="bottom" align="start" sideOffset={4} className="z-[9999] bg-popover border border-border shadow-xl">
-                              <SelectItem value="screen-replacement">Screen Replacement</SelectItem>
-                              <SelectItem value="battery-replacement">Battery Replacement</SelectItem>
-                              <SelectItem value="charging-port">Charging Port Repair</SelectItem>
-                              <SelectItem value="speaker-repair">Speaker Repair</SelectItem>
-                              <SelectItem value="camera-repair">Camera Repair</SelectItem>
-                              <SelectItem value="water-damage">Water Damage Repair</SelectItem>
-                              <SelectItem value="software-issue">Software Issue</SelectItem>
-                              <SelectItem value="others">Others</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {errors.repairType && (
-                            <p className="text-red-400 text-sm">{errors.repairType.message}</p>
-                          )}
-                        </div>
+                        <FieldInputGroup
+                          label="Repair Type"
+                          name="repairType"
+                          type="select"
+                          placeholder="Select repair type"
+                          options={[
+                            { value: "screen-replacement", label: "Screen Replacement" },
+                            { value: "battery-replacement", label: "Battery Replacement" },
+                            { value: "charging-port", label: "Charging Port Repair" },
+                            { value: "speaker-repair", label: "Speaker Repair" },
+                            { value: "camera-repair", label: "Camera Repair" },
+                            { value: "water-damage", label: "Water Damage Repair" },
+                            { value: "software-issue", label: "Software Issue" },
+                            { value: "others", label: "Others" },
+                          ]}
+                          value={watch("repairType") || ""}
+                          onChange={(val) => setValue("repairType", val, { shouldValidate: true })}
+                          error={errors.repairType?.message}
+                          required
+                        />
 
                         {!isInternalRepair && (
-                          <div className="space-y-2">
-                            <Label htmlFor="repairCost" className="text-sm font-medium text-muted-foreground mb-1.5">Customer Price (₹) *</Label>
-                            <Input
-                              id="repairCost"
-                              type="number"
-                              inputMode="decimal"
-                              {...register("repairCost", { valueAsNumber: true })}
-                              placeholder="0"
-                              className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                            />
-                            {errors.repairCost && (
-                              <p className="text-red-400 text-sm">{errors.repairCost.message}</p>
-                            )}
-                          </div>
+                          <FieldInputGroup
+                            label="Customer Price (₹)"
+                            name="repairCost"
+                            type="number"
+                            placeholder="0"
+                            value={watch("repairCost") ?? ""}
+                            onChange={(val) => setValue("repairCost", Number(val) || 0, { shouldValidate: true })}
+                            error={errors.repairCost?.message}
+                            required
+                          />
                         )}
                       </div>
 
                       {/* Custom repair type input — shown only when 'Others' is selected */}
                       {watchedValues.repairType === "others" && (
-                        <div className="space-y-2">
-                          <Label htmlFor="customRepairType" className="text-sm font-medium text-muted-foreground mb-1.5">Specify Repair Type *</Label>
-                          <Input
-                            id="customRepairType"
-                            {...register("customRepairType")}
-                            placeholder="e.g., Motherboard repair, Mic replacement, Face ID fix..."
-                            className="bg-background border border-primary text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange"
-                            autoFocus
-                          />
-                          {errors.customRepairType && (
-                            <p className="text-red-400 text-sm">{errors.customRepairType.message}</p>
-                          )}
-
-                        </div>
+                        <FieldInputGroup
+                          label="Specify Repair Type"
+                          name="customRepairType"
+                          placeholder="e.g., Motherboard repair, Mic replacement, Face ID fix..."
+                          value={watch("customRepairType") || ""}
+                          onChange={(val) => setValue("customRepairType", val, { shouldValidate: true })}
+                          error={errors.customRepairType?.message}
+                          required
+                        />
                       )}
                     </>
                   )}
 
                   {!isInternalRepair && (
                     <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="paymentMethod" className="text-sm font-medium text-muted-foreground mb-1.5">Payment Method *</Label>
-                          <Select onValueChange={(value) => setValue("paymentMethod", value as any)}>
-                            <SelectTrigger className="bg-background border border-border text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
-                              <SelectValue placeholder="Select payment method" />
-                            </SelectTrigger>
-                            <SelectContent position="popper" side="bottom" align="start" sideOffset={4} className="z-[9999] bg-popover border border-border shadow-xl">
-                              <SelectItem value="cash">Cash</SelectItem>
-                              <SelectItem value="upi">UPI</SelectItem>
-                              <SelectItem value="card">Card</SelectItem>
-                              <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {errors.paymentMethod && (
-                            <p className="text-red-400 text-sm">{errors.paymentMethod.message}</p>
-                          )}
-                        </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                        <FieldInputGroup
+                          label="Payment Method"
+                          name="paymentMethod"
+                          type="select"
+                          placeholder="Select payment method"
+                          options={[
+                            { value: "cash", label: "Cash" },
+                            { value: "upi", label: "UPI" },
+                            { value: "card", label: "Card" },
+                            { value: "bank-transfer", label: "Bank Transfer" },
+                          ]}
+                          value={watch("paymentMethod") || "cash"}
+                          onChange={(val) => setValue("paymentMethod", val as any, { shouldValidate: true })}
+                          error={errors.paymentMethod?.message}
+                          required
+                        />
 
                         {isPaid && (
-                          <div className="space-y-2">
-                            <Label htmlFor="amountGiven" className="text-sm font-medium text-muted-foreground mb-1.5">
-                              {watchedValues.paymentMethod === "cash" ? "Amount Given (₹) *" : "Amount Sent (₹) *"}
-                            </Label>
-                            <Input
-                              id="amountGiven"
-                              type="number"
-                              inputMode="decimal"
-                              {...register("amountGiven", { valueAsNumber: true })}
-                              placeholder="0"
-                              className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                            />
-                            {errors.amountGiven && (
-                              <p className="text-red-400 text-sm">{errors.amountGiven.message}</p>
-                            )}
-                          </div>
+                          <FieldInputGroup
+                            label={watch("paymentMethod") === "cash" ? "Amount Given (₹)" : "Amount Sent (₹)"}
+                            name="amountGiven"
+                            type="number"
+                            placeholder="0"
+                            value={watch("amountGiven") ?? ""}
+                            onChange={(val) => setValue("amountGiven", Number(val) || 0, { shouldValidate: true })}
+                            error={errors.amountGiven?.message}
+                            required
+                          />
                         )}
                       </div>
 
@@ -1261,41 +1231,38 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                     <Store className="w-5 h-5 text-brand-orange" />
                     {isSales ? "Supplier Information" : "Parts & Supplier Selection"}
                   </CardTitle>
-
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   {isSales ? (
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier" className="text-sm font-medium text-muted-foreground mb-1.5">Supplier *</Label>
-                        <Select 
-                          onValueChange={(value) => {
-                            setSelectedSupplier(value);
-                            setValue("supplier", value);
-                            if (!requiresParts) {
-                              setRequiresParts(true);
-                              setValue("requiresParts", true);
-                            }
-                            if (parts.length === 0) {
-                              setParts([{ name: (watchedValues as any).itemName || "", cost: (watchedValues as any).ourCost || 0, quantity: 1, supplier: value }]);
-                            } else {
-                              updatePart(0, "supplier", value);
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="bg-background border border-border text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
-                            <SelectValue placeholder="Choose supplier" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {suppliers.map((supplier) => (
-                              <SelectItem key={supplier.id} value={String(supplier.id)}>
-                                {supplier.name} - {supplier.contactNumber || supplier.contact_number || ""}
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="Other">+ Add New Supplier</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <FieldInputGroup
+                        label="Supplier"
+                        name="supplier"
+                        type="select"
+                        placeholder="Choose supplier"
+                        options={[
+                          ...suppliers.map((supplier) => ({
+                            value: String(supplier.id),
+                            label: `${supplier.name} - ${supplier.contactNumber || supplier.contact_number || ""}`,
+                          })),
+                          { value: "Other", label: "+ Add New Supplier" },
+                        ]}
+                        value={watch("supplier") || ""}
+                        onChange={(value) => {
+                          setSelectedSupplier(value);
+                          setValue("supplier", value);
+                          if (!requiresParts) {
+                            setRequiresParts(true);
+                            setValue("requiresParts", true);
+                          }
+                          if (parts.length === 0) {
+                            setParts([{ name: (watchedValues as any).itemName || "", cost: (watchedValues as any).ourCost || 0, quantity: 1, supplier: value }]);
+                          } else {
+                            updatePart(0, "supplier", value);
+                          }
+                        }}
+                        required
+                      />
 
                       {watch("supplier") === "Other" && (
                         <div className="space-y-3 p-3 border border-dashed border-primary rounded-lg bg-primary/10">
@@ -1303,25 +1270,22 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                             <Building2 className="h-4 w-4 text-brand-orange" />
                             Add New Supplier
                           </p>
-                          <div className="space-y-2">
-                            <Label htmlFor="newSupplierName" className="text-sm font-medium text-muted-foreground mb-1.5">Supplier Name <span className="text-red-400">*</span></Label>
-                            <Input
-                              id="newSupplierName"
-                              {...register("newSupplierName")}
-                              placeholder="e.g. Global Electronics"
-                              className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="newSupplierPhone" className="text-sm font-medium text-muted-foreground mb-1.5">Phone (optional)</Label>
-                            <Input
-                              id="newSupplierPhone"
-                              {...register("newSupplierPhone" as any)}
-                              placeholder="e.g. +91-9876543210"
-                              className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                              type="tel"
-                            />
-                          </div>
+                          <FieldInputGroup
+                            label="Supplier Name"
+                            name="newSupplierName"
+                            placeholder="e.g. Global Electronics"
+                            value={watch("newSupplierName") || ""}
+                            onChange={(val) => setValue("newSupplierName", val)}
+                            required
+                          />
+                          <FieldInputGroup
+                            label="Phone (optional)"
+                            name="newSupplierPhone"
+                            placeholder="e.g. +91-9876543210"
+                            value={watch("newSupplierPhone" as any) || ""}
+                            onChange={(val) => setValue("newSupplierPhone" as any, val)}
+                            type="tel"
+                          />
                           <Button
                             type="button"
                             size="sm"
@@ -1354,24 +1318,33 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                       )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Item Name</Label>
-                          <Input 
-                            value={parts[0]?.name ?? (watchedValues as any).itemName ?? ""} 
-                            onChange={(e) => {
-                              if (parts.length === 0) {
-                                setParts([{ name: e.target.value, cost: (watchedValues as any).ourCost || 0, quantity: 1, supplier: selectedSupplier }]);
-                              } else {
-                                updatePart(0, "name", e.target.value);
-                              }
-                            }}
-                            className="bg-background border border-border text-foreground focus:ring-brand-orange/50"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label>Cost from Supplier (₹)</Label>
-                            {canViewCost && (
+                        <FieldInputGroup
+                          label="Item Name"
+                          name="partItemName"
+                          value={parts[0]?.name ?? (watchedValues as any).itemName ?? ""}
+                          onChange={(val) => {
+                            if (parts.length === 0) {
+                              setParts([{ name: val, cost: (watchedValues as any).ourCost || 0, quantity: 1, supplier: selectedSupplier }]);
+                            } else {
+                              updatePart(0, "name", val);
+                            }
+                          }}
+                        />
+                        <FieldInputGroup
+                          label="Cost from Supplier (₹)"
+                          name="partCost"
+                          type={showCp ? "number" : "password"}
+                          value={parts[0]?.cost ?? (watchedValues as any).ourCost ?? 0}
+                          onChange={(val) => {
+                            const num = Number(val) || 0;
+                            if (parts.length === 0) {
+                              setParts([{ name: (watchedValues as any).itemName || "", cost: num, quantity: 1, supplier: selectedSupplier }]);
+                            } else {
+                              updatePart(0, "cost", num);
+                            }
+                          }}
+                          suffixIcon={
+                            canViewCost ? (
                               <button
                                 type="button"
                                 onClick={() => setShowCp(v => !v)}
@@ -1380,42 +1353,31 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                               >
                                 {showCp ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                               </button>
-                            )}
-                          </div>
-                          <Input 
-                            type={showCp ? "number" : "password"}
-                            inputMode="decimal"
-                            value={parts[0]?.cost ?? (watchedValues as any).ourCost ?? 0} 
-                            onChange={(e) => {
-                              if (parts.length === 0) {
-                                setParts([{ name: (watchedValues as any).itemName || "", cost: Number(e.target.value), quantity: 1, supplier: selectedSupplier }]);
-                              } else {
-                                updatePart(0, "cost", Number(e.target.value));
-                              }
-                            }}
-                            className="bg-background border border-border text-foreground focus:ring-brand-orange/50"
-                          />
-                        </div>
+                            ) : undefined
+                          }
+                        />
                       </div>
                     </div>
                   ) : isInternalRepair ? (
                     <div className="space-y-4 animate-fade-in">
-                      <div className="space-y-2">
-                        <Label htmlFor="internalRepairPart" className="text-sm font-medium text-muted-foreground mb-1.5">Type of Repair / Work Done</Label>
-                        <Input
-                          id="internalRepairPart"
-                          value={internalRepairPart}
-                          onChange={(e) => setInternalRepairPart(e.target.value)}
-                          placeholder="e.g. Screen Replacement, Battery, Charging Port"
-                          className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                        />
-                      </div>
+                      <FieldInputGroup
+                        label="Type of Repair / Work Done"
+                        name="internalRepairPart"
+                        placeholder="e.g. Screen Replacement, Battery, Charging Port"
+                        value={internalRepairPart}
+                        onChange={setInternalRepairPart}
+                      />
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <Label htmlFor="internalRepairCost" className="text-sm font-medium text-muted-foreground">Cost Price / CP (₹)</Label>
-                            {canViewCost && (
+                        <FieldInputGroup
+                          label="Cost Price / CP (₹)"
+                          name="internalRepairCost"
+                          type={showCp ? "number" : "password"}
+                          placeholder="0"
+                          value={internalRepairCost || ""}
+                          onChange={(val) => setInternalRepairCost(Number(val) || 0)}
+                          suffixIcon={
+                            canViewCost ? (
                               <button
                                 type="button"
                                 onClick={() => setShowCp(v => !v)}
@@ -1423,20 +1385,10 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                 aria-label={showCp ? "Hide cost price" : "Show cost price"}
                               >
                                 {showCp ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                {showCp ? "Hide" : "Show"}
                               </button>
-                            )}
-                          </div>
-                          <Input
-                            id="internalRepairCost"
-                            type={showCp ? "number" : "password"}
-                            inputMode="decimal"
-                            value={internalRepairCost || ""}
-                            onChange={(e) => setInternalRepairCost(Number(e.target.value) || 0)}
-                            placeholder="0"
-                            className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                          />
-                        </div>
+                            ) : undefined
+                          }
+                        />
                       </div>
                     </div>
                   ) : (
@@ -1488,29 +1440,25 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
 
                         {useExternalPurchase && (
                           <div className="space-y-4 pt-2">
-                            <div className="space-y-2">
-                              <Label htmlFor="supplier" className="text-sm font-medium text-muted-foreground">Select Supplier</Label>
-                              <Select
-                                value={selectedSupplier}
-                                onValueChange={(value) => {
-                                  setSelectedSupplier(value);
-                                  setValue("supplier", value);
-                                  setParts(prev => prev.map(p => p.supplier ? { ...p, supplier: value } : p));
-                                }}
-                              >
-                                <SelectTrigger className="bg-background border border-border text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
-                                  <SelectValue placeholder="Choose supplier for parts" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {suppliers.map((supplier) => (
-                                    <SelectItem key={supplier.id} value={String(supplier.id)}>
-                                      {supplier.name} - {supplier.contactNumber || supplier.contact_number || ""}
-                                    </SelectItem>
-                                  ))}
-                                  <SelectItem value="Other">+ Add New Supplier</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                            <FieldInputGroup
+                              label="Select Supplier"
+                              name="supplier"
+                              type="select"
+                              placeholder="Choose supplier for parts"
+                              options={[
+                                ...suppliers.map((supplier) => ({
+                                  value: String(supplier.id),
+                                  label: `${supplier.name} - ${supplier.contactNumber || supplier.contact_number || ""}`,
+                                })),
+                                { value: "Other", label: "+ Add New Supplier" },
+                              ]}
+                              value={selectedSupplier}
+                              onChange={(value) => {
+                                setSelectedSupplier(value);
+                                setValue("supplier", value);
+                                setParts(prev => prev.map(p => p.supplier ? { ...p, supplier: value } : p));
+                              }}
+                            />
 
                             {selectedSupplier === "Other" && (
                               <div className="space-y-3 p-3 border border-dashed border-primary rounded-lg bg-primary/10">
@@ -1518,25 +1466,22 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                                   <Building2 className="h-4 w-4 text-brand-orange" />
                                   Add New Supplier
                                 </p>
-                                <div className="space-y-2">
-                                  <Label htmlFor="newSupplierName" className="text-sm font-medium text-muted-foreground">Supplier Name <span className="text-red-400">*</span></Label>
-                                  <Input
-                                    id="newSupplierName"
-                                    {...register("newSupplierName")}
-                                    placeholder="e.g. Global Electronics"
-                                    className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="newSupplierPhone" className="text-sm font-medium text-muted-foreground">Phone (optional)</Label>
-                                  <Input
-                                    id="newSupplierPhone"
-                                    {...register("newSupplierPhone" as any)}
-                                    placeholder="e.g. +91-9876543210"
-                                    className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                                    type="tel"
-                                  />
-                                </div>
+                                <FieldInputGroup
+                                  label="Supplier Name"
+                                  name="newSupplierName"
+                                  placeholder="e.g. Global Electronics"
+                                  value={watch("newSupplierName") || ""}
+                                  onChange={(val) => setValue("newSupplierName", val)}
+                                  required
+                                />
+                                <FieldInputGroup
+                                  label="Phone (optional)"
+                                  name="newSupplierPhone"
+                                  placeholder="e.g. +91-9876543210"
+                                  value={watch("newSupplierPhone" as any) || ""}
+                                  onChange={(val) => setValue("newSupplierPhone" as any, val)}
+                                  type="tel"
+                                />
                                 <Button
                                   type="button"
                                   size="sm"
@@ -1854,76 +1799,81 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="priority" className="text-sm font-medium text-muted-foreground mb-1.5">Priority Level</Label>
-                      <Select onValueChange={(value) => setValue("priority", value as any)}>
-                        <SelectTrigger className="bg-background border border-border text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50">
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <FieldInputGroup
+                      label="Priority Level"
+                      name="priority"
+                      type="select"
+                      placeholder="Select priority"
+                      options={[
+                        { value: "low", label: "Low" },
+                        { value: "medium", label: "Medium" },
+                        { value: "high", label: "High" },
+                      ]}
+                      value={watch("priority") || ""}
+                      onChange={(val) => setValue("priority", val as any, { shouldValidate: true })}
+                      error={errors.priority?.message}
+                    />
 
-                    <div className="space-y-2">
-                      <Label htmlFor="estimatedCompletion" className="text-sm font-medium text-muted-foreground mb-1.5">Estimated Completion</Label>
-                      <Input
-                        id="estimatedCompletion"
-                        type="date"
-                        {...register("estimatedCompletion")}
-                        className="bg-background border border-border text-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
+                    <div className="space-y-2 flex flex-col justify-end">
+                      <Label className="text-sm font-medium text-foreground/80 mb-1.5">Estimated Completion</Label>
+                      <DatePicker
+                        value={watch("estimatedCompletion") ? new Date(watch("estimatedCompletion")!) : undefined}
+                        onChange={(date) => {
+                          if (date) {
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const day = String(date.getDate()).padStart(2, '0');
+                            setValue("estimatedCompletion", `${year}-${month}-${day}`, { shouldValidate: true });
+                          } else {
+                            setValue("estimatedCompletion", "", { shouldValidate: true });
+                          }
+                        }}
+                        placeholder="Pick completion date"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="freeGlass" className="text-sm font-medium text-muted-foreground mb-1.5">Free Glass Count</Label>
-                      <Input
-                        id="freeGlass"
-                        type="number"
-                        min={0}
-                        {...register("freeGlass", { valueAsNumber: true })}
-                        className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="freeCover" className="text-sm font-medium text-muted-foreground mb-1.5">Free Cover Count</Label>
-                      <Input
-                        id="freeCover"
-                        type="number"
-                        min={0}
-                        {...register("freeCover", { valueAsNumber: true })}
-                        className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50"
-                      />
-                    </div>
+                    <FieldInputGroup
+                      label="Free Glass Count"
+                      name="freeGlass"
+                      type="number"
+                      placeholder="0"
+                      value={watch("freeGlass") ?? ""}
+                      onChange={(val) => setValue("freeGlass", Number(val) || 0, { shouldValidate: true })}
+                      error={errors.freeGlass?.message}
+                    />
+                    <FieldInputGroup
+                      label="Free Cover Count"
+                      name="freeCover"
+                      type="number"
+                      placeholder="0"
+                      value={watch("freeCover") ?? ""}
+                      onChange={(val) => setValue("freeCover", Number(val) || 0, { shouldValidate: true })}
+                      error={errors.freeCover?.message}
+                    />
                   </div>
 
                   {!isInternalRepair && (
-                    <div className="space-y-2">
-                      <Label htmlFor="remarks" className="text-sm font-medium text-muted-foreground mb-1.5">Remarks / Special Instructions</Label>
-                      <Textarea
-                        id="remarks"
-                        {...register("remarks")}
-                        placeholder="Any additional notes or special instructions..."
-                        className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50 min-h-[100px]"
-                      />
-                    </div>
+                    <FieldInputGroup
+                      label="Remarks / Special Instructions"
+                      name="remarks"
+                      type="textarea"
+                      placeholder="Any additional notes or special instructions..."
+                      value={watch("remarks") || ""}
+                      onChange={(val) => setValue("remarks", val, { shouldValidate: true })}
+                      error={errors.remarks?.message}
+                    />
                   )}
                   {isInternalRepair && (
-                    <div className="space-y-2">
-                      <Label htmlFor="internalRepairNotes" className="text-sm font-medium text-muted-foreground mb-1.5">Notes / Remarks</Label>
-                      <Textarea
-                        id="internalRepairNotes"
-                        value={internalRepairNotes}
-                        onChange={(e) => setInternalRepairNotes(e.target.value)}
-                        placeholder="Any additional notes or special instructions on this repair..."
-                        className="bg-background border border-border text-foreground placeholder:text-muted-foreground focus:ring-brand-orange/50 focus:border-brand-orange/50 min-h-[100px]"
-                      />
-                    </div>
+                    <FieldInputGroup
+                      label="Notes / Remarks"
+                      name="internalRepairNotes"
+                      type="textarea"
+                      placeholder="Any additional notes or special instructions on this repair..."
+                      value={internalRepairNotes}
+                      onChange={setInternalRepairNotes}
+                    />
                   )}
 
                   {/* Transaction Summary */}

@@ -2,15 +2,15 @@
   "cookies": [],
   "origins": [
     {
-      "origin": "http://localhost:4173",
+      "origin": "http://localhost:5173",
       "localStorage": [
         {
           "name": "auth_token",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc4MDcxOTI0MCwiZXhwIjoxNzgwODA1NjQwfQ.BvxcySl73bNkfNlZlSibgX7XoFtqFrFdqC2udyq2c4M"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc4MTAzMzg0NywiZXhwIjoxNzgxMTIwMjQ3fQ.ntjrWer59tXW3kXSBIenAqSQ09rjljzmLyGI_VgYH3E"
         },
         {
           "name": "session_started_at",
-          "value": "1780719245951"
+          "value": "1781033847861"
         },
         {
           "name": "language",
@@ -18,7 +18,7 @@
         },
         {
           "name": "auth_user",
-          "value": "{\"id\":\"1\",\"name\":\"admin\",\"username\":\"admin\",\"role\":\"admin\",\"email\":\"\"}"
+          "value": "{\"id\":\"1\",\"name\":\"Admin 3087\",\"username\":\"admin\",\"role\":\"admin\",\"email\":\"\",\"display_name\":\"Admin 3087\",\"avatar\":null}"
         }
       ]
     }

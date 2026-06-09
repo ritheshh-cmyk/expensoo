@@ -25,6 +25,8 @@ import Tippy from "@tippyjs/react";
 import "tippy.js/dist/tippy.css";
 import "tippy.js/animations/scale.css";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
+import { SkeletonRow, SkeletonTableRow } from "@/components/ui/skeleton";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -198,7 +200,7 @@ interface TransactionsProps {
 }
 
 export default function Transactions({ filterCategory = 'all' }: TransactionsProps) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const searchId = searchParams.get("id");
   const searchQuery = searchParams.get("search");
 
@@ -443,6 +445,20 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
     // globalFilter is now handled by Fuse.js above — no TanStack filter needed
     state: {},
   });
+
+  const pageParam = parseInt(searchParams.get("page") || "1", 10);
+  
+  // Sync URL page to react-table state
+  useEffect(() => {
+    table.setPageIndex(pageParam - 1);
+  }, [pageParam, table]);
+
+  const handlePageChange = (page: number) => {
+    setSearchParams((prev) => {
+      prev.set("page", String(page));
+      return prev;
+    });
+  };
 
   // All transaction data is loaded from backend and updated via socket.io
   useEffect(() => {
@@ -741,27 +757,8 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
         <div className="md:hidden">
           {loading ? (
             <div className="divide-y divide-border/50">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <div key={`txn-mobile-skeleton-${idx}`} className="flex items-start gap-3 px-4 py-4 animate-pulse">
-                  <div className="shrink-0 w-9 h-9 rounded-full bg-white/10" />
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 space-y-2 flex-1">
-                        <div className="h-4 bg-white/10 rounded w-2/3" />
-                        <div className="h-3 bg-white/5 rounded w-1/2" />
-                      </div>
-                      <div className="shrink-0 text-right space-y-2 flex flex-col items-end">
-                        <div className="h-4 bg-white/10 rounded w-14" />
-                        <div className="h-3.5 bg-white/5 rounded-full w-16" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                      <div className="h-3 bg-white/5 rounded w-16" />
-                      <div className="h-3 bg-white/5 rounded w-12" />
-                      <div className="h-3 bg-white/5 rounded w-14" />
-                    </div>
-                  </div>
-                </div>
+              {Array.from({ length: 8 }).map((_, idx) => (
+                <SkeletonRow key={`txn-mobile-skeleton-${idx}`} />
               ))}
             </div>
           ) : table.getRowModel().rows?.length ? (
@@ -885,51 +882,8 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
             </thead>
             <tbody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, idx) => (
-                  <tr key={`txn-row-skeleton-${idx}`} className="border-b border-border/50 animate-pulse">
-                    {/* S.No */}
-                    <td className="px-4 py-4 hidden lg:table-cell">
-                      <div className="h-4 bg-white/10 rounded w-6 mx-auto" />
-                    </td>
-                    {/* Txn ID */}
-                    <td className="px-4 py-4">
-                      <div className="h-4 bg-white/10 rounded w-16" />
-                    </td>
-                    {/* Date */}
-                    <td className="px-4 py-4 hidden md:table-cell">
-                      <div className="h-4 bg-white/10 rounded w-20" />
-                    </td>
-                    {/* Customer */}
-                    <td className="px-4 py-4">
-                      <div className="space-y-2 max-w-[150px]">
-                        <div className="h-4 bg-white/10 rounded w-24" />
-                        <div className="h-3 bg-white/5 rounded w-16" />
-                      </div>
-                    </td>
-                    {/* Device */}
-                    <td className="px-4 py-4 hidden lg:table-cell">
-                      <div className="space-y-2 max-w-[150px]">
-                        <div className="h-4 bg-white/10 rounded w-28" />
-                        <div className="h-3 bg-white/5 rounded w-20" />
-                      </div>
-                    </td>
-                    {/* Cost */}
-                    <td className="px-4 py-4 text-right">
-                      <div className="h-4 bg-white/10 rounded w-16 ml-auto" />
-                    </td>
-                    {/* Payment */}
-                    <td className="px-4 py-4 hidden lg:table-cell">
-                      <div className="h-4 bg-white/10 rounded w-20" />
-                    </td>
-                    {/* Details */}
-                    <td className="px-4 py-4">
-                      <div className="h-8 w-8 rounded-full bg-white/10 mx-auto" />
-                    </td>
-                    {/* Actions */}
-                    <td className="px-4 py-4">
-                      <div className="h-8 w-8 rounded-full bg-white/10 mx-auto" />
-                    </td>
-                  </tr>
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <SkeletonTableRow key={`txn-row-skeleton-${idx}`} cols={9} />
                 ))
               ) : table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
@@ -988,31 +942,17 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-5 py-4 pb-24 lg:pb-4 border-t border-border bg-muted/20">
-          <div className="text-sm text-muted-foreground text-center sm:text-left">
+          <div className="text-xs text-muted-foreground text-center sm:text-left">
             {t("showing-pages")} {table.getState().pagination.pageIndex + 1} {t("of-pages")}{" "}
             {table.getPageCount()} {t("pages-label")}
           </div>
-          <div className="flex items-center justify-center sm:justify-end space-x-2">
-            <button
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              aria-label="Previous page"
-              className="flex items-center justify-center h-10 w-10 rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
-              style={{ touchAction: "manipulation" }}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              aria-label="Next page"
-              className="flex items-center justify-center h-10 w-10 rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 cursor-pointer"
-              style={{ touchAction: "manipulation" }}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+          <div className="flex-1 flex justify-center sm:justify-end">
+            <Pagination
+              currentPage={table.getState().pagination.pageIndex + 1}
+              totalPages={table.getPageCount()}
+              onPageChange={handlePageChange}
+            />
           </div>
         </div>
       </div>

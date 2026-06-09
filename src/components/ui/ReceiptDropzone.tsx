@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Paperclip, FileText, Image, Loader2, X } from 'lucide-react';
+import { AspectRatio } from './aspect-ratio';
 
 interface ReceiptFile {
   name: string;
@@ -107,10 +108,24 @@ export function ReceiptDropzone({
               key={idx}
               className="flex items-center gap-2 p-2 bg-muted/40 rounded-md border border-border"
             >
-              {file.type.startsWith('image/') ? (
-                <Image className="h-4 w-4 text-blue-500 shrink-0" />
+              {file.type.startsWith('image/') && file.preview ? (
+                <div className="w-8 h-8 rounded overflow-hidden shrink-0 border border-border bg-muted">
+                  <AspectRatio ratio={1} className="w-full h-full">
+                    <img src={file.preview} alt={file.name} className="w-full h-full object-cover" />
+                  </AspectRatio>
+                </div>
+              ) : file.type.startsWith('image/') ? (
+                <div className="w-8 h-8 rounded overflow-hidden shrink-0 bg-blue-500/10 flex items-center justify-center border border-border">
+                  <AspectRatio ratio={1} className="w-full h-full flex items-center justify-center">
+                    <Image className="h-4 w-4 text-blue-500" />
+                  </AspectRatio>
+                </div>
               ) : (
-                <FileText className="h-4 w-4 text-red-500 shrink-0" />
+                <div className="w-8 h-8 rounded overflow-hidden shrink-0 bg-red-500/10 flex items-center justify-center border border-border">
+                  <AspectRatio ratio={1} className="w-full h-full flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-red-500" />
+                  </AspectRatio>
+                </div>
               )}
               <span className="text-xs text-foreground flex-1 truncate">{file.name}</span>
               {onRemove && (

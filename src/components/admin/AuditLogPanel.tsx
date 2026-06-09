@@ -1,9 +1,12 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Clock, Loader2 } from 'lucide-react';
+import { RefreshCw, Clock } from 'lucide-react';
+import { SkeletonTableRow } from '@/components/ui/skeleton';
 import { apiClient } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useSearchParams } from 'react-router-dom';
+import { Pagination } from '@/components/ui/pagination';
 
 interface AuditLog {
   id: number;
@@ -58,74 +61,99 @@ function actionVariant(action: string): { label: string; className: string } {
   }
 }
 
+const EVENT_TYPES = [
+  'LOGIN',
+  'LOGIN_FAILED',
+  'LOGOUT',
+  'CREATE_USER',
+  'DELETE_USER',
+  'UPDATE_ROLE',
+  'CHANGE_PASSWORD',
+  'TRANSACTION_CREATED',
+  'TRANSACTION_UPDATED',
+  'TRANSACTION_DELETED',
+  'PERMISSION_UPDATED',
+  'PROFILE_UPDATED',
+  'EXPORT_DATA',
+  'SUPPLIER_CREATED'
+];
+
 export function AuditLogPanel() {
   const { t } = useLanguage();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  
-  // Pagination & infinite scroll state
-  const [limit, setLimit] = useState(25);
-  const [hasMore, setHasMore] = useState(true);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const fetchLogs = useCallback(async (targetLimit = 25, isLoadMore = false) => {
-    if (isLoadMore) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
+  // Filter States
+  const [startDate, setStartDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  const [selectedActions, setSelectedActions] = useState<string[]>([]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageParam = parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = isNaN(pageParam) ? 1 : pageParam;
+
+  const setCurrentPage = (page: number) => {
+    setSearchParams(prev => {
+      prev.set("page", String(page));
+      return prev;
+    });
+  };
+
+  // Filter logic
+  const filteredLogs = logs.filter(log => {
+    // Date filter
+    const logDate = new Date(log.timestamp);
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T23:59:59');
+    if (logDate < start || logDate > end) return false;
+
+    // Action filter
+    if (selectedActions.length > 0 && !selectedActions.includes(log.action)) {
+      return false;
     }
+
+    return true;
+  });
+
+  const itemsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / itemsPerPage));
+  const paginatedLogs = filteredLogs.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage);
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.request(`/api/auth/audit/logs?limit=${targetLimit}`);
+      const res = await apiClient.request(`/api/auth/audit/logs?limit=500`);
       if (!res.success) {
         throw new Error(res.error || t('error-loading'));
       }
       
       const data = res.data?.data ?? res.data ?? [];
       setLogs(data);
-      
-      // If we got back fewer logs than we requested, we reached the end of the list
-      if (data.length < targetLimit) {
-        setHasMore(false);
-      } else {
-        setHasMore(true);
-      }
-      
       setLastRefreshed(new Date());
     } catch (err: any) {
       setError(err.message ?? t('error-loading'));
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   }, [t]);
 
   // Handle resetting and initial fetch
   const handleRefresh = () => {
-    setLimit(25);
-    setHasMore(true);
-    fetchLogs(25, false);
+    fetchLogs();
   };
 
   useEffect(() => {
-    fetchLogs(limit, false);
-  }, [fetchLogs, limit]);
-
-  // Infinite Scroll Trigger
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    // Trigger when scrolled within 40px of the bottom
-    const isNearBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 40;
-    
-    if (isNearBottom && !loading && !loadingMore && hasMore) {
-      const nextLimit = limit + 25;
-      setLimit(nextLimit);
-      fetchLogs(nextLimit, true);
-    }
-  };
+    fetchLogs();
+  }, [fetchLogs]);
 
   return (
     <Card className="border-border/60 shadow-md">
@@ -145,10 +173,10 @@ export function AuditLogPanel() {
               size="sm"
               variant="outline"
               onClick={handleRefresh}
-              disabled={loading || loadingMore}
+              disabled={loading}
               className="flex items-center gap-1.5 h-9"
             >
-              <RefreshCw className={`h-4 w-4 ${loading && !loadingMore ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               {t('refresh')}
             </Button>
           </div>
@@ -162,21 +190,96 @@ export function AuditLogPanel() {
           </div>
         )}
 
-        {!error && logs.length === 0 && !loading && (
+        {/* Filters */}
+        <div className="space-y-4 mb-6 p-4 rounded-xl border border-border/40 bg-muted/10">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground">Start Date</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground">End Date</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+            </div>
+            {(startDate || endDate || selectedActions.length > 0) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() - 30);
+                  setStartDate(d.toISOString().split('T')[0]);
+                  setEndDate(new Date().toISOString().split('T')[0]);
+                  setSelectedActions([]);
+                  setCurrentPage(1);
+                }}
+                className="text-xs h-8 text-[#d97757] hover:text-[#d97757]/80 shrink-0"
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Event Type</span>
+            <div className="flex flex-wrap gap-1.5">
+              {EVENT_TYPES.map(type => {
+                const isSelected = selectedActions.includes(type);
+                const { label } = actionVariant(type);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setSelectedActions(prev =>
+                        prev.includes(type)
+                          ? prev.filter(a => a !== type)
+                          : [...prev, type]
+                      );
+                      setCurrentPage(1);
+                    }}
+                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all ${
+                      isSelected
+                        ? 'bg-[#d97757] text-white border-[#d97757]'
+                        : 'bg-background text-muted-foreground border-border/80 hover:bg-muted'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {!error && filteredLogs.length === 0 && !loading && (
           <p className="text-sm text-muted-foreground text-center py-8">
             {t('no-logs')}
           </p>
         )}
 
-        {logs.length > 0 && (
-          <div 
-            ref={scrollContainerRef}
-            onScroll={handleScroll}
-            className="overflow-auto max-h-[500px] rounded-xl border border-border bg-background/50 backdrop-blur-sm"
-          >
+        {loading && filteredLogs.length === 0 ? (
+          <div className="overflow-auto rounded-xl border border-border bg-background/50 backdrop-blur-sm">
             <table className="w-full text-sm border-collapse">
               <thead className="sticky top-0 bg-background/95 backdrop-blur-md border-b border-border z-10">
-                <tr className="text-muted-foreground">
+                <tr className="text-muted-foreground bg-muted/40">
                   <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('timestamp')}</th>
                   <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('action')}</th>
                   <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('actor')}</th>
@@ -187,84 +290,108 @@ export function AuditLogPanel() {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log, idx) => {
-                  const { label, className: badgeClass } = actionVariant(log.action);
-                  return (
-                    <tr
-                      key={log.id}
-                      className={`border-b border-border/40 transition-colors hover:bg-muted/40 ${
-                        idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'
-                      }`}
-                    >
-                      {/* Timestamp */}
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground font-mono">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </td>
-
-                      {/* Action Badge */}
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}
-                        >
-                          {label}
-                        </span>
-                      </td>
-
-                      {/* Actor */}
-                      <td className="px-4 py-3 whitespace-nowrap font-medium text-foreground">{log.actor}</td>
-
-                      {/* Target */}
-                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                        {log.target ?? <span className="text-xs text-muted-foreground/40">—</span>}
-                      </td>
-
-                      {/* IP */}
-                      <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-muted-foreground">
-                        {log.ip ?? '—'}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-                            log.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                          }`}
-                        >
-                          <span
-                            className={`h-2 w-2 rounded-full ${
-                              log.success ? 'bg-green-500' : 'bg-red-500'
-                            }`}
-                          />
-                          {log.success ? t('success') : t('failed')}
-                        </span>
-                      </td>
-
-                      {/* Details */}
-                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[240px] truncate" title={log.details}>
-                        {log.details ?? '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <SkeletonTableRow key={i} cols={7} />
+                ))}
               </tbody>
             </table>
-            
-            {/* Loading More indicator */}
-            {loadingMore && (
-              <div className="flex items-center justify-center gap-2 py-4 border-t border-border bg-muted/10">
-                <Loader2 className="h-4 w-4 animate-spin text-brand-orange" />
-                <span className="text-xs text-muted-foreground">{t('loading')}</span>
-              </div>
-            )}
-            
-            {/* No More Logs message */}
-            {!hasMore && logs.length > 0 && (
-              <div className="text-center py-4 text-xs text-muted-foreground border-t border-border bg-muted/5 font-mono">
-                {t('end-reached')}
+          </div>
+        ) : filteredLogs.length > 0 ? (
+          <div className="space-y-4">
+            <div className="overflow-auto rounded-xl border border-border bg-background/50 backdrop-blur-sm">
+              <table className="w-full text-sm border-collapse">
+                <thead className="sticky top-0 bg-background/95 backdrop-blur-md border-b border-border z-10">
+                  <tr className="text-muted-foreground">
+                    <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('timestamp')}</th>
+                    <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('action')}</th>
+                    <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('actor')}</th>
+                    <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('target')}</th>
+                    <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('ip-address')}</th>
+                    <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('status')}</th>
+                    <th className="text-left px-4 py-3.5 font-semibold whitespace-nowrap">{t('details')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedLogs.map((log, idx) => {
+                    const { label, className: badgeClass } = actionVariant(log.action);
+                    return (
+                      <tr
+                        key={log.id}
+                        className={`border-b border-border/40 transition-colors hover:bg-muted/40 ${
+                          idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'
+                        }`}
+                      >
+                        {/* Timestamp */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground font-mono">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </td>
+
+                        {/* Action Badge */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}
+                          >
+                            {label}
+                          </span>
+                        </td>
+
+                        {/* Actor */}
+                        <td className="px-4 py-3 whitespace-nowrap font-medium text-foreground">{log.actor}</td>
+
+                        {/* Target */}
+                        <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                          {log.target ?? <span className="text-xs text-muted-foreground/40">—</span>}
+                        </td>
+
+                        {/* IP */}
+                        <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-muted-foreground">
+                          {log.ip ?? '—'}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
+                              log.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                            }`}
+                          >
+                            <span
+                              className={`h-2 w-2 rounded-full ${
+                                log.success ? 'bg-green-500' : 'bg-red-500'
+                              }`}
+                            />
+                            {log.success ? t('success') : t('failed')}
+                          </span>
+                        </td>
+
+                        {/* Details */}
+                        <td className="px-4 py-3 text-xs text-muted-foreground max-w-[240px] truncate" title={log.details}>
+                          {log.details ?? '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 py-3 border border-border bg-background/50 backdrop-blur-sm rounded-xl mt-4">
+                <div className="text-xs text-muted-foreground text-center sm:text-left">
+                  Showing page {currentPage} of {totalPages} ({filteredLogs.length} logs found)
+                </div>
+                <div className="flex-1 flex justify-center sm:justify-end">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
               </div>
             )}
           </div>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

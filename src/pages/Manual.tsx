@@ -272,40 +272,44 @@ export default function Manual() {
             </CardHeader>
             <CardContent>
               <Accordion type="single" collapsible className="w-full space-y-2">
-                <AccordionItem value="item-1" className="border-zinc-800/60">
+                <AccordionItem value="getting-started" className="border-zinc-800/60">
                   <AccordionTrigger className="text-sm font-semibold hover:no-underline hover:text-blue-400 transition-colors">
-                    How do I add a new transaction?
+                    Getting Started
                   </AccordionTrigger>
-                  <AccordionContent className="text-zinc-400 leading-relaxed text-xs pt-1 pb-3 space-y-1">
-                    <p>To add a new transaction, tap the floating <strong className="text-zinc-200">"+" button</strong> on the Dashboard or navigate to the <strong className="text-zinc-200">Transactions</strong> page and click "Add Transaction".</p>
-                    <p>You will be guided through a 3-step wizard where you can select the customer, add job details (Cost Price, Selling Price), and confirm the payment method (Cash, UPI, Card).</p>
+                  <AccordionContent className="text-zinc-400 leading-relaxed text-xs pt-1 pb-3 space-y-2">
+                    <p>Welcome to Expensoo! To get started, make sure you configure your profile and settings. Explore the dashboard cards to see a real-time overview of your store's performance. The bottom navigation bar on mobile or sidebar on desktop makes it easy to move between sections.</p>
                   </AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="item-2" className="border-zinc-800/60">
+                <AccordionItem value="creating-transaction" className="border-zinc-800/60">
                   <AccordionTrigger className="text-sm font-semibold hover:no-underline hover:text-blue-400 transition-colors">
-                    What is "Internal Repair" mode?
+                    Creating a Transaction
                   </AccordionTrigger>
-                  <AccordionContent className="text-zinc-400 leading-relaxed text-xs pt-1 pb-3">
-                    When creating a transaction, if the device belongs to the shop and is not for a direct customer, you can toggle <strong className="text-zinc-200">"Internal Repair"</strong> on Step 2. 
-                    This will hide the payment options (since the shop doesn't pay itself) and automatically mark the transaction as internal in your records.
+                  <AccordionContent className="text-zinc-400 leading-relaxed text-xs pt-1 pb-3 space-y-2">
+                    <p>Click the floating <strong className="text-zinc-200">"+" button</strong> on the dashboard or <strong className="text-zinc-200">"New Transaction"</strong> on the Transactions page. Follow the multistep form: enter customer details, specify repair details, set parts cost, select optional inventory tracking, and input payment method. Transactions are stored securely and sync automatically.</p>
                   </AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="item-3" className="border-zinc-800/60">
+                <AccordionItem value="managing-transactions" className="border-zinc-800/60">
                   <AccordionTrigger className="text-sm font-semibold hover:no-underline hover:text-blue-400 transition-colors">
-                    How is the Cost Price (CP) hidden?
+                    Managing Transactions
                   </AccordionTrigger>
-                  <AccordionContent className="text-zinc-400 leading-relaxed text-xs pt-1 pb-3">
-                    To ensure privacy, the Cost Price (CP) and resulting profits are masked by default across the Dashboard, Reports, and Transaction History. 
-                    You can click the <strong className="text-zinc-200">Eye icon</strong> next to these values to temporarily reveal them.
+                  <AccordionContent className="text-zinc-400 leading-relaxed text-xs pt-1 pb-3 space-y-2">
+                    <p>View, edit, or delete transactions from the Transactions list. You can filter by date or payment status. Click any transaction row to expand its full detail panel. If a customer is unpaid, you can mark them as paid or send them a reminder SMS directly.</p>
                   </AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="item-4" className="border-zinc-850">
+                <AccordionItem value="dashboard-overview" className="border-zinc-850">
                   <AccordionTrigger className="text-sm font-semibold hover:no-underline hover:text-blue-400 transition-colors">
-                    How do I change my Display Name or Photo?
+                    Dashboard Overview
                   </AccordionTrigger>
-                  <AccordionContent className="text-zinc-400 leading-relaxed text-xs pt-1 pb-3">
-                    Navigate to the <strong className="text-zinc-200">Profile</strong> page from the sidebar. You can upload a new photo directly, which saves locally on your device. 
-                    Scroll down to "Update Credentials" to change your Display Name or Username. Changes are applied instantly!
+                  <AccordionContent className="text-zinc-400 leading-relaxed text-xs pt-1 pb-3 space-y-2">
+                    <p>The dashboard is your command center. It shows critical metrics: Total Revenue, Total Profit, and Today's metrics. Cost Price (CP) is masked by default for privacy—click the Eye icon next to it to show it. Expandable metric cards provide detailed graphical reports.</p>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="settings-guide" className="border-zinc-850">
+                  <AccordionTrigger className="text-sm font-semibold hover:no-underline hover:text-blue-400 transition-colors">
+                    Settings Guide
+                  </AccordionTrigger>
+                  <AccordionContent className="text-zinc-400 leading-relaxed text-xs pt-1 pb-3 space-y-2">
+                    <p>Customize Expensoo in the Settings page. You can change your password with real-time strength feedback, set appearance mode (Light, Dark, System), configure language (English or Telugu), and toggle mobile options like touch optimization or auto-sync.</p>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>

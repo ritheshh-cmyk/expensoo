@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import {
   Shield, Trash2, RefreshCw, UserPlus, KeyRound,
@@ -12,6 +13,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useConfirm } from '@/components/ui/ConfirmModal';
+import { FieldInputGroup } from '@/components/ui/field-input-group';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const getApiUrl = () => {
   const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
@@ -103,25 +106,36 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
       </p>
       {err && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">{err}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Input placeholder={t("user-mgmt-username")} value={username} onChange={e => setUsername(e.target.value)} autoFocus />
-        <div className="relative">
-          <Input
-            type={showPw ? 'text' : 'password'}
-            placeholder={t("user-mgmt-pw-placeholder")}
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            className="pr-9"
-          />
-          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowPw(v => !v)}>
-            {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
+        <FieldInputGroup
+          label={t("user-mgmt-username")}
+          name="username"
+          placeholder={t("user-mgmt-username")}
+          value={username}
+          onChange={setUsername}
+          disabled={busy}
+        />
+        <FieldInputGroup
+          label={t("user-mgmt-pw-placeholder")}
+          name="password"
+          type="password"
+          placeholder={t("user-mgmt-pw-placeholder")}
+          value={password}
+          onChange={setPassword}
+          disabled={busy}
+        />
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-sm font-medium text-foreground/80">{t("role")}</Label>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as any)}
+            disabled={busy}
+            className="flex h-10 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#d97757]/30 focus-visible:border-[#d97757]/60 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
+          >
+            <option value="worker" className="bg-[#0c0c14] text-foreground">{t("role-worker")}</option>
+            <option value="owner" className="bg-[#0c0c14] text-foreground">{t("role-owner")}</option>
+            <option value="admin" className="bg-[#0c0c14] text-foreground">{t("role-admin")}</option>
+          </select>
         </div>
-        <select value={role} onChange={e => setRole(e.target.value as any)}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="worker">{t("role-worker")}</option>
-          <option value="owner">{t("role-owner")}</option>
-          <option value="admin">{t("role-admin")}</option>
-        </select>
       </div>
       <div className="flex gap-2">
         <Button size="sm" onClick={submit} disabled={busy}>
@@ -164,25 +178,22 @@ function ResetPasswordForm({ userId, username, onDone }: { userId: number; usern
   };
 
   return (
-    <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg space-y-2">
-      <p className="text-xs font-semibold text-yellow-800 flex items-center gap-1.5">
+    <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg space-y-2">
+      <p className="text-xs font-semibold text-yellow-500 flex items-center gap-1.5">
         <KeyRound className="h-3.5 w-3.5" /> {t("user-mgmt-force-reset")} <strong>{username}</strong>
       </p>
       {err && <p className="text-xs text-red-500">{err}</p>}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Input
-            type={showPw ? 'text' : 'password'}
-            placeholder={t("user-mgmt-new-pw-placeholder")}
-            value={pw}
-            onChange={e => setPw(e.target.value)}
-            className="pr-9 h-9 text-sm"
-            autoFocus
-          />
-          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShow(v => !v)}>
-            {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
-        </div>
+      <div className="flex items-end gap-2">
+        <FieldInputGroup
+          label={t("user-mgmt-new-pw-placeholder")}
+          name="new-password"
+          type="password"
+          placeholder={t("user-mgmt-new-pw-placeholder")}
+          value={pw}
+          onChange={setPw}
+          disabled={busy}
+          className="flex-1"
+        />
         <Button size="sm" className="h-9 bg-yellow-600 hover:bg-yellow-700 text-white" onClick={submit} disabled={busy}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
         </Button>
@@ -227,19 +238,20 @@ function EditUsernameForm({
   };
 
   return (
-    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-      <p className="text-xs font-semibold text-blue-800 flex items-center gap-1.5">
+    <div className="mt-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-2">
+      <p className="text-xs font-semibold text-blue-400 flex items-center gap-1.5">
         <Pencil className="h-3.5 w-3.5" /> {t("user-mgmt-edit-username")}
       </p>
       {err && <p className="text-xs text-red-500">{err}</p>}
-      <div className="flex gap-2">
-        <Input
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onDone(currentUsername); }}
-          className="h-9 text-sm flex-1"
+      <div className="flex items-end gap-2">
+        <FieldInputGroup
+          label={t("new-username-placeholder")}
+          name="username"
           placeholder={t("new-username-placeholder")}
-          autoFocus
+          value={value}
+          onChange={setValue}
+          disabled={busy}
+          className="flex-1"
         />
         <Button size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-white" onClick={submit} disabled={busy}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -368,48 +380,45 @@ export function UserManagement() {
           <p className="text-center text-muted-foreground text-sm py-8">{t("user-mgmt-no-users")}</p>
         ) : (
           <div className="space-y-2">
-            {users.map(user => {
-              const meta      = roleMeta[user.role?.toLowerCase()] ?? roleMeta.worker;
-              const isSelf       = me?.id === String(user.id) || me?.username === user.username;
-              const isEditing    = editRoleId === user.id;
-              const isReset      = resetPwId  === user.id;
-              const isEditingName = editUsernameId === user.id;
-              const isExpanded   = expandedId === user.id;
+            <Accordion type="single" collapsible className="space-y-2">
+              {users.map(user => {
+                const meta      = roleMeta[user.role?.toLowerCase()] ?? roleMeta.worker;
+                const isSelf       = me?.id === String(user.id) || me?.username === user.username;
+                const isEditing    = editRoleId === user.id;
+                const isReset      = resetPwId  === user.id;
+                const isEditingName = editUsernameId === user.id;
 
-              return (
-                <div key={user.id} className="border rounded-xl overflow-hidden hover:border-primary/30 transition-colors">
-                  {/* ── Main row ── */}
-                  <div
-                    className="flex items-center justify-between gap-3 p-4 cursor-pointer select-none"
-                    onClick={() => setExpandedId(isExpanded ? null : user.id)}
-                  >
-                    {/* Avatar + name */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="shrink-0 h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary uppercase">
-                        {user.username?.[0] ?? '?'}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm flex items-center gap-1.5 truncate">
-                          {user.username}
-                          {isSelf && <span className="text-xs text-muted-foreground font-normal">({t("user-mgmt-you")})</span>}
+                return (
+                  <AccordionItem key={user.id} value={String(user.id)} className="border rounded-xl overflow-hidden hover:border-primary/30 transition-colors">
+                    {/* ── Main row ── */}
+                    <AccordionTrigger className="hover:no-underline px-4 py-4 flex items-center justify-between w-full">
+                      <div className="flex items-center justify-between gap-3 w-full mr-2">
+                        {/* Avatar + name */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="shrink-0 h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary uppercase">
+                            {user.username?.[0] ?? '?'}
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <div className="font-semibold text-sm flex items-center gap-1.5 truncate">
+                              {user.username}
+                              {isSelf && <span className="text-xs text-muted-foreground font-normal">({t("user-mgmt-you")})</span>}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{t("user-mgmt-id")} #{user.id}</div>
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">{t("user-mgmt-id")} #{user.id}</div>
+
+                        {/* Role badge */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className={`text-xs font-semibold ${meta.cls}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${meta.dotCls}`} />
+                            {t(`role-${meta.label.toLowerCase()}`)}
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
+                    </AccordionTrigger>
 
-                    {/* Role badge + expand chevron */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant="outline" className={`text-xs font-semibold ${meta.cls}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${meta.dotCls}`} />
-                        {t(`role-${meta.label.toLowerCase()}`)}
-                      </Badge>
-                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                    </div>
-                  </div>
-
-                  {/* ── Expanded detail panel ── */}
-                  {isExpanded && (
-                    <div className="border-t bg-muted/20 px-4 pb-4 pt-3 space-y-4">
+                    {/* ── Expanded detail panel ── */}
+                    <AccordionContent className="border-t bg-muted/20 px-4 pb-4 pt-3 space-y-4">
                       {/* Info grid */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                         <div className="space-y-0.5">
@@ -458,11 +467,11 @@ export function UserManagement() {
                             <select
                               defaultValue={user.role}
                               id={`role-sel-${user.id}`}
-                              className="h-8 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                              className="h-8 rounded border border-white/10 bg-white/5 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#d97757]/30 text-foreground"
                             >
-                              <option value="worker">{t("role-worker")}</option>
-                              <option value="owner">{t("role-owner")}</option>
-                              <option value="admin">{t("role-admin")}</option>
+                              <option value="worker" className="bg-[#0c0c14] text-foreground">{t("role-worker")}</option>
+                              <option value="owner" className="bg-[#0c0c14] text-foreground">{t("role-owner")}</option>
+                              <option value="admin" className="bg-[#0c0c14] text-foreground">{t("role-admin")}</option>
                             </select>
                             <Button size="sm" className="h-8 px-2" disabled={savingRole === user.id} onClick={() => {
                               const sel = document.getElementById(`role-sel-${user.id}`) as HTMLSelectElement;
@@ -484,7 +493,7 @@ export function UserManagement() {
                         {!isSelf && (
                           <Button
                             size="sm" variant="outline"
-                            className="h-8 text-xs border-yellow-400 text-yellow-700 hover:bg-yellow-50"
+                            className="h-8 text-xs border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
                             onClick={e => { e.stopPropagation(); setResetPwId(isReset ? null : user.id); setEditRoleId(null); }}
                           >
                             <KeyRound className="h-3.5 w-3.5 mr-1" /> {t("user-mgmt-reset-pw")}
@@ -520,11 +529,11 @@ export function UserManagement() {
                           onDone={() => { setResetPwId(null); fetchUsers(); }}
                         />
                       )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           </div>
         )}
 

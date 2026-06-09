@@ -5,6 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -488,40 +490,42 @@ export default function Reports() {
           <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
             <h3 className="text-base font-semibold text-foreground mb-1">Revenue &amp; Profit Trend</h3>
 
-            <div className="h-[240px] md:h-[300px] w-full mt-4">
-              <ResponsiveContainer width="99%" height="100%">
-                <AreaChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 10, dy: 10 }} tickMargin={10} minTickGap={15} />
-                  <YAxis tick={{ fill: '#71717a', fontSize: 10, dx: -10 }} tickFormatter={(value) => value >= 1000 ? `${(value/1000).toFixed(0)}k` : value} />
-                  <Tooltip
-                    formatter={(value) => `₹${typeof value === 'number' ? value.toLocaleString() : '0'}`}
-                    labelFormatter={(label) => `Month: ${label}`}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                  />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stackId="1"
-                    stroke="#f59e0b"
-                    fill="#f59e0b"
-                    fillOpacity={0.3}
-                    name="Revenue"
-                  />
-                  {effectiveShowProfits && (
+            <div className="w-full mt-4">
+              <AspectRatio ratio={16 / 9} className="w-full">
+                <ResponsiveContainer width="99%" height="100%">
+                  <AreaChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 10, dy: 10 }} tickMargin={10} minTickGap={15} />
+                    <YAxis tick={{ fill: '#71717a', fontSize: 10, dx: -10 }} tickFormatter={(value) => value >= 1000 ? `${(value/1000).toFixed(0)}k` : value} />
+                    <Tooltip
+                      formatter={(value) => `₹${typeof value === 'number' ? value.toLocaleString() : '0'}`}
+                      labelFormatter={(label) => `Month: ${label}`}
+                      contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                    />
+                    <Legend />
                     <Area
                       type="monotone"
-                      dataKey="profit"
-                      stackId="2"
-                      stroke="#10B981"
-                      fill="#10B981"
+                      dataKey="revenue"
+                      stackId="1"
+                      stroke="#f59e0b"
+                      fill="#f59e0b"
                       fillOpacity={0.3}
-                      name="Profit"
+                      name="Revenue"
                     />
-                  )}
-                </AreaChart>
-              </ResponsiveContainer>
+                    {effectiveShowProfits && (
+                      <Area
+                        type="monotone"
+                        dataKey="profit"
+                        stackId="2"
+                        stroke="#10B981"
+                        fill="#10B981"
+                        fillOpacity={0.3}
+                        name="Profit"
+                      />
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </AspectRatio>
             </div>
           </div>
 
@@ -533,29 +537,30 @@ export default function Reports() {
               const totalRepairsCount = repairTypesData.reduce((sum, item) => sum + item.count, 0);
               return (
                 <div className="flex flex-col md:flex-row items-center justify-center gap-6 mt-4 w-full">
-                  {/* Donut Container */}
-                  <div className="relative w-full max-w-[280px] h-[240px] md:h-[280px] shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <Pie
-                          data={repairTypesData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius="60%"
-                          outerRadius="80%"
-                          paddingAngle={2}
-                          dataKey="count"
-                        >
-                          {repairTypesData.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={getSliceColor(entry.name, index)} 
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
+                  <div className="relative w-full max-w-[280px] shrink-0">
+                    <AspectRatio ratio={16 / 9} className="w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={repairTypesData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius="60%"
+                            outerRadius="80%"
+                            paddingAngle={2}
+                            dataKey="count"
+                          >
+                            {repairTypesData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={getSliceColor(entry.name, index)} 
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    </AspectRatio>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                       <span className="text-3xl font-extrabold text-foreground">{totalRepairsCount}</span>
                       <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mt-0.5">Repairs</span>
@@ -567,17 +572,24 @@ export default function Reports() {
                     {repairTypesData.map((entry, index) => {
                       const color = getSliceColor(entry.name, index);
                       return (
-                        <div key={entry.name} className="flex items-center gap-2 md:gap-3 text-xs md:text-sm min-w-0">
-                          <span 
-                            className="w-2.5 h-2.5 rounded-full shrink-0" 
-                            style={{ backgroundColor: color }}
-                          />
-                          <div className="flex flex-row md:items-center justify-between w-full min-w-0 gap-1">
-                            <span className="font-medium text-foreground truncate capitalize">{entry.name}</span>
-                            <span className="text-[11px] text-muted-foreground shrink-0 md:ml-4 whitespace-nowrap">
+                        <div key={entry.name} className="space-y-1 w-full min-w-0">
+                          <div className="flex justify-between items-center text-xs md:text-sm">
+                            <span className="font-semibold text-foreground capitalize flex items-center gap-2">
+                              <span 
+                                className="w-2 h-2 rounded-full shrink-0" 
+                                style={{ backgroundColor: color }}
+                              />
+                              {entry.name}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground font-mono">
                               {entry.count} ({entry.percentage.toFixed(0)}%)
                             </span>
                           </div>
+                          <Progress 
+                            value={entry.percentage} 
+                            variant={index % 4 === 0 ? "brand" : index % 4 === 1 ? "green" : index % 4 === 2 ? "amber" : "red"} 
+                            className="h-1.5 bg-white/5"
+                          />
                         </div>
                       );
                     })}
@@ -591,26 +603,28 @@ export default function Reports() {
           <div className="rounded-xl border border-border bg-background backdrop-blur-sm p-5">
             <h3 className="text-base font-semibold text-foreground mb-1">Device Brand Performance</h3>
 
-            <div className="h-[240px] md:h-[300px] w-full mt-4">
-              <ResponsiveContainer width="99%" height="100%">
-                <RechartsBarChart data={deviceBrandsData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="brand" tick={{ fill: '#71717a', fontSize: 10, dy: 10 }} tickMargin={10} minTickGap={15} />
-                  <YAxis tick={{ fill: '#71717a', fontSize: 10, dx: -10 }} />
-                  <Tooltip
-                    formatter={(value, name) => [
-                      name === "revenue" ? `₹${typeof value === 'number' ? value.toLocaleString() : '0'}` : value,
-                      name === "revenue" ? "Revenue" : "Repairs",
-                    ]}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                  />
-                  <Legend />
-                  <Bar dataKey="repairs" fill="#f59e0b" name="Repairs" />
-                  {effectiveShowProfits && (
-                    <Bar dataKey="revenue" fill="#10B981" name="Revenue" />
-                  )}
-                </RechartsBarChart>
-              </ResponsiveContainer>
+            <div className="w-full mt-4">
+              <AspectRatio ratio={16 / 9} className="w-full">
+                <ResponsiveContainer width="99%" height="100%">
+                  <RechartsBarChart data={deviceBrandsData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="brand" tick={{ fill: '#71717a', fontSize: 10, dy: 10 }} tickMargin={10} minTickGap={15} />
+                    <YAxis tick={{ fill: '#71717a', fontSize: 10, dx: -10 }} />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        name === "revenue" ? `₹${typeof value === 'number' ? value.toLocaleString() : '0'}` : value,
+                        name === "revenue" ? "Revenue" : "Repairs",
+                      ]}
+                      contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                    />
+                    <Legend />
+                    <Bar dataKey="repairs" fill="#f59e0b" name="Repairs" />
+                    {effectiveShowProfits && (
+                      <Bar dataKey="revenue" fill="#10B981" name="Revenue" />
+                    )}
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              </AspectRatio>
             </div>
           </div>
 

@@ -38,8 +38,10 @@ import { SuccessConfetti } from "@/components/ui/SuccessConfetti";
 import { DashboardTour } from "@/components/ui/DashboardTour";
 import CountUp from "@/components/ui/CountUp";
 import AnimatedList from "@/components/ui/AnimatedList";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirm } from "@/components/ui/ConfirmModal";
+import { SkeletonCard, SkeletonRow } from "@/components/ui/skeleton";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -525,7 +527,14 @@ export default function Dashboard() {
       </div>
 
       {/* ── Premium Metric Cards ───────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {/* Today Revenue */}
         <Card 
           id="dashboard-today-card" 
@@ -699,6 +708,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* ── Apple Glassmorphism Overlay (Portal — renders on document.body, never clipped) */}
       {createPortal(
@@ -724,35 +734,41 @@ export default function Dashboard() {
                   style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)' }}
                   onClick={() => setExpandedCard(null)}
                 />
-                {/* Glass panel — centered via CSS margin trick, animation only touches scale+opacity */}
-                <motion.div
-                  id="glassmorphism-overlay-panel"
-                  initial={{ opacity: 0, scale: 0.93 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.93 }}
-                  transition={{ type: 'spring', stiffness: 360, damping: 32, mass: 0.8 }}
+                {/* Centering Wrapper Container */}
+                <div
                   style={{
                     position: 'fixed',
+                    inset: 0,
                     zIndex: 9999,
-                    /* Centre via left+marginLeft — framer never overrides this */
-                    left: '50%',
-                    top: '50%',
-                    marginLeft: 'calc(min(92vw, 520px) / -2)',
-                    marginTop: 'clamp(-320px, -42.5dvh, -200px)',
-                    width: 'min(92vw, 520px)',
-                    /* Panel total height is clamped — header + body together never exceed viewport */
-                    maxHeight: 'min(85dvh, 640px)',
                     display: 'flex',
-                    flexDirection: 'column',
-                    background: 'rgba(12, 12, 20, 0.92)',
-                    backdropFilter: 'blur(40px) saturate(200%)',
-                    WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: '24px',
-                    boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)',
-                    overflow: 'hidden',   /* clips accent glow to border-radius */
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none',
+                    padding: '16px',
                   }}
                 >
+                  {/* Glass panel */}
+                  <motion.div
+                    id="glassmorphism-overlay-panel"
+                    initial={{ opacity: 0, scale: 0.93 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.93 }}
+                    transition={{ type: 'spring', stiffness: 360, damping: 32, mass: 0.8 }}
+                    style={{
+                      pointerEvents: 'auto',
+                      width: 'min(100%, 520px)',
+                      maxHeight: 'min(85dvh, 640px)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      background: 'rgba(12, 12, 20, 0.92)',
+                      backdropFilter: 'blur(40px) saturate(200%)',
+                      WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: '24px',
+                      boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)',
+                      overflow: 'hidden',   /* clips accent glow to border-radius */
+                    }}
+                  >
                   {/* Accent glow line at top */}
                   <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${meta.accentBg} to-transparent`} />
 
@@ -919,6 +935,7 @@ export default function Dashboard() {
 
                   </div>
                 </motion.div>
+                </div>
               </React.Fragment>
             );
           })()}
@@ -937,41 +954,43 @@ export default function Dashboard() {
             {loading ? (
               <div className="w-full h-[250px] bg-muted/20 animate-pulse rounded-lg" />
             ) : chartData.length > 0 ? (
-              <div className="w-full h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground))" opacity={0.2} />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
-                      dy={10}
-                    />
-                    <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
-                      tickFormatter={(value) => `₹${value}`}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Area 
-                      type="monotone" 
-                      dataKey="total" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={3}
-                      fillOpacity={1} 
-                      fill="url(#colorTotal)" 
-                      animationDuration={1500}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="w-full">
+                <AspectRatio ratio={16 / 9} className="w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground))" opacity={0.2} />
+                      <XAxis 
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                        dy={10}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} 
+                        tickFormatter={(value) => `₹${value}`}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Area 
+                        type="monotone" 
+                        dataKey="total" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#colorTotal)" 
+                        animationDuration={1500}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </AspectRatio>
               </div>
             ) : (
               <div className="w-full h-[250px] flex items-center justify-center text-muted-foreground text-sm border-2 border-dashed border-muted rounded-lg">
@@ -1001,7 +1020,7 @@ export default function Dashboard() {
             {loading ? (
               <div className="space-y-0 divide-y divide-border/50">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-[76px] bg-muted/30 animate-pulse" />
+                  <SkeletonRow key={i} />
                 ))}
               </div>
             ) : recentTransactions.length > 0 ? (

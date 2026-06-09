@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Card,
   CardContent,
@@ -148,6 +149,21 @@ export default function Bills() {
       statusFilter === "all" || bill.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageParam = parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = isNaN(pageParam) ? 1 : pageParam;
+
+  const setCurrentPage = (page: number) => {
+    setSearchParams(prev => {
+      prev.set("page", String(page));
+      return prev;
+    });
+  };
+
+  const itemsPerPage = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredBills.length / itemsPerPage));
+  const paginatedBills = filteredBills.slice((currentPage - 1) * itemsPerPage, (currentPage - 1) * itemsPerPage + itemsPerPage);
 
   const addLineItem = () => {
     setFormData({
@@ -789,7 +805,7 @@ export default function Bills() {
               <p className="text-sm mt-1">Generate your first invoice to get started</p>
             </div>
           ) : (
-            filteredBills.map((bill) => (
+            paginatedBills.map((bill) => (
               <div key={bill.id} className="rounded-xl border border-border bg-background backdrop-blur-sm hover:border-brand-orange/30 transition-all duration-200">
                 <div className="p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -866,6 +882,22 @@ export default function Bills() {
             ))
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-6 py-4 pb-24 lg:pb-4 border border-border bg-background/50 backdrop-blur-sm rounded-xl mt-4">
+            <div className="text-xs text-muted-foreground text-center sm:text-left">
+              Showing page {currentPage} of {totalPages} ({filteredBills.length} bills found)
+            </div>
+            <div className="flex-1 flex justify-center sm:justify-end">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Bill Preview Dialog */}
         <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>

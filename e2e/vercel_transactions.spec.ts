@@ -33,7 +33,7 @@ test.describe('E2E - Dashboard, Profile, Transactions, and Render Checks', () =>
       await page.fill('input#repairCost', '1000');
       
       // Select payment method
-      await page.click('button[role="combobox"]:has-text("Select payment method")');
+      await page.locator('button[role="combobox"]').nth(1).click();
       await page.click('div[role="option"]:has-text("Cash")');
       
       await page.fill('input#amountGiven', '1000');

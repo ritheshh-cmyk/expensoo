@@ -14,6 +14,16 @@ interface User {
   avatar?: string | null;
 }
 
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  read: boolean;
+  created_at: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -22,6 +32,12 @@ interface AuthContextType {
   logout: () => void;
   hasAccess: (roles: string[]) => boolean;
   updateUser: (updates: Partial<User>) => void;
+  notifications: Notification[];
+  unreadCount: number;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  deleteNotification: (id: string) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'created_at' | 'read'>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,12 +47,94 @@ const SESSION_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 const SESSION_START_KEY   = 'session_started_at';
 const LOGOUT_CHANNEL      = 'callmemobiles_logout';
 
+const DEFAULT_NOTIFICATIONS: Notification[] = [
+  {
+    id: "system-update-1",
+    title: "System Updated to v2.1",
+    message: "Expensoo has been updated with premium design tokens, mobile-first optimization, and WCAG AA accessibility audits.",
+    type: "info",
+    priority: "low",
+    read: false,
+    created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "manual-update-1",
+    title: "New User Manual Available",
+    message: "Check out the newly formatted User Manual in the sidebar to learn about transaction flows and supplier details.",
+    type: "success",
+    priority: "medium",
+    read: false,
+    created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+  }
+];
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser]       = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const timerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
   // BroadcastChannel lets other open tabs receive the logout signal
   const channelRef            = useRef<BroadcastChannel | null>(null);
+
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // ── Notifications persistence and state ──────────────────────────────────
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+    const storageKey = `expensoo_notifications_${user.id}`;
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        setNotifications(JSON.parse(saved));
+      } catch {
+        setNotifications(DEFAULT_NOTIFICATIONS);
+      }
+    } else {
+      setNotifications(DEFAULT_NOTIFICATIONS);
+    }
+  }, [user]);
+
+  const saveNotifications = useCallback((updated: Notification[]) => {
+    if (user) {
+      localStorage.setItem(`expensoo_notifications_${user.id}`, JSON.stringify(updated));
+    }
+    setNotifications(updated);
+  }, [user]);
+
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+
+  const markAsRead = useCallback((id: string) => {
+    const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+    saveNotifications(updated);
+  }, [notifications, saveNotifications]);
+
+  const markAllAsRead = useCallback(() => {
+    const updated = notifications.map(n => ({ ...n, read: true }));
+    saveNotifications(updated);
+  }, [notifications, saveNotifications]);
+
+  const deleteNotification = useCallback((id: string) => {
+    const updated = notifications.filter(n => n.id !== id);
+    saveNotifications(updated);
+  }, [notifications, saveNotifications]);
+
+  const addNotification = useCallback((newNotif: Omit<Notification, 'id' | 'created_at' | 'read'>) => {
+    const fullNotif: Notification = {
+      ...newNotif,
+      id: Math.random().toString(36).substring(2, 11),
+      read: false,
+      created_at: new Date().toISOString(),
+    };
+    setNotifications(prev => {
+      const updated = [fullNotif, ...prev];
+      if (user) {
+        localStorage.setItem(`expensoo_notifications_${user.id}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, [user]);
 
   /** Hard logout — clears everything and broadcasts to other tabs.
    *  @param reason 'session' = auto-expiry timer, 'user' = manual sign-out.
@@ -218,12 +316,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Memoize the context value so consumers only re-render when the shape
-  // actually changes — not on every unrelated AuthProvider render.
   const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, loading, login, logout: () => logout('user', true), hasAccess, updateUser }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user, loading, logout, updateUser]
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      loading,
+      login,
+      logout: () => logout('user', true),
+      hasAccess,
+      updateUser,
+      notifications,
+      unreadCount,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification,
+      addNotification,
+    }),
+    [user, loading, logout, updateUser, notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, addNotification]
   );
 
   return (

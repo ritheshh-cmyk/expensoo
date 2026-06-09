@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationList } from "@/components/ui/notification-list";
 import { useTheme } from "@/components/theme-provider";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
@@ -111,6 +112,51 @@ function NativeMenu({
   );
 }
 
+function NotificationDropdown() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const { unreadCount } = useAuth();
+  
+  useClickOutside(ref, () => setOpen(false));
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    if (open) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="relative min-h-[44px] min-w-[44px]"
+        onClick={() => setOpen(!open)}
+      >
+        <Bell className="h-4 w-4" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d97757] px-1 text-[9px] font-bold text-white leading-none">
+            {unreadCount}
+          </span>
+        )}
+        <span className="sr-only">Notifications</span>
+      </Button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-96 z-[200] origin-top-right animate-in fade-in-0 zoom-in-95 duration-150">
+          <NotificationList onClose={() => setOpen(false)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Header ────────────────────────────────────────────────────────────────────
 export function Header({ onMenuClick, sidebarOpen = false }: HeaderProps) {
   const { t } = useLanguage();
@@ -193,20 +239,7 @@ export function Header({ onMenuClick, sidebarOpen = false }: HeaderProps) {
           />
 
           {/* Notifications */}
-          <NativeMenu
-            trigger={
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-2 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
-                <span className="sr-only">Notifications</span>
-              </Button>
-            }
-            items={[
-              { icon: <Bell className="h-4 w-4 text-brand-orange" />, label: "System updated to v2.1", onClick: () => {} },
-              { icon: <Bell className="h-4 w-4 text-brand-orange" />, label: "New manual available", onClick: () => navigate('/manual') },
-            ]}
-            width="w-64"
-          />
+          <NotificationDropdown />
 
           {/* User menu */}
           <NativeMenu
