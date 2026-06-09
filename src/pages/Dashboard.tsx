@@ -408,8 +408,8 @@ export default function Dashboard() {
     const isConfirmed = await confirm({
       title: "Mark as Paid?",
       description: `Are you sure you want to mark transaction for ${customer} (₹${formatCurrency(cost)}) as completed and paid?`,
-      confirmText: "Yes, Mark as Paid",
-      cancelText: "Cancel",
+      confirmLabel: "Yes, Mark as Paid",
+      cancelLabel: "Cancel",
     });
 
     if (!isConfirmed) return;
