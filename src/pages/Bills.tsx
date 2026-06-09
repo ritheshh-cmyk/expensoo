@@ -950,7 +950,7 @@ export default function Bills() {
                         {
                           statusConfig[
                             previewBill.status as keyof typeof statusConfig
-                          ].label
+                          ]?.label || previewBill.status
                         }
                       </p>
                     </div>
