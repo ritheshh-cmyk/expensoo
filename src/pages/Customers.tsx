@@ -560,9 +560,8 @@ export default function Customers() {
                 </TableHeader>
                 <TableBody>
                   {filteredCustomers.map((customer, index) => {
-                    const StatusIcon =
-                      statusConfig[customer.status as keyof typeof statusConfig]
-                        .icon;
+                    const config = statusConfig[customer.status as keyof typeof statusConfig] || statusConfig.active;
+                    const StatusIcon = config.icon;
                     const paymentStatus = getPaymentStatus(
                       customer.totalAmount,
                       customer.paidAmount,
@@ -622,16 +621,10 @@ export default function Customers() {
                               variant="secondary"
                               className={cn(
                                 "text-xs",
-                                statusConfig[
-                                  customer.status as keyof typeof statusConfig
-                                ].color,
+                                config.color,
                               )}
                             >
-                              {
-                                statusConfig[
-                                  customer.status as keyof typeof statusConfig
-                                ].label
-                              }
+                              {config.label}
                             </Badge>
                           </div>
                         </TableCell>

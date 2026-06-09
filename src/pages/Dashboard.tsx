@@ -44,14 +44,23 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirm } from "@/components/ui/ConfirmModal";
 import { SkeletonCard, SkeletonRow } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ─── Filter period helpers ────────────────────────────────────────────────────
-type FilterPeriod = 'today' | 'week' | 'month' | 'year' | 'all';
+type FilterPeriod = 'today' | 'week' | 'month' | 'last30' | 'last6months' | 'year' | 'all';
 
 const FILTER_OPTIONS: { value: FilterPeriod; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: 'week',  label: 'This Week' },
   { value: 'month', label: 'This Month' },
+  { value: 'last30', label: 'Last 30 Days' },
+  { value: 'last6months', label: 'Last 6 Months' },
   { value: 'year',  label: 'This Year' },
   { value: 'all',   label: 'All Time' },
 ];
@@ -67,6 +76,12 @@ function getFilterStart(period: FilterPeriod): Date | null {
     }
     case 'month': {
       const d = new Date(now.getFullYear(), now.getMonth(), 1); return d;
+    }
+    case 'last30': {
+      const d = new Date(now); d.setDate(now.getDate() - 30); d.setHours(0, 0, 0, 0); return d;
+    }
+    case 'last6months': {
+      const d = new Date(now); d.setMonth(now.getMonth() - 6); d.setHours(0, 0, 0, 0); return d;
     }
     case 'year': {
       const d = new Date(now.getFullYear(), 0, 1); return d;
@@ -117,6 +132,41 @@ function buildChartData(txs: any[], period: FilterPeriod) {
       const idx = Math.floor((d.getTime() - startOfWeek.getTime()) / 86400000);
       if (idx >= 0 && idx < 7) days[idx].total += Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
     });
+  } else if (period === 'month' || period === 'last30') {
+    // Sliding 30 days window for last30, or days since start of month for month
+    const start = getFilterStart(period);
+    const numDays = period === 'last30' ? 30 : now.getDate();
+    days = Array.from({ length: numDays }).map((_, i) => {
+      const d = new Date(now);
+      if (period === 'last30') {
+        d.setDate(now.getDate() - (30 - 1 - i));
+      } else {
+        d.setDate(1 + i);
+      }
+      return { dateStr: d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }), dateObj: d, total: 0 };
+    });
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      if (start && d < start) return;
+      const dateStr = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+      const match = days.find(day => day.dateStr === dateStr);
+      if (match) match.total += Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
+    });
+  } else if (period === 'last6months') {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    days = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      return { dateStr: `${months[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`, dateObj: d, total: 0 };
+    });
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      const monthIdx = d.getMonth();
+      const year = d.getFullYear();
+      const match = days.find(day => day.dateObj.getMonth() === monthIdx && day.dateObj.getFullYear() === year);
+      if (match) match.total += Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
+    });
   } else if (period === 'year') {
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     days = months.map((m, i) => ({ dateStr: m, dateObj: new Date(now.getFullYear(), i, 1), total: 0 }));
@@ -126,17 +176,28 @@ function buildChartData(txs: any[], period: FilterPeriod) {
       days[d.getMonth()].total += Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
     });
   } else {
-    // month / all: last 30 days sliding window
-    const windowDays = period === 'all' ? 30 : 30;
-    days = Array.from({ length: windowDays }).map((_, i) => {
-      const d = new Date(now); d.setDate(now.getDate() - (windowDays - 1 - i));
-      return { dateStr: d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }), dateObj: d, total: 0 };
+    // all: group by month for all time
+    let minDate = new Date();
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (!isNaN(d.getTime()) && d < minDate) minDate = d;
     });
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let curr = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    while (curr <= now) {
+      days.push({
+        dateStr: `${months[curr.getMonth()]} ${curr.getFullYear().toString().slice(-2)}`,
+        dateObj: new Date(curr),
+        total: 0
+      });
+      curr.setMonth(curr.getMonth() + 1);
+    }
     txs.forEach(tx => {
       const d = new Date(tx.createdAt || tx.created_at || tx.date);
       if (isNaN(d.getTime())) return;
-      const dateStr = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-      const match = days.find(day => day.dateStr === dateStr);
+      const monthIdx = d.getMonth();
+      const year = d.getFullYear();
+      const match = days.find(day => day.dateObj.getMonth() === monthIdx && day.dateObj.getFullYear() === year);
       if (match) match.total += Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
     });
   }
@@ -348,6 +409,32 @@ export default function Dashboard() {
     () => buildChartData(allTransactions, filterPeriod),
     [allTransactions, filterPeriod]
   );
+
+  const periodDesc = useMemo(() => {
+    switch (filterPeriod) {
+      case 'today': return "Hourly revenue for today";
+      case 'week': return "Daily revenue for this week";
+      case 'month': return "Daily revenue for this month";
+      case 'last30': return "Daily revenue for the past 30 days";
+      case 'last6months': return "Monthly revenue for the past 6 months";
+      case 'year': return "Monthly revenue for this year";
+      case 'all': return "Monthly revenue overall";
+      default: return "Daily revenue overview";
+    }
+  }, [filterPeriod]);
+
+  const emptyDesc = useMemo(() => {
+    switch (filterPeriod) {
+      case 'today': return "No data for today";
+      case 'week': return "No data for this week";
+      case 'month': return "No data for this month";
+      case 'last30': return "No data for the past 30 days";
+      case 'last6months': return "No data for the past 6 months";
+      case 'year': return "No data for this year";
+      case 'all': return "No data available";
+      default: return "No data available";
+    }
+  }, [filterPeriod]);
 
   // Filtered metric values
   const filteredRevenue = useMemo(() =>
@@ -643,24 +730,28 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Date Filter Pills ──────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-        {FILTER_OPTIONS.map(opt => (
-          <button
-            key={opt.value}
-            onClick={() => setFilterPeriod(opt.value)}
-            className={cn(
-              "px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 cursor-pointer",
-              filterPeriod === opt.value
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
-        <span className="ml-auto text-xs text-muted-foreground">
+      {/* ── Date Filter Dropdown Select ────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4 flex-wrap bg-card/40 backdrop-blur-md border border-border/40 p-3 rounded-xl shadow-sm">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Filter Period:</span>
+          <Select value={filterPeriod} onValueChange={(val: FilterPeriod) => setFilterPeriod(val)}>
+            <SelectTrigger 
+              className="w-[180px] bg-background/50 border-border/60 h-9 text-xs font-semibold rounded-lg shadow-sm hover:shadow-md hover:border-primary/50 transition-all flex items-center justify-between"
+              id="dashboard-filter-trigger"
+            >
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent className="border border-border/80 bg-popover/95 backdrop-blur-md z-[9999]">
+              {FILTER_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value} className="text-xs font-medium cursor-pointer">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <span className="text-xs font-semibold text-muted-foreground bg-muted/30 px-3 py-1 rounded-full border border-border/40">
           {filteredCount} transaction{filteredCount !== 1 ? 's' : ''}
         </span>
       </div>
@@ -1057,7 +1148,7 @@ export default function Dashboard() {
         <Card id="revenue-chart" className="col-span-1 lg:col-span-2 border-muted shadow-sm hover:shadow-md transition-shadow flex flex-col">
           <CardHeader>
             <CardTitle className="text-lg">Revenue Overview</CardTitle>
-            <CardDescription>Daily revenue for the past 7 days</CardDescription>
+            <CardDescription>{periodDesc}</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 min-h-[300px]">
             {loading ? (
@@ -1103,7 +1194,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="w-full h-[250px] flex items-center justify-center text-muted-foreground text-sm border-2 border-dashed border-muted rounded-lg">
-                No data for the past 7 days
+                {emptyDesc}
               </div>
             )}
           </CardContent>
