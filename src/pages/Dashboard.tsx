@@ -1,5 +1,6 @@
 import { io } from "socket.io-client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -78,6 +79,8 @@ export default function Dashboard() {
   const { confirm, ConfirmModalElement } = useConfirm();
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
+  const [backendWaking, setBackendWaking] = useState(false);
+  const wakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showProfits, setShowProfits] = useState(
     localStorage.getItem("showProfits") === "true",
@@ -110,11 +113,21 @@ export default function Dashboard() {
     if (!user) { setLoading(false); return; }
     setLoading(true);
 
+    // Show "backend waking up" banner after 4 seconds of waiting
+    if (wakeTimerRef.current) clearTimeout(wakeTimerRef.current);
+    wakeTimerRef.current = setTimeout(() => setBackendWaking(true), 4000);
+
     try {
+      // 25-second timeout — Render free tier cold starts ~20s
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
       const [dash, txns] = await Promise.all([
         apiClient.getDashboardStats(),
         apiClient.getTransactions(),
       ]);
+
+      clearTimeout(timeoutId);
 
       if (dash && typeof dash === 'object' && 'success' in dash && !dash.success) {
         throw new Error(`Dashboard API Error: ${dash.error || 'Unknown error'}`);
@@ -195,12 +208,16 @@ export default function Dashboard() {
     } catch (err: any) {
       console.error("[Dashboard] fetch error:", err);
       toast({
-        title: "Sync Warning",
-        description: err.message || "Could not refresh dashboard data. Displaying cached information.",
+        title: err?.name === 'AbortError' ? "Server timeout" : "Sync Warning",
+        description: err?.name === 'AbortError'
+          ? "Backend took too long to respond. It may be starting up — try refreshing in 30s."
+          : err.message || "Could not refresh dashboard data.",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
+      setBackendWaking(false);
+      if (wakeTimerRef.current) { clearTimeout(wakeTimerRef.current); wakeTimerRef.current = null; }
     }
   }, [user]);
 
@@ -430,6 +447,13 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6 relative animate-in fade-in duration-500">
+      {/* ── Backend cold-start banner ── */}
+      {backendWaking && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm animate-in slide-in-from-top-2 duration-300">
+          <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
+          <span>Server is waking up — this can take up to 30 seconds on first load. Please wait…</span>
+        </div>
+      )}
       {/* ── Onboarding Tour (shows once per browser) ── */}
       {/* <DashboardTour /> Disabled due to mobile touch issues */}
       {/* ── Mobile Floating Action Button (FAB) ── */}
@@ -676,199 +700,205 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* ── Apple Glassmorphism Overlay ─────────────────────────────────── */}
-      <AnimatePresence>
-        {expandedCard && (() => {
-          const cardMeta: Record<string, { label: string; accent: string; accentBg: string; icon: React.ReactNode }> = {
-            today:   { label: "Today's Revenue",     accent: 'text-brand-green',  accentBg: 'from-brand-green/20',   icon: <DollarSign className="h-4 w-4 text-brand-green" /> },
-            week:    { label: 'This Week',             accent: 'text-brand-blue',   accentBg: 'from-brand-blue/20',    icon: <TrendingUp className="h-4 w-4 text-brand-blue" /> },
-            total:   { label: 'Total Revenue',         accent: 'text-primary',      accentBg: 'from-primary/20',       icon: <CheckCircle2 className="h-4 w-4 text-primary" /> },
-            pending: { label: 'Pending Repairs',       accent: 'text-red-400',      accentBg: 'from-red-500/20',       icon: <Wallet className="h-4 w-4 text-red-400" /> },
-            unpaid:  { label: 'Unpaid Transactions',   accent: 'text-brand-orange', accentBg: 'from-brand-orange/20',  icon: <AlertCircle className="h-4 w-4 text-brand-orange" /> },
-          };
-          const meta = cardMeta[expandedCard];
-          return (
-            <>
-              {/* Dim backdrop */}
-              <motion.div
-                id="glassmorphism-overlay-backdrop"
-                key="glass-backdrop"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="fixed inset-0 z-40 bg-black/40"
-                onClick={() => setExpandedCard(null)}
-              />
-              {/* Glass panel */}
-              <motion.div
-                id="glassmorphism-overlay-panel"
-                key="glass-panel"
-                initial={{ opacity: 0, scale: 0.94, y: 12 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.94, y: 12 }}
-                transition={{ type: 'spring', stiffness: 340, damping: 30, mass: 0.8 }}
-                className="fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-sm"
-                style={{
-                  background: 'rgba(12, 12, 20, 0.82)',
-                  backdropFilter: 'blur(28px) saturate(180%) brightness(1.1)',
-                  WebkitBackdropFilter: 'blur(28px) saturate(180%) brightness(1.1)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  borderRadius: '24px',
-                  boxShadow: '0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.08)',
-                }}
-              >
-                {/* Gradient glow top */}
-                <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${meta.accentBg} to-transparent rounded-t-[24px]`} />
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 pt-5 pb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`rounded-xl p-2 bg-white/5 border border-white/10`}>{meta.icon}</div>
-                    <span className={`text-sm font-semibold ${meta.accent}`}>{meta.label}</span>
+      {/* ── Apple Glassmorphism Overlay (Portal — renders on document.body, never clipped) */}
+      {createPortal(
+        <AnimatePresence>
+          {expandedCard && (() => {
+            const cardMeta: Record<string, { label: string; accent: string; accentBg: string; icon: React.ReactNode }> = {
+              today:   { label: "Today's Revenue",     accent: 'text-brand-green',  accentBg: 'from-brand-green/20',   icon: <DollarSign className="h-4 w-4 text-brand-green" /> },
+              week:    { label: 'This Week',             accent: 'text-brand-blue',   accentBg: 'from-brand-blue/20',    icon: <TrendingUp className="h-4 w-4 text-brand-blue" /> },
+              total:   { label: 'Total Revenue',         accent: 'text-primary',      accentBg: 'from-primary/20',       icon: <CheckCircle2 className="h-4 w-4 text-primary" /> },
+              pending: { label: 'Pending Repairs',       accent: 'text-red-400',      accentBg: 'from-red-500/20',       icon: <Wallet className="h-4 w-4 text-red-400" /> },
+              unpaid:  { label: 'Unpaid Transactions',   accent: 'text-brand-orange', accentBg: 'from-brand-orange/20',  icon: <AlertCircle className="h-4 w-4 text-brand-orange" /> },
+            };
+            const meta = cardMeta[expandedCard];
+            return (
+              <React.Fragment key={expandedCard}>
+                {/* Dim backdrop */}
+                <motion.div
+                  id="glassmorphism-overlay-backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.5)' }}
+                  onClick={() => setExpandedCard(null)}
+                />
+                {/* Glass panel */}
+                <motion.div
+                  id="glassmorphism-overlay-panel"
+                  initial={{ opacity: 0, scale: 0.94, y: 16 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.94, y: 16 }}
+                  transition={{ type: 'spring', stiffness: 340, damping: 30, mass: 0.8 }}
+                  style={{
+                    position: 'fixed',
+                    zIndex: 9999,
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: 'min(92vw, 400px)',
+                    background: 'rgba(12, 12, 20, 0.88)',
+                    backdropFilter: 'blur(32px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '24px',
+                    boxShadow: '0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
+                  }}
+                >
+                  {/* Accent glow line at top */}
+                  <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${meta.accentBg} to-transparent rounded-t-[24px]`} />
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 pt-5 pb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="rounded-xl p-2 bg-white/5 border border-white/10">{meta.icon}</div>
+                      <span className={`text-sm font-semibold ${meta.accent}`}>{meta.label}</span>
+                    </div>
+                    <button
+                      onClick={() => setExpandedCard(null)}
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setExpandedCard(null)}
-                    className="rounded-full h-7 w-7 flex items-center justify-center bg-white/8 hover:bg-white/15 border border-white/10 transition-colors text-muted-foreground hover:text-white"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                  </button>
-                </div>
-                <div className="h-px bg-white/6 mx-5" />
-                {/* Scrollable body */}
-                <div className="px-5 py-4 max-h-[65vh] overflow-y-auto space-y-2 scrollbar-thin" onClick={(e) => e.stopPropagation()}>
+                  <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '0 20px' }} />
+                  {/* Scrollable body */}
+                  <div className="px-5 py-4 space-y-2" style={{ maxHeight: '60vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
 
-                  {/* TODAY content */}
-                  {expandedCard === 'today' && (
-                    <>
-                      {todayTransactions.length > 0 ? todayTransactions.map((tx: any) => {
-                        const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
-                        return (
-                          <div key={tx.id} className="flex justify-between items-center text-xs p-3 rounded-xl bg-white/5 border border-white/8 hover:bg-white/8 transition-colors">
-                            <div className="min-w-0">
-                              <p className="font-semibold truncate text-white">{tx.customerName || tx.customer_name || tx.customer || 'Customer'}</p>
-                              <p className="text-[10px] text-white/50 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'} · {tx.repairType}</p>
-                            </div>
-                            <div className="text-right shrink-0 ml-3">
-                              <p className="font-bold text-white">₹{formatCurrency(cost)}</p>
-                              <span className={cn('inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase mt-0.5', getStatusColor(tx.status))}>{tx.status}</span>
-                            </div>
-                          </div>
-                        );
-                      }) : <p className="text-xs text-white/40 text-center py-6">No transactions today.</p>}
-                      {todayTransactions.length > 0 && (
-                        <div className="flex justify-between items-center pt-3 mt-1 border-t border-white/8 text-xs font-bold">
-                          <span className="text-white/60">Today Total</span>
-                          <span className="text-brand-green">₹{formatCurrency(todayTotal)}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* WEEK content */}
-                  {expandedCard === 'week' && (
-                    <>
-                      {weekTransactionsGrouped.length > 0 ? weekTransactionsGrouped.map((dayData: any) => (
-                        <div key={dayData.day} className="space-y-1.5">
-                          <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-brand-blue/70 pb-0.5 border-b border-white/6">
-                            <span>{dayData.day}</span><span>₹{formatCurrency(dayData.total)}</span>
-                          </div>
-                          {dayData.txs.map((tx: any) => {
-                            const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
-                            return (
-                              <div key={tx.id} className="flex justify-between items-center text-xs p-2.5 rounded-xl bg-white/5 border border-white/8">
-                                <div className="min-w-0">
-                                  <p className="font-medium truncate text-white">{tx.customerName || tx.customer_name || 'Customer'}</p>
-                                  <p className="text-[10px] text-white/40 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'}</p>
-                                </div>
-                                <span className="font-semibold text-white shrink-0 ml-2">₹{formatCurrency(cost)}</span>
+                    {/* TODAY */}
+                    {expandedCard === 'today' && (
+                      <>
+                        {todayTransactions.length > 0 ? todayTransactions.map((tx: any) => {
+                          const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+                          return (
+                            <div key={tx.id} className="flex justify-between items-center text-xs p-3 rounded-xl bg-white/5 border border-white/8 hover:bg-white/8 transition-colors">
+                              <div className="min-w-0">
+                                <p className="font-semibold truncate text-white">{tx.customerName || tx.customer_name || 'Customer'}</p>
+                                <p className="text-[10px] text-white/50 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'} · {tx.repairType}</p>
                               </div>
-                            );
-                          })}
+                              <div className="text-right shrink-0 ml-3">
+                                <p className="font-bold text-white">₹{formatCurrency(cost)}</p>
+                                <span className={cn('inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase mt-0.5', getStatusColor(tx.status))}>{tx.status}</span>
+                              </div>
+                            </div>
+                          );
+                        }) : <p className="text-xs text-white/40 text-center py-6">No transactions today.</p>}
+                        {todayTransactions.length > 0 && (
+                          <div className="flex justify-between items-center pt-3 mt-1 border-t border-white/8 text-xs font-bold">
+                            <span className="text-white/60">Today Total</span>
+                            <span className="text-brand-green">₹{formatCurrency(todayTotal)}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* WEEK */}
+                    {expandedCard === 'week' && (
+                      <>
+                        {weekTransactionsGrouped.length > 0 ? weekTransactionsGrouped.map((dayData: any) => (
+                          <div key={dayData.day} className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-brand-blue/70 pb-0.5 border-b border-white/6">
+                              <span>{dayData.day}</span><span>₹{formatCurrency(dayData.total)}</span>
+                            </div>
+                            {dayData.txs.map((tx: any) => {
+                              const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+                              return (
+                                <div key={tx.id} className="flex justify-between items-center text-xs p-2.5 rounded-xl bg-white/5 border border-white/8">
+                                  <div className="min-w-0">
+                                    <p className="font-medium truncate text-white">{tx.customerName || tx.customer_name || 'Customer'}</p>
+                                    <p className="text-[10px] text-white/40 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'}</p>
+                                  </div>
+                                  <span className="font-semibold text-white shrink-0 ml-2">₹{formatCurrency(cost)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )) : <p className="text-xs text-white/40 text-center py-6">No transactions this week.</p>}
+                        {weekTransactionsGrouped.length > 0 && (
+                          <div className="flex justify-between items-center pt-3 mt-1 border-t border-white/8 text-xs font-bold">
+                            <span className="text-white/60">Week Total</span>
+                            <span className="text-brand-blue">₹{formatCurrency(weekTotal)}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* TOTAL */}
+                    {expandedCard === 'total' && (
+                      <>
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/8 space-y-2 text-xs">
+                          <div className="flex justify-between"><span className="text-white/50">Repairs</span><span className="font-semibold text-white">₹{formatCurrency(totalBreakdown.repairTotal)}</span></div>
+                          <div className="flex justify-between"><span className="text-white/50">Sales</span><span className="font-semibold text-white">₹{formatCurrency(totalBreakdown.saleTotal)}</span></div>
+                          <p className="text-[10px] text-white/30 italic border-t border-white/8 pt-1.5">* Internal repairs excluded</p>
                         </div>
-                      )) : <p className="text-xs text-white/40 text-center py-6">No transactions this week.</p>}
-                      {weekTransactionsGrouped.length > 0 && (
-                        <div className="flex justify-between items-center pt-3 mt-1 border-t border-white/8 text-xs font-bold">
-                          <span className="text-white/60">Week Total</span>
-                          <span className="text-brand-blue">₹{formatCurrency(weekTotal)}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* TOTAL content */}
-                  {expandedCard === 'total' && (
-                    <>
-                      <div className="p-3 rounded-xl bg-white/5 border border-white/8 space-y-2 text-xs">
-                        <div className="flex justify-between"><span className="text-white/50">Repairs</span><span className="font-semibold text-white">₹{formatCurrency(totalBreakdown.repairTotal)}</span></div>
-                        <div className="flex justify-between"><span className="text-white/50">Sales</span><span className="font-semibold text-white">₹{formatCurrency(totalBreakdown.saleTotal)}</span></div>
-                        <p className="text-[10px] text-white/30 italic border-t border-white/8 pt-1.5">* Internal repairs excluded</p>
-                      </div>
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest pt-1">Top 5 Highest Value</p>
-                      {top5Transactions.length > 0 ? top5Transactions.map((tx: any) => {
-                        const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
-                        return (
-                          <div key={tx.id} className="flex justify-between items-center text-xs p-2.5 rounded-xl bg-white/5 border border-white/8">
-                            <div className="min-w-0">
-                              <p className="font-medium truncate text-white">{tx.customerName || tx.customer_name || 'Customer'}</p>
-                              <p className="text-[10px] text-white/40 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'} · {tx.repairType}</p>
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest pt-1">Top 5 Highest Value</p>
+                        {top5Transactions.length > 0 ? top5Transactions.map((tx: any) => {
+                          const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+                          return (
+                            <div key={tx.id} className="flex justify-between items-center text-xs p-2.5 rounded-xl bg-white/5 border border-white/8">
+                              <div className="min-w-0">
+                                <p className="font-medium truncate text-white">{tx.customerName || tx.customer_name || 'Customer'}</p>
+                                <p className="text-[10px] text-white/40 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'} · {tx.repairType}</p>
+                              </div>
+                              <span className="font-bold text-primary shrink-0 ml-2">₹{formatCurrency(cost)}</span>
                             </div>
-                            <span className="font-bold text-primary shrink-0 ml-2">₹{formatCurrency(cost)}</span>
-                          </div>
-                        );
-                      }) : <p className="text-[10px] text-white/40 text-center py-2">No transactions recorded.</p>}
-                    </>
-                  )}
+                          );
+                        }) : <p className="text-[10px] text-white/40 text-center py-2">No transactions recorded.</p>}
+                      </>
+                    )}
 
-                  {/* PENDING content */}
-                  {expandedCard === 'pending' && (
-                    <>
-                      {pendingRepairsList.length > 0 ? pendingRepairsList.map((tx: any) => {
-                        const dateStr = formatDate(tx.createdAt || tx.created_at || tx.date);
-                        const daysAgo = calculateDaysAgo(tx.createdAt || tx.created_at || tx.date);
-                        return (
-                          <div key={tx.id} className="p-3 rounded-xl bg-white/5 border border-white/8 space-y-2.5 text-xs">
-                            <div className="min-w-0">
-                              <p className="font-semibold text-white truncate">{tx.customerName || tx.customer_name || 'Customer'}</p>
-                              <p className="text-white/50 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'} · {tx.repairType}</p>
-                              <p className="text-[10px] text-white/30 mt-0.5">{dateStr} · {daysAgo}</p>
+                    {/* PENDING */}
+                    {expandedCard === 'pending' && (
+                      <>
+                        {pendingRepairsList.length > 0 ? pendingRepairsList.map((tx: any) => {
+                          const dateStr = formatDate(tx.createdAt || tx.created_at || tx.date);
+                          const daysAgo = calculateDaysAgo(tx.createdAt || tx.created_at || tx.date);
+                          return (
+                            <div key={tx.id} className="p-3 rounded-xl bg-white/5 border border-white/8 space-y-2.5 text-xs">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-white truncate">{tx.customerName || tx.customer_name || 'Customer'}</p>
+                                <p className="text-white/50 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'} · {tx.repairType}</p>
+                                <p className="text-[10px] text-white/30 mt-0.5">{dateStr} · {daysAgo}</p>
+                              </div>
+                              <Link to={`/transactions/${tx.id}/edit`} onClick={() => setExpandedCard(null)}>
+                                <Button size="sm" className="w-full min-h-[44px] bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl">Take Action</Button>
+                              </Link>
                             </div>
-                            <Link to={`/transactions/${tx.id}/edit`} onClick={() => setExpandedCard(null)}>
-                              <Button size="sm" className="w-full min-h-[44px] bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl">Take Action</Button>
-                            </Link>
-                          </div>
-                        );
-                      }) : <p className="text-xs text-white/40 text-center py-6">No pending repairs.</p>}
-                    </>
-                  )}
+                          );
+                        }) : <p className="text-xs text-white/40 text-center py-6">No pending repairs.</p>}
+                      </>
+                    )}
 
-                  {/* UNPAID content */}
-                  {expandedCard === 'unpaid' && (
-                    <>
-                      {unpaidTransactionsList.length > 0 ? unpaidTransactionsList.map((tx: any) => {
-                        const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
-                        const amountGiven = Number(tx.amountGiven ?? tx.amount_given ?? 0);
-                        const owed = Math.max(0, cost - amountGiven);
-                        const dateStr = formatDate(tx.createdAt || tx.created_at || tx.date);
-                        return (
-                          <div key={tx.id} className="p-3 rounded-xl bg-white/5 border border-white/8 space-y-2 text-xs">
-                            <div className="min-w-0">
-                              <p className="font-semibold text-white truncate">{tx.customerName || tx.customer_name || 'Customer'}</p>
-                              <p className="text-white/50 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'} · {dateStr}</p>
-                              <p className="text-brand-orange font-bold mt-1">₹{formatCurrency(owed)} owed</p>
+                    {/* UNPAID */}
+                    {expandedCard === 'unpaid' && (
+                      <>
+                        {unpaidTransactionsList.length > 0 ? unpaidTransactionsList.map((tx: any) => {
+                          const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+                          const amountGiven = Number(tx.amountGiven ?? tx.amount_given ?? 0);
+                          const owed = Math.max(0, cost - amountGiven);
+                          const dateStr = formatDate(tx.createdAt || tx.created_at || tx.date);
+                          return (
+                            <div key={tx.id} className="p-3 rounded-xl bg-white/5 border border-white/8 space-y-2 text-xs">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-white truncate">{tx.customerName || tx.customer_name || 'Customer'}</p>
+                                <p className="text-white/50 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'} · {dateStr}</p>
+                                <p className="text-brand-orange font-bold mt-1">₹{formatCurrency(owed)} owed</p>
+                              </div>
+                              <Button size="sm" onClick={(e) => handleMarkAsPaid(tx, e)} className="w-full min-h-[44px] bg-brand-orange hover:bg-brand-orange/90 text-white font-semibold rounded-xl">Mark as Paid</Button>
                             </div>
-                            <Button size="sm" onClick={(e) => handleMarkAsPaid(tx, e)} className="w-full min-h-[44px] bg-brand-orange hover:bg-brand-orange/90 text-white font-semibold rounded-xl">Mark as Paid</Button>
-                          </div>
-                        );
-                      }) : <p className="text-xs text-white/40 text-center py-6">No unpaid transactions.</p>}
-                    </>
-                  )}
+                          );
+                        }) : <p className="text-xs text-white/40 text-center py-6">No unpaid transactions.</p>}
+                      </>
+                    )}
 
-                </div>
-              </motion.div>
-            </>
-          );
-        })()}
-      </AnimatePresence>
+                  </div>
+                </motion.div>
+              </React.Fragment>
+            );
+          })()}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Revenue Chart ─────────────────────────────────────────────── */}
