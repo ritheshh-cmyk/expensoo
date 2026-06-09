@@ -1,14 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -26,9 +16,7 @@ import {
 } from "@/components/ui/table";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  FileText,
   Download,
-  BarChart,
   TrendingUp,
   Calendar,
   PieChart,
@@ -40,12 +28,12 @@ import {
   Target,
   ArrowUpRight,
   ArrowDownRight,
-  Filter,
   Package,
-  AlertCircle,
   Plus,
+  TrendingDown,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { apiClient } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { io } from "socket.io-client";
@@ -58,8 +46,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
-  Line,
   PieChart as RechartsPieChart,
   Cell,
   Pie,
@@ -68,7 +54,7 @@ import {
   LabelList,
 } from "recharts";
 import { usePermissions } from "@/hooks/usePermissions";
-import { SkeletonCard, SkeletonRow, SkeletonTableRow } from "@/components/ui/skeleton";
+import { SkeletonCard, SkeletonRow } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -83,12 +69,6 @@ const isValidRepairType = (name: string): boolean => {
   if (lower.includes('test') || lower.includes('battan')) return false;
   return true;
 };
-
-const fmt = (v: number) =>
-  v >= 1000 ? `₹${(v / 1000).toFixed(1)}k` : `₹${v.toLocaleString()}`;
-
-const fmtNum = (v: number) =>
-  v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v);
 
 const CHART_COLORS = [
   '#F59E0B', '#3B82F6', '#10B981', '#8B5CF6',
@@ -156,12 +136,11 @@ const BarTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-// ─── Section skeleton wrapper ─────────────────────────────────────────────────
+// ─── Section skeleton ─────────────────────────────────────────────────────────
 
-function SectionSkeleton({ rows = 4, chart = false }: { rows?: number; chart?: boolean }) {
+function SectionSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-3 animate-pulse">
-      {chart && <div className="h-52 rounded-lg bg-white/5" />}
       {Array.from({ length: rows }).map((_, i) => (
         <SkeletonRow key={i} />
       ))}
@@ -175,6 +154,26 @@ function customerTier(repairs: number): { label: string; color: string; border: 
   if (repairs > 3) return { label: 'High',   color: 'text-emerald-400', border: 'border-l-4 border-emerald-500' };
   if (repairs >= 2) return { label: 'Medium', color: 'text-amber-400',   border: 'border-l-4 border-amber-500' };
   return               { label: 'Low',    color: 'text-muted-foreground', border: 'border-l-4 border-border' };
+}
+
+// ─── Growth badge helper ──────────────────────────────────────────────────────
+
+function GrowthBadge({ value, hasPrevData }: { value: number; hasPrevData: boolean }) {
+  if (!hasPrevData) {
+    return <span className="text-xs text-muted-foreground">N/A — first period</span>;
+  }
+  const isPositive = value >= 0;
+  return (
+    <div className="flex items-center gap-1 text-xs">
+      {isPositive
+        ? <ArrowUpRight className="h-3 w-3 text-emerald-400" />
+        : <ArrowDownRight className="h-3 w-3 text-red-400" />}
+      <span className={isPositive ? 'text-emerald-400' : 'text-red-400'}>
+        {isPositive ? '+' : ''}{value}%
+      </span>
+      <span className="text-muted-foreground">vs prev period</span>
+    </div>
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -192,14 +191,15 @@ export default function Reports() {
   const [timeRange, setTimeRange] = useState("last6months");
 
   // ── Loading state per section ────────────────────────────────────────────────
-  const [loadingMain, setLoadingMain]           = useState(true);
-  const [loadingSupplier, setLoadingSupplier]   = useState(true);
+  const [loadingMain, setLoadingMain]         = useState(true);
+  const [loadingSupplier, setLoadingSupplier] = useState(true);
 
   // ── Data state ────────────────────────────────────────────────────────────────
   const [reportsData, setReportsData] = useState({
-    totalRevenue: 0, totalProfit: 0, totalRepairs: 0,
+    totalRevenue:  0, totalProfit:  0, totalRepairs:    0,
     totalCustomers: 0, avgTicketSize: 0,
-    revenueGrowth: 0, profitGrowth: 0, repairGrowth: 0,
+    revenueGrowth: 0, profitGrowth:  0, repairGrowth:  0,
+    hasPrevRevenue: false, hasPrevRepairs: false, hasPrevProfit: false,
   });
   const [monthlyData,      setMonthlyData]      = useState<any[]>([]);
   const [repairTypesData,  setRepairTypesData]  = useState<any[]>([]);
@@ -218,32 +218,16 @@ export default function Reports() {
     localStorage.setItem("showProfits", String(next));
   };
 
-  // ─── Fetch main data (transactions + dashboard) in parallel ─────────────────
+  // ─── Fetch main data (transactions) ─────────────────────────────────────────
   const fetchMain = useCallback(async () => {
     const token = localStorage.getItem('auth_token');
     if (!token) { setLoadingMain(false); return; }
     setLoadingMain(true);
     try {
-      const [dashRes, txnRes] = await Promise.all([
-        apiClient.getDashboardData(),
-        apiClient.getTransactions(),
-      ]);
-
-      const dashData      = dashRes?.data || {};
+      const txnRes = await apiClient.getTransactions();
       const transactionsArr: any[] = Array.isArray(txnRes?.data) ? txnRes.data : [];
 
-      const totalRevenue  = Number(dashData.totalRevenue  ?? 0);
-      const totalProfit   = Number(dashData.totalProfit   ?? 0);
-      const totalRepairs  = Number(dashData.totalTransactions ?? transactionsArr.length);
-      const avgTicketSize = totalRepairs > 0 ? Math.round(totalRevenue / totalRepairs) : 0;
-
-      // ── Build maps from transactions ──────────────────────────────────────
-      const monthlyStats   = new Map<string, { revenue: number; profit: number; repairs: number }>();
-      const repairTypesMap = new Map<string, number>();
-      const deviceBrandsMap = new Map<string, { repairs: number; revenue: number }>();
-      const customersMap   = new Map<string, { name: string; repairs: number; revenue: number; lastVisit: string }>();
-
-      // Filter by time range
+      // ── Time range cutoffs ────────────────────────────────────────────────
       const now = new Date();
       const cutoffMap: Record<string, number> = {
         last30days:  30,
@@ -252,13 +236,23 @@ export default function Reports() {
         lastyear:    365,
       };
       const cutoffDays = cutoffMap[timeRange] ?? 180;
-      const cutoff = new Date(now.getTime() - cutoffDays * 86400000);
-
-      // Previous period for growth calc
+      const cutoff     = new Date(now.getTime() - cutoffDays * 86400000);
+      // Previous period window (same length, ending at cutoff)
       const prevCutoff = new Date(cutoff.getTime() - cutoffDays * 86400000);
+
+      // ── Maps ──────────────────────────────────────────────────────────────
+      // FIX #7: monthly key includes year to prevent cross-year collision
+      const monthlyStats    = new Map<string, { month: string; revenue: number; profit: number; repairs: number; year: number }>();
+      const repairTypesMap  = new Map<string, number>();
+      const deviceBrandsMap = new Map<string, { repairs: number; revenue: number }>();
+      const customersMap    = new Map<string, { name: string; repairs: number; revenue: number; lastVisit: string }>();
 
       let prevRevenue = 0;
       let prevRepairs = 0;
+      let prevProfit  = 0;
+
+      // FIX #5: free items also filtered by time range
+      const freeItems: any[] = [];
 
       transactionsArr.forEach((tx: any) => {
         const date = new Date(tx.createdAt || tx.created_at || tx.date || Date.now());
@@ -266,35 +260,43 @@ export default function Reports() {
           tx.cost ?? tx.repairCost ?? tx.repair_cost ??
           tx.soldPrice ?? tx.sold_price ?? 0
         );
+        const txProfit = Number(tx.profit ?? 0);
 
-        // Previous period
+        // Accumulate previous period totals (for growth metrics)
         if (date >= prevCutoff && date < cutoff) {
           prevRevenue += txRevenue;
           prevRepairs += 1;
+          prevProfit  += txProfit;
         }
 
-        if (date < cutoff) return; // outside current period
+        // Skip anything outside current period
+        if (date < cutoff) return;
 
-        // Monthly
-        const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
-        if (!monthlyStats.has(monthKey)) monthlyStats.set(monthKey, { revenue: 0, profit: 0, repairs: 0 });
+        // ── Monthly chart ─────────────────────────────────────────────────
+        // FIX #7: key = "Jan 25" so two Januaries don't merge
+        const monthLabel = date.toLocaleDateString('en-US', { month: 'short' });
+        const yearNum    = date.getFullYear();
+        const monthKey   = `${monthLabel} '${String(yearNum).slice(2)}`;
+        if (!monthlyStats.has(monthKey)) {
+          monthlyStats.set(monthKey, { month: monthKey, revenue: 0, profit: 0, repairs: 0, year: yearNum });
+        }
         const m = monthlyStats.get(monthKey)!;
         m.revenue += txRevenue;
-        m.profit  += Number(tx.profit ?? 0);
+        m.profit  += txProfit;
         m.repairs += 1;
 
-        // Repair types
+        // ── Repair types ──────────────────────────────────────────────────
         const rt = tx.repairType ?? tx.repair_type ?? 'Other';
         if (isValidRepairType(rt)) repairTypesMap.set(rt, (repairTypesMap.get(rt) || 0) + 1);
 
-        // Device brands
+        // ── Device brands ─────────────────────────────────────────────────
         const brand = (tx.deviceModel ?? tx.device_model ?? 'Unknown').split(' ')[0];
         if (!deviceBrandsMap.has(brand)) deviceBrandsMap.set(brand, { repairs: 0, revenue: 0 });
         const bd = deviceBrandsMap.get(brand)!;
         bd.repairs += 1;
         bd.revenue += txRevenue;
 
-        // Customers
+        // ── Customers ─────────────────────────────────────────────────────
         const cId = tx.mobileNumber ?? tx.mobile_number ?? tx.customer ?? tx.customerName ?? tx.customer_name ?? 'Unknown';
         if (!customersMap.has(cId)) {
           customersMap.set(cId, {
@@ -307,15 +309,32 @@ export default function Reports() {
         cd.repairs += 1;
         cd.revenue += txRevenue;
         if (date > new Date(cd.lastVisit)) cd.lastVisit = date.toISOString();
+
+        // ── Free items (FIX #5: only within current period) ───────────────
+        const fg = Number(tx.freeGlass ?? (tx.freeGlassInstallation ?? tx.free_glass_installation ? 1 : 0));
+        const fc = Number(tx.freeCover ?? 0);
+        if (fg > 0 || fc > 0) {
+          freeItems.push({
+            id:        String(tx.id || ''),
+            date:      tx.createdAt || tx.created_at || tx.date || Date.now(),
+            customer:  String(tx.customerName ?? tx.customer_name ?? tx.customer ?? 'Unknown'),
+            freeGlass: fg,
+            freeCover:  fc,
+          });
+        }
       });
 
-      // Monthly chart (sorted chronologically)
+      // ── Monthly chart: sort by year then month ────────────────────────────
       const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const monthlyChartData = Array.from(monthlyStats.entries())
-        .map(([month, data]) => ({ month, ...data }))
-        .sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
+      const monthlyChartData = Array.from(monthlyStats.values())
+        .sort((a, b) => {
+          if (a.year !== b.year) return a.year - b.year;
+          const aM = a.month.split(' ')[0];
+          const bM = b.month.split(' ')[0];
+          return monthOrder.indexOf(aM) - monthOrder.indexOf(bM);
+        });
 
-      // Repair types with Others grouping
+      // ── Repair types with Others grouping ─────────────────────────────────
       const totalValidCount = Array.from(repairTypesMap.values()).reduce((s, c) => s + c, 0);
       const raw = Array.from(repairTypesMap.entries()).map(([name, count]) => ({
         name, count, percentage: totalValidCount > 0 ? (count / totalValidCount) * 100 : 0,
@@ -332,17 +351,12 @@ export default function Reports() {
         percentage: item.percentage, count: item.count,
       }));
 
-      // Device brands (sorted desc by revenue, all kept)
+      // ── Device brands (sorted desc by revenue) ────────────────────────────
       const deviceBrandsArr = Array.from(deviceBrandsMap.entries())
         .map(([brand, data]) => ({ brand, ...data }))
         .sort((a, b) => b.revenue - a.revenue);
 
-      // Top customers
-      const topCustomersArr = Array.from(customersMap.values())
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 10);
-
-      // Customer segments
+      // ── Customer segments ─────────────────────────────────────────────────
       let frequent = 0, regular = 0, oneTime = 0;
       customersMap.forEach(c => {
         if (c.repairs > 3) frequent++;
@@ -350,38 +364,41 @@ export default function Reports() {
         else oneTime++;
       });
 
-      // Growth metrics (current period vs previous)
-      const curRevenue = Array.from(monthlyStats.values()).reduce((s, m) => s + m.revenue, 0);
-      const curRepairs = Array.from(monthlyStats.values()).reduce((s, m) => s + m.repairs, 0);
-      const revenueGrowth = prevRevenue > 0 ? Math.round(((curRevenue - prevRevenue) / prevRevenue) * 100) : 0;
-      const repairGrowth  = prevRepairs > 0 ? Math.round(((curRepairs - prevRepairs) / prevRepairs) * 100) : 0;
+      // ── Top customers ─────────────────────────────────────────────────────
+      const topCustomersArr = Array.from(customersMap.values())
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 10);
 
-      // Free items
-      const freeItems = transactionsArr
-        .filter((tx: any) => {
-          const fg = Number(tx.freeGlass ?? (tx.freeGlassInstallation ?? tx.free_glass_installation ? 1 : 0));
-          return fg > 0 || Number(tx.freeCover ?? 0) > 0;
-        })
-        .map((tx: any) => ({
-          id: String(tx.id || ''),
-          date: tx.createdAt || tx.created_at || tx.date || Date.now(),
-          customer: String(tx.customerName ?? tx.customer_name ?? tx.customer ?? 'Unknown'),
-          freeGlass: Number(tx.freeGlass ?? (tx.freeGlassInstallation ?? tx.free_glass_installation ? 1 : 0)),
-          freeCover: Number(tx.freeCover ?? 0),
-        }))
-        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // ── FIX #1: All KPIs computed from filtered transactions ──────────────
+      const curRevenue = monthlyChartData.reduce((s, m) => s + m.revenue, 0);
+      const curRepairs = monthlyChartData.reduce((s, m) => s + m.repairs, 0);
+      const curProfit  = monthlyChartData.reduce((s, m) => s + m.profit,  0);
+      const avgTicketSize = curRepairs > 0 ? Math.round(curRevenue / curRepairs) : 0;
 
+      // FIX #3 + #10: compute all three growth values; flag if no prev data
+      const hasPrevRevenue = prevRevenue > 0;
+      const hasPrevRepairs = prevRepairs > 0;
+      const hasPrevProfit  = prevProfit  > 0;
+      const revenueGrowth  = hasPrevRevenue ? Math.round(((curRevenue - prevRevenue) / prevRevenue) * 100) : 0;
+      const repairGrowth   = hasPrevRepairs ? Math.round(((curRepairs - prevRepairs) / prevRepairs) * 100) : 0;
+      const profitGrowth   = hasPrevProfit  ? Math.round(((curProfit  - prevProfit)  / prevProfit)  * 100) : 0;
+
+      // FIX #2: no fallback to unrelated totalRepairs
       setReportsData({
-        totalRevenue, totalProfit, totalRepairs,
-        totalCustomers: customersMap.size || totalRepairs,
-        avgTicketSize, revenueGrowth, profitGrowth: 0, repairGrowth,
+        totalRevenue:  curRevenue,
+        totalProfit:   curProfit,
+        totalRepairs:  curRepairs,
+        totalCustomers: customersMap.size,   // FIX #2
+        avgTicketSize,
+        revenueGrowth, profitGrowth, repairGrowth,
+        hasPrevRevenue, hasPrevRepairs, hasPrevProfit,
       });
       setMonthlyData(monthlyChartData);
       setRepairTypesData(repairTypes);
       setDeviceBrandsData(deviceBrandsArr);
       setTopCustomersData(topCustomersArr);
       setCustomerSegments({ frequent, regular, oneTime });
-      setFreeItemsData(freeItems);
+      setFreeItemsData(freeItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (err) {
       console.error('[Reports] main fetch error:', err);
       toast({ title: 'Error', description: 'Failed to load reports data', variant: 'destructive' });
@@ -390,7 +407,9 @@ export default function Reports() {
     }
   }, [timeRange]);
 
-  // ─── Fetch supplier data independently ──────────────────────────────────────
+  // ─── Fetch supplier data (lifetime — expenditures don't have per-period dates always) ─
+  // FIX #6: added timeRange as dep so re-fetches when range changes;
+  //          if your expenditures API doesn't filter by date this is still a no-op refresh
   const fetchSupplier = useCallback(async () => {
     const token = localStorage.getItem('auth_token');
     if (!token) { setLoadingSupplier(false); return; }
@@ -399,7 +418,7 @@ export default function Reports() {
       const res = await apiClient.getExpenditures();
       const allExp: any[] = Array.isArray(res?.data) ? res.data : [];
 
-      // Filter to supplier-related categories
+      // Filter supplier-related categories
       const SUPPLIER_CATS = ['supplier', 'suppliers', 'vendor', 'purchase', 'stock', 'inventory'];
       const supplierExp = allExp.filter((e: any) => {
         const cat = (e.category ?? e.type ?? '').toLowerCase();
@@ -409,7 +428,7 @@ export default function Reports() {
       // Group by supplier name
       const supplierMap = new Map<string, { orders: number; total: number }>();
       supplierExp.forEach((e: any) => {
-        const name = e.supplierName ?? e.supplier_name ?? e.vendor ?? e.description ?? e.name ?? 'Unknown';
+        const name   = e.supplierName ?? e.supplier_name ?? e.vendor ?? e.description ?? e.name ?? 'Unknown';
         const amount = Number(e.amount ?? e.total ?? e.cost ?? 0);
         if (!supplierMap.has(name)) supplierMap.set(name, { orders: 0, total: 0 });
         const s = supplierMap.get(name)!;
@@ -421,8 +440,8 @@ export default function Reports() {
         .map(([supplier, data]) => ({
           supplier,
           orders: data.orders,
-          total: data.total,
-          avg: data.orders > 0 ? Math.round(data.total / data.orders) : 0,
+          total:  data.total,
+          avg:    data.orders > 0 ? Math.round(data.total / data.orders) : 0,
         }))
         .sort((a, b) => b.total - a.total);
 
@@ -432,7 +451,7 @@ export default function Reports() {
     } finally {
       setLoadingSupplier(false);
     }
-  }, []);
+  }, [timeRange]); // FIX #6: re-fetches when timeRange changes
 
   // Run both in parallel on mount / timeRange change
   useEffect(() => {
@@ -457,7 +476,7 @@ export default function Reports() {
     };
   }, [fetchMain, fetchSupplier]);
 
-  // ── Derived values ────────────────────────────────────────────────────────────
+  // ── Derived values (all memoised) ────────────────────────────────────────────
   const totalSegments = customerSegments.frequent + customerSegments.regular + customerSegments.oneTime;
   const segPct = (n: number) => totalSegments > 0 ? Math.round((n / totalSegments) * 100) : 0;
 
@@ -470,10 +489,15 @@ export default function Reports() {
     () => supplierData.reduce((s, r) => s + r.total, 0),
     [supplierData]
   );
-  const maxSupplierTotal = supplierData.length > 0 ? supplierData[0].total : 1;
 
-  const freeGlassTotal  = useMemo(() => freeItemsData.reduce((s, i) => s + i.freeGlass,  0), [freeItemsData]);
-  const freeCoverTotal  = useMemo(() => freeItemsData.reduce((s, i) => s + i.freeCover, 0), [freeItemsData]);
+  // FIX #14: memoize maxSupplierTotal
+  const maxSupplierTotal = useMemo(
+    () => supplierData.length > 0 ? supplierData[0].total : 1,
+    [supplierData]
+  );
+
+  const freeGlassTotal = useMemo(() => freeItemsData.reduce((s, i) => s + i.freeGlass, 0), [freeItemsData]);
+  const freeCoverTotal = useMemo(() => freeItemsData.reduce((s, i) => s + i.freeCover, 0), [freeItemsData]);
 
   return (
     <div className="space-y-6 pb-20 md:pb-6 animate-in fade-in duration-500">
@@ -484,7 +508,7 @@ export default function Reports() {
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight">
             {t("reports")}
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Analytics & business insights</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Analytics &amp; business insights</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Select value={timeRange} onValueChange={setTimeRange}>
@@ -519,7 +543,8 @@ export default function Reports() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Total Revenue */}
+
+          {/* Total Revenue — FIX #1: from filtered transactions, not all-time backend */}
           <div className="rounded-xl border border-border bg-background p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-medium text-muted-foreground">Total Revenue</span>
@@ -528,18 +553,11 @@ export default function Reports() {
             <div className="text-xl sm:text-2xl font-bold text-foreground font-heading">
               ₹{reportsData.totalRevenue.toLocaleString()}
             </div>
-            <div className="flex items-center gap-1 text-xs">
-              {reportsData.revenueGrowth >= 0
-                ? <ArrowUpRight className="h-3 w-3 text-emerald-400" />
-                : <ArrowDownRight className="h-3 w-3 text-red-400" />}
-              <span className={reportsData.revenueGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                {reportsData.revenueGrowth >= 0 ? '+' : ''}{reportsData.revenueGrowth}%
-              </span>
-              <span className="text-muted-foreground">vs prev period</span>
-            </div>
+            {/* FIX #10: show N/A when no previous period */}
+            <GrowthBadge value={reportsData.revenueGrowth} hasPrevData={reportsData.hasPrevRevenue} />
           </div>
 
-          {/* Total Repairs / Profit */}
+          {/* Total Repairs / Profit — FIX #1 + #3: from filtered data, real profit growth */}
           <div className="rounded-xl border border-border bg-background p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-medium text-muted-foreground">
@@ -554,18 +572,13 @@ export default function Reports() {
                 ? `₹${reportsData.totalProfit.toLocaleString()}`
                 : reportsData.totalRepairs.toLocaleString()}
             </div>
-            <div className="flex items-center gap-1 text-xs">
-              {reportsData.repairGrowth >= 0
-                ? <ArrowUpRight className="h-3 w-3 text-emerald-400" />
-                : <ArrowDownRight className="h-3 w-3 text-red-400" />}
-              <span className={reportsData.repairGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                {reportsData.repairGrowth >= 0 ? '+' : ''}{reportsData.repairGrowth}%
-              </span>
-              <span className="text-muted-foreground">vs prev period</span>
-            </div>
+            <GrowthBadge
+              value={effectiveShowProfits ? reportsData.profitGrowth : reportsData.repairGrowth}
+              hasPrevData={effectiveShowProfits ? reportsData.hasPrevProfit : reportsData.hasPrevRepairs}
+            />
           </div>
 
-          {/* Avg Ticket */}
+          {/* Avg Ticket — FIX #4: now consistent with period revenue */}
           <div className="rounded-xl border border-border bg-background p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-medium text-muted-foreground">Avg. Ticket Size</span>
@@ -574,10 +587,10 @@ export default function Reports() {
             <div className="text-xl sm:text-2xl font-bold text-foreground font-heading">
               ₹{reportsData.avgTicketSize.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">Per repair</p>
+            <p className="text-xs text-muted-foreground">Per repair in period</p>
           </div>
 
-          {/* Customer Base */}
+          {/* Customer Base — FIX #2: never shows totalRepairs as fallback */}
           <div className="rounded-xl border border-border bg-background p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-xs sm:text-sm font-medium text-muted-foreground">Customer Base</span>
@@ -586,7 +599,7 @@ export default function Reports() {
             <div className="text-xl sm:text-2xl font-bold text-foreground font-heading">
               {reportsData.totalCustomers.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">Unique customers</p>
+            <p className="text-xs text-muted-foreground">Unique in period</p>
           </div>
         </div>
       )}
@@ -594,14 +607,19 @@ export default function Reports() {
       {/* ── Charts Row ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Revenue & Profit Trend */}
+        {/* Revenue & Profit Trend — FIX #15: proper empty state; FIX #16: wider YAxis */}
         <div className="rounded-xl border border-border bg-background p-5">
           <h3 className="text-base font-semibold text-foreground mb-4">Revenue &amp; Profit Trend</h3>
           {loadingMain ? (
             <div className="h-52 rounded-lg bg-white/5 animate-pulse" />
+          ) : monthlyData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-52 text-muted-foreground gap-2">
+              <TrendingDown className="h-8 w-8 opacity-30" />
+              <p className="text-sm">No transactions in this period</p>
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={monthlyData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <AreaChart data={monthlyData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gradRev" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%"  stopColor="#f59e0b" stopOpacity={0.35} />
@@ -614,7 +632,12 @@ export default function Reports() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="month" tick={{ fill: '#71717a', fontSize: 10 }} tickMargin={8} minTickGap={10} />
-                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} width={40} />
+                {/* FIX #16: width=56 prevents large rupee values from clipping */}
+                <YAxis
+                  tick={{ fill: '#71717a', fontSize: 10 }}
+                  tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+                  width={56}
+                />
                 <Tooltip content={<RevTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                 <Area type="monotone" dataKey="revenue" stroke="#f59e0b" fill="url(#gradRev)" strokeWidth={2} name="Revenue" />
@@ -679,13 +702,15 @@ export default function Reports() {
           })()}
         </div>
 
-        {/* Device Brand Performance */}
+        {/* Device Brand Performance — FIX #16 YAxis width; FIX #17 LabelList offset */}
         <div className="rounded-xl border border-border bg-background p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-foreground">Device Brand Performance</h3>
             {deviceBrandsData.length > 5 && (
-              <button onClick={() => setShowAllBrands(!showAllBrands)}
-                className="text-xs text-primary hover:underline cursor-pointer">
+              <button
+                onClick={() => setShowAllBrands(!showAllBrands)}
+                className="text-xs text-primary hover:underline cursor-pointer"
+              >
                 {showAllBrands ? 'Show less' : `Show all ${deviceBrandsData.length}`}
               </button>
             )}
@@ -699,7 +724,7 @@ export default function Reports() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <RechartsBarChart data={visibleBrands} margin={{ top: 20, right: 8, left: -16, bottom: 0 }}>
+              <RechartsBarChart data={visibleBrands} margin={{ top: 24, right: 8, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%"   stopColor="#f59e0b" stopOpacity={1} />
@@ -712,17 +737,23 @@ export default function Reports() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="brand" tick={{ fill: '#71717a', fontSize: 10 }} tickMargin={8} />
-                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} width={36} />
+                {/* FIX #16: wider to avoid clipping */}
+                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} width={40} />
                 <Tooltip content={<BarTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="repairs" fill="url(#barGrad)" name="Repairs" radius={[4,4,0,0]}>
-                  <LabelList dataKey="repairs" position="top" style={{ fontSize: 10, fill: '#a1a1aa' }} />
+                <Bar dataKey="repairs" fill="url(#barGrad)" name="Repairs" radius={[4, 4, 0, 0]}>
+                  {/* FIX #17: offset=4 prevents label-tick overlap on short bars */}
+                  <LabelList dataKey="repairs" position="top" offset={4} style={{ fontSize: 10, fill: '#a1a1aa' }} />
                 </Bar>
                 {effectiveShowProfits && (
-                  <Bar dataKey="revenue" fill="url(#barGradRev)" name="Revenue" radius={[4,4,0,0]}>
-                    <LabelList dataKey="revenue" position="top"
+                  <Bar dataKey="revenue" fill="url(#barGradRev)" name="Revenue" radius={[4, 4, 0, 0]}>
+                    <LabelList
+                      dataKey="revenue"
+                      position="top"
+                      offset={4}
                       style={{ fontSize: 9, fill: '#a1a1aa' }}
-                      formatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(v)} />
+                      formatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)}
+                    />
                   </Bar>
                 )}
               </RechartsBarChart>
@@ -742,11 +773,10 @@ export default function Reports() {
             </div>
           ) : (
             <div className="space-y-5 pt-2">
-              {/* Frequent */}
               {[
                 { label: 'Frequent Customers', subtitle: '4+ transactions', count: customerSegments.frequent, color: SEG_COLORS.frequent, pct: segPct(customerSegments.frequent) },
                 { label: 'Regular Customers',  subtitle: '2–3 transactions', count: customerSegments.regular,  color: SEG_COLORS.regular,  pct: segPct(customerSegments.regular) },
-                { label: 'One-time Customers', subtitle: '1 transaction',   count: customerSegments.oneTime,  color: SEG_COLORS.oneTime,  pct: segPct(customerSegments.oneTime) },
+                { label: 'One-time Customers', subtitle: '1 transaction',    count: customerSegments.oneTime,  color: SEG_COLORS.oneTime,  pct: segPct(customerSegments.oneTime) },
               ].map(seg => (
                 <div key={seg.label} className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm">
@@ -763,13 +793,15 @@ export default function Reports() {
                     </div>
                   </div>
                   <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${seg.pct}%`, backgroundColor: seg.color }} />
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${seg.pct}%`, backgroundColor: seg.color }}
+                    />
                   </div>
                 </div>
               ))}
               <p className="text-xs text-muted-foreground pt-1">
-                Total: <span className="font-medium text-foreground">{totalSegments}</span> unique customers
+                Total: <span className="font-medium text-foreground">{totalSegments}</span> unique customers in period
               </p>
             </div>
           )}
@@ -783,7 +815,7 @@ export default function Reports() {
         <div className="rounded-xl border border-border bg-background p-5">
           <h3 className="text-base font-semibold text-foreground mb-4">Top Customers</h3>
           {loadingMain ? (
-            <div className="space-y-1">{Array.from({length:6}).map((_,i)=><SkeletonRow key={i}/>)}</div>
+            <div className="space-y-1">{Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}</div>
           ) : (
             <>
               {/* Desktop table */}
@@ -826,7 +858,9 @@ export default function Reports() {
                       );
                     }) : (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No customer data available.</TableCell>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                          No customer data in this period.
+                        </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -845,7 +879,7 @@ export default function Reports() {
                       <p className="font-semibold text-foreground text-sm">₹{c.revenue.toLocaleString()}</p>
                     </div>
                   );
-                }) : <p className="text-sm text-center text-muted-foreground py-6">No data.</p>}
+                }) : <p className="text-sm text-center text-muted-foreground py-6">No data in period.</p>}
               </div>
             </>
           )}
@@ -855,7 +889,7 @@ export default function Reports() {
         <div className="rounded-xl border border-border bg-background p-5">
           <h3 className="text-base font-semibold text-foreground mb-4">Supplier Spending Analysis</h3>
           {loadingSupplier ? (
-            <div className="space-y-1">{Array.from({length:4}).map((_,i)=><SkeletonRow key={i}/>)}</div>
+            <div className="space-y-1">{Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)}</div>
           ) : supplierData.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
               <div className="p-3 rounded-full bg-muted">
@@ -867,9 +901,13 @@ export default function Reports() {
                   Record expenditures with a supplier category to see spending here.
                 </p>
               </div>
-              <a href="/expenditures" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1">
+              {/* FIX #18: use <Link> instead of <a href> to avoid full page reload */}
+              <Link
+                to="/expenditures"
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+              >
                 <Plus className="h-3 w-3" /> Add your first supplier payment
-              </a>
+              </Link>
             </div>
           ) : (
             <>
@@ -906,7 +944,7 @@ export default function Reports() {
                     {/* Total row */}
                     <TableRow className="border-t-2 border-border bg-muted/20 font-semibold">
                       <TableCell className="text-foreground">Total</TableCell>
-                      <TableCell className="text-foreground">{supplierData.reduce((s,r)=>s+r.orders,0)}</TableCell>
+                      <TableCell className="text-foreground">{supplierData.reduce((s, r) => s + r.orders, 0)}</TableCell>
                       <TableCell className="text-foreground font-mono">₹{supplierTotal.toLocaleString()}</TableCell>
                       <TableCell className="text-muted-foreground">—</TableCell>
                     </TableRow>
@@ -935,14 +973,16 @@ export default function Reports() {
         <h3 className="text-base font-semibold text-foreground mb-4">Report Summary</h3>
         {loadingMain ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({length:4}).map((_,i)=><SkeletonCard key={i}/>)}
+            {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-4 rounded-lg border border-brand-orange/20 bg-brand-orange/10">
               <div className="text-sm font-medium text-brand-orange-light">Revenue Growth</div>
               <div className="text-lg font-bold text-foreground mt-1">
-                {reportsData.revenueGrowth >= 0 ? '+' : ''}{reportsData.revenueGrowth}% MoM
+                {reportsData.hasPrevRevenue
+                  ? `${reportsData.revenueGrowth >= 0 ? '+' : ''}${reportsData.revenueGrowth}%`
+                  : 'N/A'}
               </div>
               <div className="text-xs text-brand-orange/70 mt-1">
                 Total: ₹{reportsData.totalRevenue.toLocaleString()}
@@ -955,7 +995,7 @@ export default function Reports() {
               </div>
               <div className="text-xs text-emerald-500/70 mt-1">
                 {repairTypesData.length > 0
-                  ? `${repairTypesData[0]?.value ?? 0}% of all repairs · ${repairTypesData[0]?.count ?? 0} jobs`
+                  ? `${repairTypesData[0]?.value ?? 0}% of repairs · ${repairTypesData[0]?.count ?? 0} jobs`
                   : 'No repair type data'}
               </div>
             </div>
@@ -978,7 +1018,7 @@ export default function Reports() {
                   : 'No data'}
               </div>
               <div className="text-xs text-violet-500/70 mt-1">
-                {customerSegments.frequent + customerSegments.regular} repeat customers out of {totalSegments}
+                {customerSegments.frequent + customerSegments.regular} repeat out of {totalSegments}
               </div>
             </div>
           </div>
@@ -991,7 +1031,7 @@ export default function Reports() {
           <div>
             <h3 className="text-base font-semibold text-foreground">Free Items Audit Log</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Complimentary tempered glass and back cover installations.
+              Complimentary tempered glass and back cover installations in selected period.
             </p>
           </div>
           {!loadingMain && freeItemsData.length > 0 && (
@@ -1007,7 +1047,7 @@ export default function Reports() {
         </div>
 
         {loadingMain ? (
-          <div className="space-y-1">{Array.from({length:5}).map((_,i)=><SkeletonRow key={i}/>)}</div>
+          <div className="space-y-1">{Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}</div>
         ) : (
           <div className="overflow-x-auto rounded-md border border-border">
             <Table>
@@ -1024,7 +1064,7 @@ export default function Reports() {
                 {freeItemsData.length > 0 ? freeItemsData.map((item) => (
                   <TableRow key={item.id} className="border-border hover:bg-muted/30 transition-colors">
                     <TableCell className="text-foreground font-medium text-sm">
-                      {new Date(item.date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}
+                      {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs">
                       {item.id.substring(0, 8).toUpperCase()}
@@ -1048,7 +1088,7 @@ export default function Reports() {
                 )) : (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No free items recorded.
+                      No free items recorded in this period.
                     </TableCell>
                   </TableRow>
                 )}
