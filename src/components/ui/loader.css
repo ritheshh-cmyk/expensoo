@@ -1,0 +1,34 @@
+/* ── 4-dot push-wave loader ─────────────────────────────────────────────── */
+
+.loader-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 150px;
+}
+
+.loader-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand-orange, #f97316);
+  animation: dot-push 1.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--brand-orange, #f97316) 50%, transparent);
+}
+
+@keyframes dot-push {
+  /* sit at rest */
+  0%,
+  40%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.45;
+  }
+  /* jump up and scale — the "push" moment */
+  20% {
+    transform: translateY(-14px) scale(1.25);
+    opacity: 1;
+  }
+}
