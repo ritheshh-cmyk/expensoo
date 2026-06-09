@@ -96,7 +96,7 @@ test.describe('E2E - Dashboard, Profile, Transactions, and Render Checks', () =>
     
     // Check dashboard stats for admin
     await page.goto('/dashboard');
-    const todayRevenue = await page.locator('text="Today\'s Revenue" >> xpath=..').innerText();
+    const todayRevenue = await page.locator('#dashboard-today-card').innerText();
     expect(todayRevenue).not.toContain('10');
     expect(todayRevenue).not.toContain('10.00');
 
