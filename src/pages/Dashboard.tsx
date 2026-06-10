@@ -351,8 +351,10 @@ export default function Dashboard() {
   const wakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('month');
 
+  // Default to TRUE so the profit card is visible out-of-the-box.
+  // Only hide it if the user has explicitly toggled it off (stored as "false").
   const [showProfits, setShowProfits] = useState(
-    localStorage.getItem("showProfits") === "true",
+    localStorage.getItem("showProfits") !== "false",
   );
   const [profitLocalExpanded, setProfitLocalExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
