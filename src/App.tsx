@@ -20,6 +20,7 @@ const Bills        = React.lazy(() => import('./pages/Bills'));
 const Expenditures = React.lazy(() => import('./pages/Expenditures'));
 const Reports      = React.lazy(() => import('./pages/Reports'));
 const Settings     = React.lazy(() => import('./pages/Settings'));
+const InstallPwa   = React.lazy(() => import('./pages/InstallPwa'));
 const Profile      = React.lazy(() => import('./pages/Profile'));
 const AdminPage    = React.lazy(() => import('./pages/AdminPage'));
 const SalesTransaction = React.lazy(() => import('./pages/SalesTransaction'));
@@ -29,6 +30,8 @@ const Unauthorized   = React.lazy(() => import('./pages/Unauthorized'));
 const NotFound       = React.lazy(() => import('./pages/NotFound'));
 
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { usePrefetch } from './hooks/usePrefetch';
+import { motion, useReducedMotion } from 'framer-motion';
 import { NetworkErrorPage } from './components/NetworkErrorPage';
 
 // ── Suspense fallback — shown while a page chunk is downloading ───────────
@@ -40,19 +43,39 @@ function PageLoader() {
 // We use the imported ProtectedRoute from src/components/auth/ProtectedRoute
 
 // ── Animated page wrapper ─────────────────────────────────────────────────────
-// Re-mounts every time the route changes → CSS animation replays automatically.
+// Re-mounts every time the route changes → framer-motion handles transitions.
 function AnimatedPage({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const shouldReduceMotion = useReducedMotion();
+
+  const variants = {
+    initial: { opacity: 0, y: shouldReduceMotion ? 0 : 8 },
+    animate: { opacity: 1, y: 0, transition: { duration: shouldReduceMotion ? 0.05 : 0.25, ease: "easeOut" } },
+    exit: { opacity: 0, y: shouldReduceMotion ? 0 : -8, transition: { duration: shouldReduceMotion ? 0.05 : 0.2, ease: "easeIn" } }
+  };
+
   return (
-    <div key={location.pathname} className="page-enter">
+    <motion.div
+      key={location.pathname}
+      variants={variants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+    >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
 // ── App Routes ────────────────────────────────────────────────────────────────
 function AppRoutes() {
   const { user, loading: authLoading } = useAuth();
+  const prefetch = usePrefetch();
+  React.useEffect(() => {
+    if (user) {
+      prefetch();
+    }
+  }, [user, prefetch]);
 
   // While AuthContext is initialising (reading localStorage + verifying token),
   // render a full-screen spinner instead of making any routing decisions.
@@ -126,6 +149,10 @@ function AppRoutes() {
 
       <Route path="/settings" element={
         <ProtectedRoute><AppLayout><AnimatedPage><Settings /></AnimatedPage></AppLayout></ProtectedRoute>
+      } />
+
+      <Route path="/install" element={
+        <ProtectedRoute><AppLayout><AnimatedPage><InstallPwa /></AnimatedPage></AppLayout></ProtectedRoute>
       } />
 
       <Route path="/profile" element={

@@ -1,5 +1,5 @@
 import React, { useState, Children, useRef, useEffect, useLayoutEffect, ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 import './Stepper.css';
 
@@ -166,13 +166,14 @@ export default function Stepper({
 
 function StepContentWrapper({ isCompleted, currentStep, direction, children, className }: any) {
   const [parentHeight, setParentHeight] = useState(0);
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <motion.div
       className={className}
       style={{ position: 'relative', overflow: 'hidden' }}
       animate={{ height: isCompleted ? 0 : parentHeight }}
-      transition={{ type: 'spring', duration: 0.4 }}
+      transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', duration: 0.4 }}
     >
       <AnimatePresence initial={false} mode="sync" custom={direction}>
         {!isCompleted && (
@@ -187,6 +188,7 @@ function StepContentWrapper({ isCompleted, currentStep, direction, children, cla
 
 function SlideTransition({ children, direction, onHeightReady }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
 
   useLayoutEffect(() => {
     if (containerRef.current) onHeightReady(containerRef.current.offsetHeight);
@@ -197,10 +199,10 @@ function SlideTransition({ children, direction, onHeightReady }: any) {
       ref={containerRef}
       custom={direction}
       variants={stepVariants}
-      initial="enter"
+      initial={shouldReduceMotion ? "center" : "enter"}
       animate="center"
-      exit="exit"
-      transition={{ duration: 0.4 }}
+      exit={shouldReduceMotion ? "center" : "exit"}
+      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.4 }}
       style={{ position: 'absolute', left: 0, right: 0, top: 0 }}
     >
       {children}
@@ -229,6 +231,7 @@ export function Step({ children }: { children: ReactNode }) {
 
 function StepIndicator({ step, currentStep, onClickStep, disableStepIndicators }: any) {
   const status = currentStep === step ? 'active' : currentStep < step ? 'inactive' : 'complete';
+  const shouldReduceMotion = useReducedMotion();
 
   const handleClick = () => {
     if (step !== currentStep && !disableStepIndicators) onClickStep(step);
@@ -242,7 +245,7 @@ function StepIndicator({ step, currentStep, onClickStep, disableStepIndicators }
           active: { scale: 1, backgroundColor: '#5227FF', color: '#fff' },
           complete: { scale: 1, backgroundColor: '#5227FF', color: '#3b82f6' }
         }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.3 }}
         className="step-indicator-inner"
       >
         {status === 'complete' ? (
@@ -258,6 +261,7 @@ function StepIndicator({ step, currentStep, onClickStep, disableStepIndicators }
 }
 
 function StepConnector({ isComplete }: any) {
+  const shouldReduceMotion = useReducedMotion();
   const lineVariants = {
     incomplete: { width: 0, backgroundColor: 'transparent' },
     complete: { width: '100%', backgroundColor: '#5227FF' }
@@ -270,19 +274,20 @@ function StepConnector({ isComplete }: any) {
         variants={lineVariants}
         initial={false}
         animate={isComplete ? 'complete' : 'incomplete'}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.4 }}
       />
     </div>
   );
 }
 
 function CheckIcon(props: any) {
+  const shouldReduceMotion = useReducedMotion();
   return (
     <svg {...props} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
       <motion.path
-        initial={{ pathLength: 0 }}
+        initial={{ pathLength: shouldReduceMotion ? 1 : 0 }}
         animate={{ pathLength: 1 }}
-        transition={{ delay: 0.1, type: 'tween', ease: 'easeOut', duration: 0.3 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.1, type: 'tween', ease: 'easeOut', duration: 0.3 }}
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M5 13l4 4L19 7"

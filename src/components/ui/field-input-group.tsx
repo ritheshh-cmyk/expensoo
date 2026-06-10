@@ -150,7 +150,11 @@ export function FieldInputGroup({
             type="button"
             tabIndex={-1}
             className="absolute right-0.5 top-1/2 -translate-y-1/2 h-11 w-11 text-muted-foreground/60 hover:text-foreground transition-colors flex items-center justify-center rounded-lg hover:bg-white/5"
-            onClick={() => setShowPassword((v) => !v)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowPassword((v) => !v);
+            }}
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}

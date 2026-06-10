@@ -28,7 +28,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string, isMobile?: boolean) => Promise<boolean>;
   logout: () => void;
   hasAccess: (roles: string[]) => boolean;
   updateUser: (updates: Partial<User>) => void;
@@ -77,48 +77,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // ── Notifications persistence and state ──────────────────────────────────
-  useEffect(() => {
-    if (!user) {
-      setNotifications([]);
-      return;
-    }
-    const storageKey = `expensoo_notifications_${user.id}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        setNotifications(JSON.parse(saved));
-      } catch {
-        setNotifications(DEFAULT_NOTIFICATIONS);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const response = await apiClient.makeRequest('/api/notifications');
+      if (response && Array.isArray(response)) {
+        const mapped = response.map((n: any) => ({
+          id: String(n.id),
+          title: n.title,
+          message: n.body,
+          type: 'info',
+          priority: 'medium',
+          read: Boolean(n.read),
+          created_at: n.createdAt ? new Date(n.createdAt).toISOString() : new Date().toISOString(),
+        }));
+        setNotifications(mapped);
       }
-    } else {
-      setNotifications(DEFAULT_NOTIFICATIONS);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
     }
   }, [user]);
 
-  const saveNotifications = useCallback((updated: Notification[]) => {
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const response = await apiClient.makeRequest('/api/notifications/unread-count');
+      if (response && typeof response.count === 'number') {
+        setUnreadCount(response.count);
+      }
+    } catch (err) {
+      console.error('Failed to fetch unread count:', err);
+    }
+  }, [user]);
+
+  // Initial load
+  useEffect(() => {
     if (user) {
-      localStorage.setItem(`expensoo_notifications_${user.id}`, JSON.stringify(updated));
+      fetchNotifications();
+      fetchUnreadCount();
     }
-    setNotifications(updated);
-  }, [user]);
+  }, [user, fetchNotifications, fetchUnreadCount]);
 
-  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+  // Polling every 30 seconds
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+      fetchNotifications();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [user, fetchUnreadCount, fetchNotifications]);
 
-  const markAsRead = useCallback((id: string) => {
-    const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
-    saveNotifications(updated);
-  }, [notifications, saveNotifications]);
+  const markAsRead = useCallback(async (id: string) => {
+    try {
+      await apiClient.makeRequest(`/api/notifications/${id}/read`, { method: 'POST' });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
+    }
+  }, []);
 
-  const markAllAsRead = useCallback(() => {
-    const updated = notifications.map(n => ({ ...n, read: true }));
-    saveNotifications(updated);
-  }, [notifications, saveNotifications]);
+  const markAllAsRead = useCallback(async () => {
+    try {
+      const unread = notifications.filter(n => !n.read);
+      await Promise.all(unread.map(n => apiClient.makeRequest(`/api/notifications/${n.id}/read`, { method: 'POST' })));
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
+  }, [notifications]);
 
   const deleteNotification = useCallback((id: string) => {
-    const updated = notifications.filter(n => n.id !== id);
-    saveNotifications(updated);
-  }, [notifications, saveNotifications]);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
 
   const addNotification = useCallback((newNotif: Omit<Notification, 'id' | 'created_at' | 'read'>) => {
     const fullNotif: Notification = {
@@ -127,14 +162,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       read: false,
       created_at: new Date().toISOString(),
     };
-    setNotifications(prev => {
-      const updated = [fullNotif, ...prev];
-      if (user) {
-        localStorage.setItem(`expensoo_notifications_${user.id}`, JSON.stringify(updated));
-      }
-      return updated;
-    });
-  }, [user]);
+    setNotifications(prev => [fullNotif, ...prev]);
+  }, []);
 
   /** Hard logout — clears everything and broadcasts to other tabs.
    *  @param reason 'session' = auto-expiry timer, 'user' = manual sign-out.
@@ -266,9 +295,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [logout, scheduleSessionExpiry]);
 
   // ── Login ─────────────────────────────────────────────────────────────────
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string, isMobile?: boolean): Promise<boolean> => {
     try {
-      const response = await apiClient.login(username, password);
+      const response = await apiClient.login(username, password, isMobile);
 
       if (response.success && response.data) {
         const raw           = response.data.user ?? response.data;

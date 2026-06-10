@@ -587,36 +587,65 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
         }
       }
 
+      const rTypeRaw = String(data.repairType || "");
+      const customTypeRaw = String(data.customRepairType || "");
+      const isDPlusRepairType = 
+        rTypeRaw === "d-plus-glass" ||
+        rTypeRaw.toLowerCase().trim() === "d+" ||
+        rTypeRaw.toLowerCase().trim() === "d+ glass" ||
+        customTypeRaw.toLowerCase().trim() === "d+" ||
+        customTypeRaw.toLowerCase().trim() === "d+ glass" ||
+        customTypeRaw.toLowerCase().includes("d+ glass");
+
+      // Verify that the parts list is either empty or contains ONLY glass/tempered/guard items
+      const onlyDPlusParts = parts.length === 0 || parts.every(part => {
+        const pName = (part.name || "").toLowerCase().trim();
+        return pName === "d+" || pName === "d+ glass" || pName.includes("tempered") || pName.includes("glass") || pName.includes("guard");
+      });
+
+      const isDPlusAutoSale = !isSales && isDPlusRepairType && onlyDPlusParts;
+
       // Always send all required fields for backend validation
       const validationData = {
         ...data,
         customerName: String(data.customerName || "").trim(),
         mobileNumber: String(data.phoneNumber || "").replace(/\D/g, ""),
-        deviceModel: isSales
-          ? String((data as any).itemName || data.deviceModel || "").trim()
+        deviceModel: (isSales || isDPlusAutoSale)
+          ? (isSales 
+              ? String((data as any).itemName || data.deviceModel || "").trim()
+              : `D+ Glass (${String(data.deviceModel || "").trim()})`)
           : String(data.deviceModel || "").trim(),
-        repairType: isSales
+        repairType: (isSales || isDPlusAutoSale)
           ? "sale"
           : isInternalRepair
           ? "internal-repair"
           : String(data.repairType === "others" ? data.customRepairType : data.repairType),
         paymentMethod: isInternalRepair ? "internal" : String(data.paymentMethod || "cash"),
-        repairCost: isSales
-          ? Number((data as any).soldPrice) || 0
+        repairCost: (isSales || isDPlusAutoSale)
+          ? (isSales ? (Number((data as any).soldPrice) || 0) : (Number(data.repairCost) || 0))
           : isInternalRepair
           ? internalRepairCost
           : Number(data.repairCost) || 0,
-        internalCost: isSales
-          ? (Number((data as any).ourCost) || 0) + parts.reduce((t, p) => t + ((Number(p.cost) || 0) * (Number(p.quantity) || 1)), 0)
+        internalCost: (isSales || isDPlusAutoSale)
+          ? (isSales
+              ? (Number((data as any).ourCost) || 0)
+              : 0) + parts.reduce((t, p) => t + ((Number(p.cost) || 0) * (Number(p.quantity) || 1)), 0)
           : isInternalRepair
           ? internalRepairCost
           : parts.reduce((t, p) => t + ((Number(p.cost) || 0) * (Number(p.quantity) || 1)), 0),
-        profit: isInternalRepair
+        profit: (isSales || isDPlusAutoSale)
+          ? ((isSales ? (Number((data as any).soldPrice) || 0) : (Number(data.repairCost) || 0)) - 
+             ((isSales ? (Number((data as any).ourCost) || 0) : 0) + parts.reduce((t, p) => t + ((Number(p.cost) || 0) * (Number(p.quantity) || 1)), 0)))
+          : isInternalRepair
           ? (Number(data.repairCost) || 0) - internalRepairCost
           : calculatedProfit,
-        actualCost: isSales ? Number((data as any).ourCost) || 0 : isInternalRepair ? internalRepairCost : undefined,
+        actualCost: (isSales || isDPlusAutoSale)
+          ? (isSales ? (Number((data as any).ourCost) || 0) : 0)
+          : isInternalRepair
+          ? internalRepairCost
+          : undefined,
         amountGiven: isInternalRepair || !isPaid ? 0 : Number(data.amountGiven) || 0,
-        changeReturned: isInternalRepair || !isPaid ? 0 : Math.max(0, (Number(data.amountGiven) || 0) - (isSales ? Number((data as any).soldPrice) || 0 : Number(data.repairCost) || 0)),
+        changeReturned: isInternalRepair || !isPaid ? 0 : Math.max(0, (Number(data.amountGiven) || 0) - ((isSales || isDPlusAutoSale) ? (isSales ? Number((data as any).soldPrice) || 0 : Number(data.repairCost) || 0) : Number(data.repairCost) || 0)),
         status: computedStatus,
         remarks: isInternalRepair
           ? [
@@ -1136,6 +1165,7 @@ export function MultiStepTransactionForm({ onSubmit, onCancel, initialData, init
                             { value: "camera-repair", label: "Camera Repair" },
                             { value: "water-damage", label: "Water Damage Repair" },
                             { value: "software-issue", label: "Software Issue" },
+                            { value: "d-plus-glass", label: "D+ Glass" },
                             { value: "others", label: "Others" },
                           ]}
                           value={watch("repairType") || ""}

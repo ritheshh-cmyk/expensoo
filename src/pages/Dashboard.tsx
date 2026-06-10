@@ -20,6 +20,10 @@ import {
   Wallet,
   Activity,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  TrendingDown,
+  ArrowDownRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -41,7 +45,7 @@ import { DashboardTour } from "@/components/ui/DashboardTour";
 import CountUp from "@/components/ui/CountUp";
 import AnimatedList from "@/components/ui/AnimatedList";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useConfirm } from "@/components/ui/ConfirmModal";
 import { SkeletonCard, SkeletonRow } from "@/components/ui/skeleton";
 import {
@@ -204,6 +208,106 @@ function buildChartData(txs: any[], period: FilterPeriod) {
   return days.map(d => ({ name: d.dateStr, total: d.total }));
 }
 
+function buildProfitChartData(txs: any[], period: FilterPeriod) {
+  const now = new Date();
+  let days: { dateStr: string; dateObj: Date; profit: number }[] = [];
+
+  if (period === 'today') {
+    days = Array.from({ length: 24 }).map((_, h) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h);
+      return { dateStr: `${h}:00`, dateObj: d, profit: 0 };
+    });
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      const h = d.getHours();
+      days[h].profit += parseFloat(tx.profit || '0');
+    });
+  } else if (period === 'week') {
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    days = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(startOfWeek); d.setDate(startOfWeek.getDate() + i);
+      return { dateStr: names[d.getDay()], dateObj: d, profit: 0 };
+    });
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      const idx = Math.floor((d.getTime() - startOfWeek.getTime()) / 86400000);
+      if (idx >= 0 && idx < 7) days[idx].profit += parseFloat(tx.profit || '0');
+    });
+  } else if (period === 'month' || period === 'last30') {
+    const start = getFilterStart(period);
+    const numDays = period === 'last30' ? 30 : now.getDate();
+    days = Array.from({ length: numDays }).map((_, i) => {
+      const d = new Date(now);
+      if (period === 'last30') {
+        d.setDate(now.getDate() - (30 - 1 - i));
+      } else {
+        d.setDate(1 + i);
+      }
+      return { dateStr: d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }), dateObj: d, profit: 0 };
+    });
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      if (start && d < start) return;
+      const dateStr = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+      const match = days.find(day => day.dateStr === dateStr);
+      if (match) match.profit += parseFloat(tx.profit || '0');
+    });
+  } else if (period === 'last6months') {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    days = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      return { dateStr: `${months[d.getMonth()]} ${d.getFullYear().toString().slice(-2)}`, dateObj: d, profit: 0 };
+    });
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      const monthIdx = d.getMonth();
+      const year = d.getFullYear();
+      const match = days.find(day => day.dateObj.getMonth() === monthIdx && day.dateObj.getFullYear() === year);
+      if (match) match.profit += parseFloat(tx.profit || '0');
+    });
+  } else if (period === 'year') {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    days = months.map((m, i) => ({ dateStr: m, dateObj: new Date(now.getFullYear(), i, 1), profit: 0 }));
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime()) || d.getFullYear() !== now.getFullYear()) return;
+      days[d.getMonth()].profit += parseFloat(tx.profit || '0');
+    });
+  } else {
+    let minDate = new Date();
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (!isNaN(d.getTime()) && d < minDate) minDate = d;
+    });
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    let curr = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    while (curr <= now) {
+      days.push({
+        dateStr: `${months[curr.getMonth()]} ${curr.getFullYear().toString().slice(-2)}`,
+        dateObj: new Date(curr),
+        profit: 0
+      });
+      curr.setMonth(curr.getMonth() + 1);
+    }
+    txs.forEach(tx => {
+      const d = new Date(tx.createdAt || tx.created_at || tx.date);
+      if (isNaN(d.getTime())) return;
+      const monthIdx = d.getMonth();
+      const year = d.getFullYear();
+      const match = days.find(day => day.dateObj.getMonth() === monthIdx && day.dateObj.getFullYear() === year);
+      if (match) match.profit += parseFloat(tx.profit || '0');
+    });
+  }
+  return days.map(d => ({ name: d.dateStr, profit: d.profit }));
+}
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function getField(tx: any, ...keys: string[]): string {
@@ -238,6 +342,7 @@ function getStatusColor(status: string) {
 
 export default function Dashboard() {
   const { t } = useLanguage();
+  const shouldReduceMotion = useReducedMotion();
   const { user, hasAccess } = useAuth();
   const { confirm, ConfirmModalElement } = useConfirm();
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
@@ -249,6 +354,7 @@ export default function Dashboard() {
   const [showProfits, setShowProfits] = useState(
     localStorage.getItem("showProfits") === "true",
   );
+  const [profitLocalExpanded, setProfitLocalExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     totalRevenue: 0,
@@ -466,6 +572,42 @@ export default function Dashboard() {
   // The card now shows plain pending count which is accurate and meaningful.
   const pendingCount = filteredPending;
 
+  const filteredProfit = useMemo(() =>
+    filteredTransactions.reduce((s, tx) => s + parseFloat(tx.profit || '0'), 0),
+    [filteredTransactions]
+  );
+
+  const profitPercentage = useMemo(() => {
+    if (filteredRevenue === 0) return 0;
+    return (filteredProfit / filteredRevenue) * 100;
+  }, [filteredProfit, filteredRevenue]);
+
+  const filteredProfitBreakdown = useMemo(() => {
+    let repairProfit = 0;
+    let saleProfit = 0;
+    filteredTransactions.forEach((tx) => {
+      const type = (tx.repairType || "").toLowerCase();
+      const profit = parseFloat(tx.profit || '0');
+      if (type === "sale") {
+        saleProfit += profit;
+      } else if (type !== "internal-repair") {
+        repairProfit += profit;
+      }
+    });
+    return { repairProfit, saleProfit };
+  }, [filteredTransactions]);
+
+  const top5ProfitableTransactions = useMemo(() => {
+    return [...filteredTransactions]
+      .sort((a, b) => parseFloat(b.profit || '0') - parseFloat(a.profit || '0'))
+      .slice(0, 5);
+  }, [filteredTransactions]);
+
+  const filteredProfitChartData = useMemo(() =>
+    buildProfitChartData(allTransactions, filterPeriod),
+    [allTransactions, filterPeriod]
+  );
+
   // Custom Tooltip for the Recharts graph
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -497,20 +639,13 @@ export default function Dashboard() {
     }, 0);
   }, [unpaidTransactionsList]);
 
-  const todayTransactions = useMemo(() => {
-    const todayStr = new Date().toDateString();
-    return allTransactions.filter((tx: any) => {
-      const dStr = tx.createdAt || tx.created_at || tx.date;
-      if (!dStr) return false;
-      const txDate = new Date(dStr);
-      if (isNaN(txDate.getTime())) return false;
-      return txDate.toDateString() === todayStr;
-    });
-  }, [allTransactions]);
+  // Use the same filterTxByPeriod engine as filteredRevenue to guarantee
+  // zero numerical discrepancy when both cards cover the same 'today' period.
+  const todayTransactions = useMemo(() => filterTxByPeriod(allTransactions, 'today'), [allTransactions]);
 
   const todayTotal = useMemo(() => {
     return todayTransactions.reduce((sum: number, tx: any) => {
-      const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.cost ?? 0);
+      const cost = Number(tx.repairCost ?? tx.repair_cost ?? tx.amountGiven ?? tx.amount_given ?? 0);
       return sum + cost;
     }, 0);
   }, [todayTransactions]);
@@ -758,20 +893,20 @@ export default function Dashboard() {
 
       {/* ── Premium Metric Cards ───────────────────────────────────────── */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className={cn("grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6", showProfits ? "lg:grid-cols-6" : "lg:grid-cols-5")}>
+          {Array.from({ length: showProfits ? 6 : 5 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+        <div className={cn("grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6", showProfits ? "lg:grid-cols-6" : "lg:grid-cols-5")}>
         {/* Revenue for period */}
         <Card 
           id="dashboard-today-card" 
-          onClick={() => toggleCard('today')}
+          onClick={() => toggleCard('total')}
           className={cn(
             "relative overflow-hidden border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
-            expandedCard === 'today' ? "col-span-1 ring-2 ring-brand-green/50" : "col-span-1"
+            expandedCard === 'total' ? "col-span-1 ring-2 ring-brand-green/50" : "col-span-1"
           )}
         >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-green/10 blur-2xl group-hover:bg-brand-green/20 transition-colors" />
@@ -823,19 +958,19 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Total Lifetime Revenue */}
+        {/* Today's Revenue */}
         <Card 
           id="dashboard-total-card"
-          onClick={() => toggleCard('total')}
+          onClick={() => toggleCard('today')}
           className={cn(
             "relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-transparent hover:shadow-md transition-shadow group cursor-pointer",
-            expandedCard === 'total' ? "col-span-1 ring-2 ring-primary/50" : "col-span-1"
+            expandedCard === 'today' ? "col-span-1 ring-2 ring-primary/50" : "col-span-1"
           )}
         >
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-primary/10 blur-2xl group-hover:bg-primary/20 transition-colors" />
           <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t("total-revenue")}
+              Today's Revenue
             </CardTitle>
             <div className="rounded-xl bg-primary/10 p-2 shrink-0 group-hover:scale-110 transition-transform">
               <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -843,10 +978,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
             <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
-              ₹<CountUp to={dashboardData.totalRevenue} separator="," duration={0.7} />
+              ₹<CountUp to={todayTotal} separator="," duration={0.7} />
             </div>
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-              Over <span className="font-medium text-foreground">{dashboardData.totalTransactions}</span> lifetime transactions
+              Today
             </p>
           </CardContent>
         </Card>
@@ -907,6 +1042,105 @@ export default function Dashboard() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Profit Card */}
+        {showProfits && (
+          <Card 
+            id="dashboard-profit-card" 
+            onClick={() => toggleCard('profit')}
+            className={cn(
+              "relative overflow-hidden hover:shadow-md transition-shadow group cursor-pointer flex flex-col justify-between",
+              filteredProfit >= 0 
+                ? "border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-transparent" 
+                : "border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent",
+              expandedCard === 'profit' ? "col-span-1 ring-2 ring-brand-green/50" : "col-span-1"
+            )}
+          >
+            <div className={cn(
+              "absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl group-hover:opacity-100 transition-opacity",
+              filteredProfit >= 0 ? "bg-brand-green/10" : "bg-red-500/10"
+            )} />
+            
+            <div>
+              <CardHeader className="p-4 sm:p-5 flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Profit
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setProfitLocalExpanded(!profitLocalExpanded);
+                    }}
+                    className={cn(
+                      "p-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 transition-colors shrink-0 z-10",
+                      filteredProfit >= 0 ? "text-brand-green" : "text-red-500"
+                    )}
+                    title="Toggle breakdown panel"
+                  >
+                    {profitLocalExpanded ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </button>
+                  <div className={cn(
+                    "rounded-xl p-2 shrink-0 group-hover:scale-110 transition-transform",
+                    filteredProfit >= 0 ? "bg-brand-green/10 text-brand-green" : "bg-red-500/10 text-red-500"
+                  )}>
+                    {filteredProfit >= 0 ? (
+                      <TrendingUp className="h-4 w-4" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4" />
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-5 pt-0 pb-3">
+                <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
+                  ₹<CountUp to={filteredProfit} separator="," duration={0.7} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 flex-wrap">
+                  {filteredProfit >= 0 ? (
+                    <ArrowUpRight className="h-3 w-3 text-brand-green" />
+                  ) : (
+                    <ArrowDownRight className="h-3 w-3 text-red-500" />
+                  )}
+                  <span className={filteredProfit >= 0 ? "text-brand-green font-medium" : "text-red-500 font-medium"}>
+                    {profitPercentage.toFixed(1)}% margin
+                  </span>
+                  {' '}· {FILTER_OPTIONS.find(o => o.value === filterPeriod)?.label}
+                </p>
+              </CardContent>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {profitLocalExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full border-t border-border/40 bg-black/10 px-4 py-3 text-xs space-y-1.5 overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Repairs Profit:</span>
+                    <span className={cn("font-medium font-mono", filteredProfitBreakdown.repairProfit >= 0 ? "text-brand-green" : "text-red-500")}>
+                      ₹{formatCurrency(filteredProfitBreakdown.repairProfit)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Sales Profit:</span>
+                    <span className={cn("font-medium font-mono", filteredProfitBreakdown.saleProfit >= 0 ? "text-brand-green" : "text-red-500")}>
+                      ₹{formatCurrency(filteredProfitBreakdown.saleProfit)}
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Card>
+        )}
       </div>
       )}
 
@@ -914,12 +1148,19 @@ export default function Dashboard() {
       {createPortal(
         <AnimatePresence>
           {expandedCard && (() => {
+            const isProfitPositive = filteredProfit >= 0;
             const cardMeta: Record<string, { label: string; accent: string; accentBg: string; icon: React.ReactNode }> = {
               today:   { label: "Today's Revenue",     accent: 'text-brand-green',  accentBg: 'from-brand-green/20',   icon: <DollarSign className="h-4 w-4 text-brand-green" /> },
               week:    { label: 'This Week',             accent: 'text-brand-blue',   accentBg: 'from-brand-blue/20',    icon: <TrendingUp className="h-4 w-4 text-brand-blue" /> },
-              total:   { label: 'Total Revenue',         accent: 'text-primary',      accentBg: 'from-primary/20',       icon: <CheckCircle2 className="h-4 w-4 text-primary" /> },
+              total:   { label: 'Revenue Details',       accent: 'text-primary',      accentBg: 'from-primary/20',       icon: <CheckCircle2 className="h-4 w-4 text-primary" /> },
               pending: { label: 'Pending Repairs',       accent: 'text-red-400',      accentBg: 'from-red-500/20',       icon: <Wallet className="h-4 w-4 text-red-400" /> },
               unpaid:  { label: 'Unpaid Transactions',   accent: 'text-brand-orange', accentBg: 'from-brand-orange/20',  icon: <AlertCircle className="h-4 w-4 text-brand-orange" /> },
+              profit:  { 
+                label: 'Profit Details', 
+                accent: isProfitPositive ? 'text-brand-green' : 'text-red-400', 
+                accentBg: isProfitPositive ? 'from-brand-green/20' : 'from-red-500/20', 
+                icon: isProfitPositive ? <TrendingUp className="h-4 w-4 text-brand-green" /> : <TrendingDown className="h-4 w-4 text-red-400" /> 
+              },
             };
             const meta = cardMeta[expandedCard];
             return (
@@ -950,10 +1191,10 @@ export default function Dashboard() {
                   {/* Glass panel */}
                   <motion.div
                     id="glassmorphism-overlay-panel"
-                    initial={{ opacity: 0, scale: 0.93 }}
+                    initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.93 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.93 }}
-                    transition={{ type: 'spring', stiffness: 360, damping: 32, mass: 0.8 }}
+                    exit={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.93 }}
+                    transition={shouldReduceMotion ? { duration: 0.12 } : { type: 'spring', stiffness: 360, damping: 32, mass: 0.8 }}
                     style={{
                       pointerEvents: 'auto',
                       width: 'min(100%, 520px)',
@@ -1130,6 +1371,100 @@ export default function Dashboard() {
                             </div>
                           );
                         }) : <p className="text-xs text-white/40 text-center py-6">No unpaid transactions.</p>}
+                      </>
+                    )}
+
+                    {/* PROFIT */}
+                    {expandedCard === 'profit' && (
+                      <>
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/8 space-y-2 text-xs mb-4">
+                          <div className="flex justify-between">
+                            <span className="text-white/50">Repairs Profit</span>
+                            <span className={cn("font-semibold", filteredProfitBreakdown.repairProfit >= 0 ? "text-brand-green" : "text-red-400")}>
+                              ₹{formatCurrency(filteredProfitBreakdown.repairProfit)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-white/50">Sales Profit</span>
+                            <span className={cn("font-semibold", filteredProfitBreakdown.saleProfit >= 0 ? "text-brand-green" : "text-red-400")}>
+                              ₹{formatCurrency(filteredProfitBreakdown.saleProfit)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/8 pt-2 font-bold">
+                            <span className="text-white/70">Total Profit</span>
+                            <span className={filteredProfit >= 0 ? "text-brand-green" : "text-red-400"}>
+                              ₹{formatCurrency(filteredProfit)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest pt-1 mb-2">
+                          Top 5 Most Profitable Transactions
+                        </p>
+                        {top5ProfitableTransactions.length > 0 ? top5ProfitableTransactions.map((tx) => {
+                          const profitVal = parseFloat(tx.profit || '0');
+                          return (
+                            <div key={tx.id} className="flex justify-between items-center text-xs p-2.5 rounded-xl bg-white/5 border border-white/8 mb-2">
+                              <div className="min-w-0">
+                                <p className="font-medium truncate text-white">{tx.customerName || tx.customer_name || 'Customer'}</p>
+                                <p className="text-[10px] text-white/40 truncate mt-0.5">{tx.deviceModel || tx.device_model || 'Device'} · {tx.repairType}</p>
+                              </div>
+                              <span className={cn("font-bold shrink-0 ml-2", profitVal >= 0 ? "text-brand-green" : "text-red-400")}>
+                                ₹{formatCurrency(profitVal)}
+                              </span>
+                            </div>
+                          );
+                        }) : <p className="text-[10px] text-white/40 text-center py-2">No profitable transactions recorded.</p>}
+
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest pt-3 mb-2">
+                          Profit Trend
+                        </p>
+                        <div className="w-full h-[150px] bg-white/5 rounded-xl border border-white/8 p-2">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={filteredProfitChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={filteredProfit >= 0 ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)"} stopOpacity={0.3}/>
+                                  <stop offset="95%" stopColor={filteredProfit >= 0 ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)"} stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                              <XAxis 
+                                dataKey="name" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} 
+                              />
+                              <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} 
+                                tickFormatter={(value) => `₹${value}`}
+                              />
+                              <Tooltip 
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    return (
+                                      <div className="bg-black/80 backdrop-blur-md border border-white/10 p-2 rounded-lg text-[10px]">
+                                        <p className="font-semibold text-white">{payload[0].payload.name}</p>
+                                        <p className="text-brand-green font-bold mt-0.5">₹{formatCurrency(payload[0].value)}</p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Area 
+                                type="monotone" 
+                                dataKey="profit" 
+                                stroke={filteredProfit >= 0 ? "rgb(34, 197, 94)" : "rgb(239, 68, 68)"} 
+                                strokeWidth={2}
+                                fillOpacity={1} 
+                                fill="url(#colorProfit)" 
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
                       </>
                     )}
 

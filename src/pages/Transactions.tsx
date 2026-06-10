@@ -80,6 +80,7 @@ import { Fragment } from "react";
 import { apiClient } from "@/lib/api";
 import { io } from "socket.io-client";
 import { useConfirm } from "@/components/ui/ConfirmModal";
+import { motion, useReducedMotion } from "framer-motion";
 import { usePermissions } from "@/hooks/usePermissions";
 
 interface TransactionPart {
@@ -201,6 +202,22 @@ interface TransactionsProps {
 
 export default function Transactions({ filterCategory = 'all' }: TransactionsProps) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const shouldReduceMotion = useReducedMotion();
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: shouldReduceMotion ? 0 : 0.03,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: shouldReduceMotion ? 0 : 10 },
+    show: { opacity: 1, y: 0, transition: { type: "tween", duration: 0.2 } },
+  };
   const searchId = searchParams.get("id");
   const searchQuery = searchParams.get("search");
 
@@ -762,13 +779,20 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
               ))}
             </div>
           ) : table.getRowModel().rows?.length ? (
-            <div className="divide-y divide-border/50">
+            <motion.div 
+              className="divide-y divide-border/50"
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+            >
               {table.getRowModel().rows.map((row) => {
                 const tx = row.original;
                 const shortId = tx.id.length > 5 ? `TXN-${tx.id.slice(-5).toUpperCase()}` : `TXN-${tx.id}`;
                 return (
-                  <div 
+                  <motion.div 
                     key={row.id} 
+                    variants={itemVariants}
+                    whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
                     className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
                     onClick={(e) => {
                       if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('[role="menuitem"]')) return;
@@ -842,10 +866,10 @@ export default function Transactions({ filterCategory = 'all' }: TransactionsPro
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Receipt className="w-8 h-8 text-muted-foreground mb-3" />

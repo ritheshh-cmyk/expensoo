@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -471,6 +472,20 @@ export default function Settings() {
                       onCheckedChange={v => handleToggle("autoSync", setAutoSync, v)}
                     />
                   </div>
+
+                  {/* PWA App Install */}
+                  <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-background/45 border border-border/50">
+                    <div className="space-y-0.5 min-w-0">
+                      <Label className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                        <SmartphoneNfc className="h-4 w-4 text-brand-orange/85 shrink-0" />
+                        PWA App
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Install Expensoo on your device for offline support</p>
+                    </div>
+                    <Button variant="outline" size="sm" asChild className="min-h-[36px] px-4 rounded-xl border border-brand-orange/20 hover:bg-brand-orange/5 text-foreground hover:text-brand-orange transition-all font-semibold">
+                      <Link to="/install">Install</Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -640,6 +655,15 @@ export default function Settings() {
                       checked={autoSync}
                       onCheckedChange={v => handleToggle("autoSync", setAutoSync, v)}
                     />
+                  </div>
+                  <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-background/45 border border-border/50">
+                    <div className="space-y-0.5 min-w-0">
+                      <Label className="text-sm font-bold text-foreground">PWA App</Label>
+                      <p className="text-[10px] text-muted-foreground">Install Expensoo on your device for offline support</p>
+                    </div>
+                    <Button variant="outline" size="sm" asChild className="min-h-[36px] px-4 rounded-xl border border-brand-orange/20 hover:bg-brand-orange/5 text-foreground hover:text-brand-orange transition-all font-semibold">
+                      <Link to="/install">Install</Link>
+                    </Button>
                   </div>
                 </div>
               </div>

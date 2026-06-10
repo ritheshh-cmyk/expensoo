@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useInView, useMotionValue, useSpring } from 'framer-motion';
+import { useInView, useMotionValue, useSpring, useReducedMotion } from 'framer-motion';
 
 interface CountUpProps {
   to: number;
@@ -30,9 +30,11 @@ export default function CountUp({
 
   const motionValue = useMotionValue(direction === 'down' ? safeTo : safeFrom);
   
+  const shouldReduceMotion = useReducedMotion();
+
   // Make spring physics snappier and faster
-  const damping = 12 + duration * 4;
-  const stiffness = 220 / duration;
+  const damping = shouldReduceMotion ? 0 : 12 + duration * 4;
+  const stiffness = shouldReduceMotion ? 999999 : 220 / duration;
 
   const springValue = useSpring(motionValue, {
     damping,
@@ -44,12 +46,25 @@ export default function CountUp({
 
   useEffect(() => {
     if (isInView) {
+      if (shouldReduceMotion) {
+        motionValue.set(direction === 'down' ? safeFrom : safeTo);
+        if (ref.current) {
+          const val = direction === 'down' ? safeFrom : safeTo;
+          const formattedNumber = Intl.NumberFormat('en-US', {
+            useGrouping: !!separator,
+          }).format(Math.floor(val));
+          ref.current.textContent = separator 
+            ? formattedNumber.replace(/,/g, separator)
+            : Math.floor(val).toString();
+        }
+        return;
+      }
       const timer = setTimeout(() => {
         motionValue.set(direction === 'down' ? safeFrom : safeTo);
       }, delay * 1000);
       return () => clearTimeout(timer);
     }
-  }, [isInView, delay, motionValue, direction, safeFrom, safeTo]);
+  }, [isInView, delay, motionValue, direction, safeFrom, safeTo, shouldReduceMotion, separator]);
 
   useEffect(() => {
     return springValue.on("change", (latest) => {

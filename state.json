@@ -6,11 +6,11 @@
       "localStorage": [
         {
           "name": "auth_token",
-          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc4MTA0NjA5MSwiZXhwIjoxNzgxMTMyNDkxfQ.gQPgDGlmZFJta-nzzFHlNv5mixHzGgEUuUQOugbsF3E"
+          "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc4MTExNjEwNSwiZXhwIjoxNzgxMjAyNTA1fQ.ro82rqWT_RxWF2bvV1ueqC5BQHF02o8OUyLtM14_iMg"
         },
         {
           "name": "session_started_at",
-          "value": "1781046091345"
+          "value": "1781116105878"
         },
         {
           "name": "language",
@@ -18,7 +18,7 @@
         },
         {
           "name": "auth_user",
-          "value": "{\"id\":\"1\",\"name\":\"Admin 7769\",\"username\":\"admin\",\"role\":\"admin\",\"email\":\"\",\"display_name\":\"Admin 7769\",\"avatar\":null}"
+          "value": "{\"id\":\"1\",\"name\":\"Admin 4739\",\"username\":\"admin\",\"role\":\"admin\",\"email\":\"\",\"display_name\":\"Admin 4739\",\"avatar\":null}"
         }
       ]
     }

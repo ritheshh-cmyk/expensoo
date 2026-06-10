@@ -23,6 +23,32 @@ interface ApiConfig {
 class ApiClient {
   private config: ApiConfig;
   private token: string | null;
+  private cache: {
+    dashboardStats?: { data: any; timestamp: number };
+    transactions?: { data: any; timestamp: number };
+    suppliers?: { data: any; timestamp: number };
+  } = {};
+
+  private isCacheValid(entry?: { data: any; timestamp: number }): boolean {
+    if (!entry) return false;
+    const now = Date.now();
+    const twoMinutes = 2 * 60 * 1000;
+    return (now - entry.timestamp) < twoMinutes;
+  }
+
+  clearCache(type?: 'dashboardStats' | 'transactions' | 'suppliers') {
+    if (type) {
+      delete this.cache[type];
+      if (this.config.debug) {
+        console.log(`🧹 Cache cleared for key: ${type}`);
+      }
+    } else {
+      this.cache = {};
+      if (this.config.debug) {
+        console.log('🧹 Entire API cache cleared');
+      }
+    }
+  }
 
   constructor() {
     const envBaseUrl = import.meta.env.VITE_BACKEND_URL;
@@ -138,6 +164,19 @@ class ApiClient {
             data
           });
 
+          // Invalidate cache on mutations (POST, PUT, DELETE)
+          const method = (config.method || 'GET').toUpperCase();
+          if (method !== 'GET') {
+            if (endpoint.includes('/transactions') || endpoint.includes('/expenditures')) {
+              this.clearCache('transactions');
+              this.clearCache('dashboardStats');
+            } else if (endpoint.includes('/suppliers')) {
+              this.clearCache('suppliers');
+            } else {
+              this.clearCache();
+            }
+          }
+
           return {
             success: true,
             data,
@@ -190,11 +229,11 @@ class ApiClient {
 
 
   // Authentication methods
-  async login(username: string, password: string): Promise<ApiResponse> {
+  async login(username: string, password: string, isMobile?: boolean): Promise<ApiResponse> {
     this.debug('🔐 Attempting login:', username);
     const response = await this.request('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, isMobile }),
     });
 
     this.debug('🔍 Login response structure:', {
@@ -249,6 +288,7 @@ class ApiClient {
     this.token = null;
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
+    this.clearCache();
   }
 
   async updateProfile(data: any): Promise<ApiResponse> {
@@ -308,12 +348,16 @@ class ApiClient {
   }
 
   async getDashboardStats(): Promise<ApiResponse> {
+    if (this.isCacheValid(this.cache.dashboardStats)) {
+      this.debug('📊 Returning cached dashboard stats...');
+      return JSON.parse(JSON.stringify(this.cache.dashboardStats!.data));
+    }
     this.debug('📊 Fetching dashboard stats from /api/dashboard/stats...');
     const response = await this.request('/api/dashboard/stats');
 
     if (response.success) {
       // Backend returns { totals, today, week, userRole }
-      return {
+      const formattedResponse = {
         success: true,
         data: {
           totals: {
@@ -337,6 +381,8 @@ class ApiClient {
           userRole:   response.data?.userRole,
         },
       };
+      this.cache.dashboardStats = { data: formattedResponse, timestamp: Date.now() };
+      return formattedResponse;
     }
 
     this.error('❌ Dashboard stats fetch failed:', response.error);
@@ -350,15 +396,21 @@ class ApiClient {
 
   // Transactions
   async getTransactions(): Promise<ApiResponse> {
+    if (this.isCacheValid(this.cache.transactions)) {
+      this.debug('📋 Returning cached transactions...');
+      return JSON.parse(JSON.stringify(this.cache.transactions!.data));
+    }
     this.debug('📋 Fetching transactions...');
     const response = await this.request('/api/transactions');
     
     if (response.success) {
       const transactions = response.data?.transactions || response.data?.data || response.data || [];
-      return {
+      const formattedResponse = {
         success: true,
         data: Array.isArray(transactions) ? transactions : []
       };
+      this.cache.transactions = { data: formattedResponse, timestamp: Date.now() };
+      return formattedResponse;
     }
     
     this.error('❌ Transactions fetch failed:', response.error);
@@ -442,15 +494,21 @@ class ApiClient {
 
   // Suppliers
   async getSuppliers(): Promise<ApiResponse> {
+    if (this.isCacheValid(this.cache.suppliers)) {
+      this.debug('🏢 Returning cached suppliers...');
+      return JSON.parse(JSON.stringify(this.cache.suppliers!.data));
+    }
     this.debug('🏢 Fetching suppliers...');
     const response = await this.request('/api/suppliers');
     
     if (response.success) {
       const suppliers = response.data?.suppliers || response.data?.data || response.data || [];
-      return {
+      const formattedResponse = {
         success: true,
         data: Array.isArray(suppliers) ? suppliers : []
       };
+      this.cache.suppliers = { data: formattedResponse, timestamp: Date.now() };
+      return formattedResponse;
     }
     
     return {

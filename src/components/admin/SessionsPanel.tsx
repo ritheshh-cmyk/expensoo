@@ -52,7 +52,7 @@ export function SessionsPanel() {
   const [userRoles, setUserRoles] = useState<Record<number, string>>({});
 
   const currentToken = localStorage.getItem('auth_token');
-  const currentTokenHash = currentToken ? currentToken.substring(0, 8) : null;
+  const currentTokenHash = currentToken ? currentToken.slice(-16) : null;
 
   const fetchSessions = useCallback(async () => {
     setLoading(true);

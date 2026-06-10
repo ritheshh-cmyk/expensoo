@@ -81,7 +81,8 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      const success = await login(result.data.username, result.data.password);
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+      const success = await login(result.data.username, result.data.password, isMobile);
       if (success) {
         toast({
           title: "Welcome back!",
@@ -291,7 +292,11 @@ export default function Login() {
                     variant="ghost"
                     size="icon"
                     className="absolute right-0.5 top-1/2 -translate-y-1/2 h-11 w-11 text-muted-foreground hover:text-foreground hover:bg-accent/40 z-10 rounded-lg flex items-center justify-center"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowPassword(!showPassword);
+                    }}
                     tabIndex={-1}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >

@@ -4,6 +4,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { motion, useReducedMotion } from "framer-motion"
 import { Spinner } from "./spinner"
 
 const buttonVariants = cva(
@@ -44,23 +45,33 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, loading = false, disabled, children, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+    const shouldReduceMotion = useReducedMotion();
+    const tapScale = shouldReduceMotion ? undefined : 0.97;
+
+    if (asChild) {
+      return (
+        <Slot
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          disabled={disabled || loading}
+          {...props}
+        >
+          {children}
+        </Slot>
+      )
+    }
+
     return (
-      <Comp
+      <motion.button
+        whileTap={tapScale ? { scale: tapScale } : undefined}
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         disabled={disabled || loading}
         {...props}
       >
-        {asChild ? (
-          children
-        ) : (
-          <>
-            {loading && <Spinner size="sm" className="mr-1 shrink-0" />}
-            {children}
-          </>
-        )}
-      </Comp>
+        {loading && <Spinner size="sm" className="mr-1 shrink-0" />}
+        {children}
+      </motion.button>
     )
   }
 )
