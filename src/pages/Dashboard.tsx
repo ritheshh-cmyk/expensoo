@@ -24,6 +24,8 @@ import {
   ChevronUp,
   TrendingDown,
   ArrowDownRight,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -356,6 +358,10 @@ export default function Dashboard() {
   const [showProfits, setShowProfits] = useState(
     localStorage.getItem("showProfits") !== "false",
   );
+  // Eye toggle — masks all ₹ amounts with •••••• (banking-app style)
+  const [showAmounts, setShowAmounts] = useState(
+    localStorage.getItem("showAmounts") !== "false",
+  );
   const [profitLocalExpanded, setProfitLocalExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
@@ -378,6 +384,16 @@ export default function Dashboard() {
     setShowProfits(next);
     localStorage.setItem("showProfits", String(next));
   };
+
+  const toggleAmounts = () => {
+    const next = !showAmounts;
+    setShowAmounts(next);
+    localStorage.setItem("showAmounts", String(next));
+  };
+
+  // Returns masked value when amounts are hidden, formatted currency otherwise
+  const maskedAmount = (value: number) =>
+    showAmounts ? `₹${formatCurrency(value)}` : "₹ ••••••";
 
   // BUG 1 FIX: wrap in useCallback so socket listeners always hold a stable
   // reference to the latest function rather than a stale closure.
@@ -844,9 +860,33 @@ export default function Dashboard() {
             <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
             {loading ? t("loading") : t("refresh")}
           </Button>
+          {/* Eye toggle — masks/unmasks all ₹ amounts */}
+          <Tippy
+            content={showAmounts ? "Hide all amounts" : "Show all amounts"}
+            placement="bottom"
+            animation="scale"
+            delay={[300, 0]}
+          >
+            <Button
+              variant="outline"
+              size="icon"
+              id="toggle-amounts-btn"
+              data-testid="amounts-toggle"
+              onClick={toggleAmounts}
+              className="min-h-[44px] w-11 shadow-sm hover:shadow-md transition-all bg-background"
+              style={{ touchAction: "manipulation" }}
+              aria-label={showAmounts ? "Hide amounts" : "Show amounts"}
+            >
+              {showAmounts ? (
+                <Eye className="h-4 w-4" />
+              ) : (
+                <EyeOff className="h-4 w-4" />
+              )}
+            </Button>
+          </Tippy>
           {isOwnerOrAdmin && (
             <Tippy
-              content="Show or hide profit data — visible to owners and admins only"
+              content="Show or hide profit card — visible to owners and admins only"
               placement="bottom"
               animation="scale"
               delay={[300, 0]}
@@ -921,8 +961,12 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
-              ₹<CountUp to={filteredRevenue} separator="," duration={0.7} />
+            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center transition-all duration-300">
+              {showAmounts ? (
+                <>₹<CountUp to={filteredRevenue} separator="," duration={0.7} /></>
+              ) : (
+                <span className="tracking-widest text-muted-foreground/60">₹ ••••••</span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               <ArrowUpRight className="h-3 w-3 text-brand-green" />
@@ -979,8 +1023,12 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-5 pt-0">
-            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
-              ₹<CountUp to={todayTotal} separator="," duration={0.7} />
+            <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center transition-all duration-300">
+              {showAmounts ? (
+                <>₹<CountUp to={todayTotal} separator="," duration={0.7} /></>
+              ) : (
+                <span className="tracking-widest text-muted-foreground/60">₹ ••••••</span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
               Today
@@ -1040,7 +1088,7 @@ export default function Dashboard() {
             </div>
             <p className="text-xs text-muted-foreground mt-2 flex flex-wrap items-center gap-1">
               <span className="font-semibold text-brand-orange-light">{filteredUnpaid.length} unpaid</span>
-              <span>· ₹{formatCurrency(filteredUnpaidOutstanding)} due</span>
+              <span>· {showAmounts ? `₹${formatCurrency(filteredUnpaidOutstanding)} due` : "₹ •••••• due"}</span>
             </p>
           </CardContent>
         </Card>
@@ -1099,8 +1147,12 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent className="p-4 sm:p-5 pt-0 pb-3">
-                <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center">
-                  ₹<CountUp to={filteredProfit} separator="," duration={0.7} />
+                <div className="text-2xl sm:text-3xl font-bold text-foreground font-heading tracking-tight flex items-center transition-all duration-300">
+                  {showAmounts ? (
+                    <>₹<CountUp to={filteredProfit} separator="," duration={0.7} /></>
+                  ) : (
+                    <span className="tracking-widest text-muted-foreground/60">₹ ••••••</span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 flex-wrap">
                   {filteredProfit >= 0 ? (
@@ -1109,7 +1161,7 @@ export default function Dashboard() {
                     <ArrowDownRight className="h-3 w-3 text-red-500" />
                   )}
                   <span className={filteredProfit >= 0 ? "text-brand-green font-medium" : "text-red-500 font-medium"}>
-                    {profitPercentage.toFixed(1)}% margin
+                    {showAmounts ? `${profitPercentage.toFixed(1)}% margin` : "••% margin"}
                   </span>
                   {' '}· {FILTER_OPTIONS.find(o => o.value === filterPeriod)?.label}
                 </p>
