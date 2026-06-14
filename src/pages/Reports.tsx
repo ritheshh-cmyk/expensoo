@@ -31,6 +31,7 @@ import {
   Package,
   Plus,
   TrendingDown,
+  Wrench,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
@@ -811,77 +812,97 @@ export default function Reports() {
       {/* ── Data Tables ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Top Customers */}
+        {/* Repair Analysis */}
         <div className="rounded-xl border border-border bg-background p-5">
-          <h3 className="text-base font-semibold text-foreground mb-4">Top Customers</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-foreground">Repair Analysis</h3>
+            <span className="text-xs text-muted-foreground bg-muted/40 px-2 py-1 rounded-full border border-border">
+              {repairTypesData.reduce((s: number, r: any) => s + r.count, 0)} jobs
+            </span>
+          </div>
           {loadingMain ? (
-            <div className="space-y-1">{Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}</div>
-          ) : (
-            <>
-              {/* Desktop table */}
-              <div className="hidden sm:block overflow-x-auto rounded-md border border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border bg-muted/30">
-                      <TableHead className="text-muted-foreground">Customer</TableHead>
-                      <TableHead className="text-muted-foreground">Repairs</TableHead>
-                      <TableHead className="text-muted-foreground">Revenue</TableHead>
-                      <TableHead className="text-muted-foreground">Last Visit</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {topCustomersData.length > 0 ? topCustomersData.map((c, i) => {
-                      const tier = customerTier(c.repairs);
-                      const ago  = c.lastVisit ? (() => {
-                        const d = new Date(c.lastVisit);
-                        if (isNaN(d.getTime())) return '—';
-                        const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
-                        if (diff === 0) return 'Today';
-                        if (diff === 1) return 'Yesterday';
-                        return `${diff}d ago`;
-                      })() : '—';
-                      return (
-                        <TableRow key={i} className={cn("border-border hover:bg-muted/30 transition-colors", tier.border)}>
-                          <TableCell className="font-medium text-foreground">{c.name}</TableCell>
-                          <TableCell>
-                            <span className={cn("font-semibold", tier.color)}>{c.repairs}</span>
-                          </TableCell>
-                          <TableCell className="text-foreground font-mono text-sm">
-                            ₹{c.revenue.toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground border border-border">
-                              {ago}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    }) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                          No customer data in this period.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 2 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
-              {/* Mobile card list */}
-              <div className="sm:hidden space-y-2">
-                {topCustomersData.length > 0 ? topCustomersData.map((c, i) => {
-                  const tier = customerTier(c.repairs);
+              <div className="space-y-1">{Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}</div>
+            </div>
+          ) : repairTypesData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+              <div className="p-3 rounded-full bg-muted">
+                <Wrench className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="font-medium text-foreground text-sm">No repair data in this period.</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Summary stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border bg-muted/20 p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Repair Types</p>
+                  <p className="text-xl font-bold text-foreground">{repairTypesData.length}</p>
+                </div>
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Top Type</p>
+                  <p className="text-sm font-bold text-primary truncate">{repairTypesData[0]?.name ?? '—'}</p>
+                </div>
+              </div>
+
+              {/* Repair type breakdown */}
+              <div className="space-y-2.5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">By Repair Type</p>
+                {repairTypesData.map((r: any, i: number) => {
+                  const REPAIR_COLORS = [
+                    'bg-primary', 'bg-brand-orange', 'bg-brand-green',
+                    'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500',
+                  ];
+                  const col = REPAIR_COLORS[i % REPAIR_COLORS.length];
                   return (
-                    <div key={i} className={cn("rounded-lg border border-border p-3 flex items-center justify-between", tier.border)}>
-                      <div>
-                        <p className="font-medium text-foreground text-sm">{c.name}</p>
-                        <p className="text-xs text-muted-foreground">{c.repairs} repairs</p>
+                    <div key={i} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={cn("w-2 h-2 rounded-full shrink-0", col)} />
+                          <span className="font-medium text-foreground truncate">{r.name}</span>
+                        </div>
+                        <div className="text-right shrink-0 ml-2 flex items-center gap-2">
+                          <span className="font-mono font-semibold text-foreground text-sm">{r.count}</span>
+                          <span className="text-xs text-muted-foreground w-8 text-right">{r.value}%</span>
+                        </div>
                       </div>
-                      <p className="font-semibold text-foreground text-sm">₹{c.revenue.toLocaleString()}</p>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-all duration-700", col)}
+                          style={{ width: `${r.value}%`, opacity: 0.85 }}
+                        />
+                      </div>
                     </div>
                   );
-                }) : <p className="text-sm text-center text-muted-foreground py-6">No data in period.</p>}
+                })}
               </div>
-            </>
+
+              {/* Top device brands mini-table */}
+              {deviceBrandsData.length > 0 && (
+                <div className="space-y-2 pt-1 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">Top Device Brands</p>
+                  {deviceBrandsData.slice(0, 4).map((b: any, i: number) => {
+                    const maxRev = deviceBrandsData[0]?.revenue || 1;
+                    const pct = Math.round((b.revenue / maxRev) * 100);
+                    return (
+                      <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="font-medium text-foreground truncate min-w-0">{b.brand}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-muted-foreground">{b.repairs} repairs</span>
+                          <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full bg-brand-green" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="font-mono text-xs font-semibold text-foreground w-16 text-right">₹{b.revenue.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
