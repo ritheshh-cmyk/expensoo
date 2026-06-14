@@ -761,58 +761,62 @@ export default function Reports() {
                 </div>
               </div>
 
-              {/* Repair type breakdown */}
+                            {/* Repair type breakdown */}
               <div className="space-y-2.5">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">By Repair Type</p>
-                {repairTypesData.map((r: any, i: number) => {
-                  const REPAIR_COLORS = [
-                    'bg-primary', 'bg-brand-orange', 'bg-brand-green',
-                    'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500',
-                  ];
-                  const col = REPAIR_COLORS[i % REPAIR_COLORS.length];
-                  return (
-                    <div key={i} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={cn("w-2 h-2 rounded-full shrink-0", col)} />
-                          <span className="font-medium text-foreground truncate">{r.name}</span>
-                        </div>
-                        <div className="text-right shrink-0 ml-2 flex items-center gap-2">
-                          <span className="font-mono font-semibold text-foreground text-sm">{r.count}</span>
-                          <span className="text-xs text-muted-foreground w-8 text-right">{r.value}%</span>
-                        </div>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={cn("h-full rounded-full transition-all duration-700", col)}
-                          style={{ width: `${r.value}%`, opacity: 0.85 }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Top device brands mini-table */}
-              {deviceBrandsData.length > 0 && (
-                <div className="space-y-2 pt-1 border-t border-border">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">Top Device Brands</p>
-                  {deviceBrandsData.slice(0, 4).map((b: any, i: number) => {
-                    const maxRev = deviceBrandsData[0]?.revenue || 1;
-                    const pct = Math.round((b.revenue / maxRev) * 100);
+                <div className="space-y-2.5 max-h-[160px] overflow-y-auto pr-1">
+                  {repairTypesData.map((r: any, i: number) => {
+                    const REPAIR_COLORS = [
+                      'bg-primary', 'bg-brand-orange', 'bg-brand-green',
+                      'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-yellow-500',
+                    ];
+                    const col = REPAIR_COLORS[i % REPAIR_COLORS.length];
                     return (
-                      <div key={i} className="flex items-center justify-between gap-2 text-sm">
-                        <span className="font-medium text-foreground truncate min-w-0">{b.brand}</span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs text-muted-foreground">{b.repairs} repairs</span>
-                          <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
-                            <div className="h-full rounded-full bg-brand-green" style={{ width: `${pct}%` }} />
+                      <div key={i} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={cn("w-2 h-2 rounded-full shrink-0", col)} />
+                            <span className="font-medium text-foreground truncate">{r.name}</span>
                           </div>
-                          <span className="font-mono text-xs font-semibold text-foreground w-16 text-right">₹{b.revenue.toLocaleString()}</span>
+                          <div className="text-right shrink-0 ml-2 flex items-center gap-2">
+                            <span className="font-mono font-semibold text-foreground text-sm">{r.count}</span>
+                            <span className="text-xs text-muted-foreground w-8 text-right">{r.value}%</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all duration-700", col)}
+                            style={{ width: `${r.value}%`, opacity: 0.85 }}
+                          />
                         </div>
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+                            {/* Top device brands mini-table */}
+              {deviceBrandsData.length > 0 && (
+                <div className="space-y-2 pt-1 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">Top Device Brands</p>
+                  <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                    {deviceBrandsData.slice(0, 4).map((b: any, i: number) => {
+                      const maxRev = deviceBrandsData[0]?.revenue || 1;
+                      const pct = Math.round((b.revenue / maxRev) * 100);
+                      return (
+                        <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="font-medium text-foreground truncate min-w-0">{b.brand}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-muted-foreground">{b.repairs} repairs</span>
+                            <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full bg-brand-green" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="font-mono text-xs font-semibold text-foreground w-16 text-right">₹{b.revenue.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -869,8 +873,8 @@ export default function Reports() {
                 </div>
               </div>
 
-              {/* Per-supplier breakdown with visual bars */}
-              <div className="space-y-3">
+                            {/* Per-supplier breakdown with visual bars */}
+              <div className="space-y-3 max-h-[385px] overflow-y-auto pr-1">
                 {supplierData.map((s, i) => {
                   const pct = maxSupplierTotal > 0 ? Math.round((s.total / maxSupplierTotal) * 100) : 0;
                   const barColors = [
