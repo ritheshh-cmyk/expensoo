@@ -6,35 +6,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Download,
   TrendingUp,
-  Calendar,
   PieChart,
   Eye,
   EyeOff,
-  Users,
   Smartphone,
   DollarSign,
   Target,
   ArrowUpRight,
   ArrowDownRight,
   Package,
-  Plus,
   TrendingDown,
   Wrench,
 } from "lucide-react";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { apiClient } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { io } from "socket.io-client";
@@ -76,11 +64,7 @@ const CHART_COLORS = [
   '#EC4899', '#06B6D4', '#F43F5E', '#64748B',
 ];
 
-const SEG_COLORS = {
-  frequent: '#10B981',
-  regular:  '#3B82F6',
-  oneTime:  '#F59E0B',
-};
+
 
 const getSliceColor = (name: string, index: number): string => {
   if (name.toLowerCase() === 'others') return '#64748B';
@@ -149,13 +133,7 @@ function SectionSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
-// ─── Customer tier helper ─────────────────────────────────────────────────────
 
-function customerTier(repairs: number): { label: string; color: string; border: string } {
-  if (repairs > 3) return { label: 'High',   color: 'text-emerald-400', border: 'border-l-4 border-emerald-500' };
-  if (repairs >= 2) return { label: 'Medium', color: 'text-amber-400',   border: 'border-l-4 border-amber-500' };
-  return               { label: 'Low',    color: 'text-muted-foreground', border: 'border-l-4 border-border' };
-}
 
 // ─── Growth badge helper ──────────────────────────────────────────────────────
 
@@ -202,15 +180,14 @@ export default function Reports() {
     revenueGrowth: 0, profitGrowth:  0, repairGrowth:  0,
     hasPrevRevenue: false, hasPrevRepairs: false, hasPrevProfit: false,
   });
-  const [monthlyData,      setMonthlyData]      = useState<any[]>([]);
+    const [monthlyData,      setMonthlyData]      = useState<any[]>([]);
   const [repairTypesData,  setRepairTypesData]  = useState<any[]>([]);
   const [deviceBrandsData, setDeviceBrandsData] = useState<any[]>([]);
-  const [topCustomersData, setTopCustomersData] = useState<any[]>([]);
-  const [freeItemsData,    setFreeItemsData]    = useState<any[]>([]);
-  const [customerSegments, setCustomerSegments] = useState({ frequent: 0, regular: 0, oneTime: 0 });
   const [supplierData,     setSupplierData]     = useState<any[]>([]);
 
   const [showAllBrands, setShowAllBrands] = useState(false);
+  const abortRef = useRef(null);
+  const abortSupplierRef = useRef(null);
 
   const toggleProfits = () => {
     if (!canViewProfits) return;
@@ -219,13 +196,19 @@ export default function Reports() {
     localStorage.setItem("showProfits", String(next));
   };
 
-  // ─── Fetch main data (transactions) ─────────────────────────────────────────
+    // ─── Fetch main data (transactions) ─────────────────────────────────────────
   const fetchMain = useCallback(async () => {
     const token = localStorage.getItem('auth_token');
     if (!token) { setLoadingMain(false); return; }
+
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoadingMain(true);
     try {
       const txnRes = await apiClient.getTransactions();
+      if (controller.signal.aborted) return;
       const transactionsArr: any[] = Array.isArray(txnRes?.data) ? txnRes.data : [];
 
       // ── Time range cutoffs ────────────────────────────────────────────────
@@ -246,14 +229,10 @@ export default function Reports() {
       const monthlyStats    = new Map<string, { month: string; revenue: number; profit: number; repairs: number; year: number }>();
       const repairTypesMap  = new Map<string, number>();
       const deviceBrandsMap = new Map<string, { repairs: number; revenue: number }>();
-      const customersMap    = new Map<string, { name: string; repairs: number; revenue: number; lastVisit: string }>();
 
       let prevRevenue = 0;
       let prevRepairs = 0;
       let prevProfit  = 0;
-
-      // FIX #5: free items also filtered by time range
-      const freeItems: any[] = [];
 
       transactionsArr.forEach((tx: any) => {
         const date = new Date(tx.createdAt || tx.created_at || tx.date || Date.now());
@@ -297,32 +276,7 @@ export default function Reports() {
         bd.repairs += 1;
         bd.revenue += txRevenue;
 
-        // ── Customers ─────────────────────────────────────────────────────
-        const cId = tx.mobileNumber ?? tx.mobile_number ?? tx.customer ?? tx.customerName ?? tx.customer_name ?? 'Unknown';
-        if (!customersMap.has(cId)) {
-          customersMap.set(cId, {
-            name: tx.customer ?? tx.customerName ?? tx.customer_name ?? `Customer ${cId}`,
-            repairs: 0, revenue: 0,
-            lastVisit: date.toISOString(),
-          });
-        }
-        const cd = customersMap.get(cId)!;
-        cd.repairs += 1;
-        cd.revenue += txRevenue;
-        if (date > new Date(cd.lastVisit)) cd.lastVisit = date.toISOString();
-
-        // ── Free items (FIX #5: only within current period) ───────────────
-        const fg = Number(tx.freeGlass ?? (tx.freeGlassInstallation ?? tx.free_glass_installation ? 1 : 0));
-        const fc = Number(tx.freeCover ?? 0);
-        if (fg > 0 || fc > 0) {
-          freeItems.push({
-            id:        String(tx.id || ''),
-            date:      tx.createdAt || tx.created_at || tx.date || Date.now(),
-            customer:  String(tx.customerName ?? tx.customer_name ?? tx.customer ?? 'Unknown'),
-            freeGlass: fg,
-            freeCover:  fc,
-          });
-        }
+        
       });
 
       // ── Monthly chart: sort by year then month ────────────────────────────
@@ -357,18 +311,7 @@ export default function Reports() {
         .map(([brand, data]) => ({ brand, ...data }))
         .sort((a, b) => b.revenue - a.revenue);
 
-      // ── Customer segments ─────────────────────────────────────────────────
-      let frequent = 0, regular = 0, oneTime = 0;
-      customersMap.forEach(c => {
-        if (c.repairs > 3) frequent++;
-        else if (c.repairs >= 2) regular++;
-        else oneTime++;
-      });
-
-      // ── Top customers ─────────────────────────────────────────────────────
-      const topCustomersArr = Array.from(customersMap.values())
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 10);
+      
 
       // ── FIX #1: All KPIs computed from filtered transactions ──────────────
       const curRevenue = monthlyChartData.reduce((s, m) => s + m.revenue, 0);
@@ -384,12 +327,14 @@ export default function Reports() {
       const repairGrowth   = hasPrevRepairs ? Math.round(((curRepairs - prevRepairs) / prevRepairs) * 100) : 0;
       const profitGrowth   = hasPrevProfit  ? Math.round(((curProfit  - prevProfit)  / prevProfit)  * 100) : 0;
 
+            if (controller.signal.aborted) return;
+
       // FIX #2: no fallback to unrelated totalRepairs
       setReportsData({
         totalRevenue:  curRevenue,
         totalProfit:   curProfit,
         totalRepairs:  curRepairs,
-        totalCustomers: customersMap.size,   // FIX #2
+        totalCustomers: 0,   // FIX #2
         avgTicketSize,
         revenueGrowth, profitGrowth, repairGrowth,
         hasPrevRevenue, hasPrevRepairs, hasPrevProfit,
@@ -397,13 +342,12 @@ export default function Reports() {
       setMonthlyData(monthlyChartData);
       setRepairTypesData(repairTypes);
       setDeviceBrandsData(deviceBrandsArr);
-      setTopCustomersData(topCustomersArr);
-      setCustomerSegments({ frequent, regular, oneTime });
-      setFreeItemsData(freeItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('[Reports] main fetch error:', err);
       toast({ title: 'Error', description: 'Failed to load reports data', variant: 'destructive' });
     } finally {
+      if (controller.signal.aborted) return;
       setLoadingMain(false);
     }
   }, [timeRange]);
@@ -411,12 +355,18 @@ export default function Reports() {
   // ─── Fetch supplier data (lifetime — expenditures don't have per-period dates always) ─
   // FIX #6: added timeRange as dep so re-fetches when range changes;
   //          if your expenditures API doesn't filter by date this is still a no-op refresh
-  const fetchSupplier = useCallback(async () => {
+    const fetchSupplier = useCallback(async () => {
     const token = localStorage.getItem('auth_token');
     if (!token) { setLoadingSupplier(false); return; }
+
+    if (abortSupplierRef.current) abortSupplierRef.current.abort();
+    const controller = new AbortController();
+    abortSupplierRef.current = controller;
+
     setLoadingSupplier(true);
     try {
       const res = await apiClient.getExpenditures();
+      if (controller.signal.aborted) return;
       const allExp: any[] = Array.isArray(res?.data) ? res.data : [];
 
       // Filter supplier-related categories
@@ -448,11 +398,22 @@ export default function Reports() {
 
       setSupplierData(arr);
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('[Reports] supplier fetch error:', err);
     } finally {
+      if (controller.signal.aborted) return;
       setLoadingSupplier(false);
     }
   }, [timeRange]); // FIX #6: re-fetches when timeRange changes
+
+    // Keep latest callbacks in refs so socket connection doesn't restart
+  const fetchMainRef = useRef(fetchMain);
+  const fetchSupplierRef = useRef(fetchSupplier);
+
+  useEffect(() => {
+    fetchMainRef.current = fetchMain;
+    fetchSupplierRef.current = fetchSupplier;
+  }, [fetchMain, fetchSupplier]);
 
   // Run both in parallel on mount / timeRange change
   useEffect(() => {
@@ -467,7 +428,9 @@ export default function Reports() {
       'https://backendmobile-4swg.onrender.com';
     const socket = io(wsUrl, { transports: ['websocket'] });
     socket.on('connect_error', (err: Error) => console.warn('Reports socket (non-fatal):', err.message));
-    const update = () => Promise.all([fetchMain(), fetchSupplier()]);
+    const update = () => {
+      Promise.all([fetchMainRef.current(), fetchSupplierRef.current()]);
+    };
     ['transactionCreated','transactionUpdated','transactionDeleted',
      'expenditureCreated','expenditureUpdated','expenditureDeleted'].forEach(ev => socket.on(ev, update));
     return () => {
@@ -475,12 +438,9 @@ export default function Reports() {
        'expenditureCreated','expenditureUpdated','expenditureDeleted'].forEach(ev => socket.off(ev, update));
       socket.disconnect();
     };
-  }, [fetchMain, fetchSupplier]);
+  }, []);
 
-  // ── Derived values (all memoised) ────────────────────────────────────────────
-  const totalSegments = customerSegments.frequent + customerSegments.regular + customerSegments.oneTime;
-  const segPct = (n: number) => totalSegments > 0 ? Math.round((n / totalSegments) * 100) : 0;
-
+    // ── Derived values (all memoised) ────────────────────────────────────────────
   const visibleBrands = useMemo(
     () => showAllBrands ? deviceBrandsData : deviceBrandsData.slice(0, 5),
     [deviceBrandsData, showAllBrands]
@@ -496,9 +456,6 @@ export default function Reports() {
     () => supplierData.length > 0 ? supplierData[0].total : 1,
     [supplierData]
   );
-
-  const freeGlassTotal = useMemo(() => freeItemsData.reduce((s, i) => s + i.freeGlass, 0), [freeItemsData]);
-  const freeCoverTotal = useMemo(() => freeItemsData.reduce((s, i) => s + i.freeCover, 0), [freeItemsData]);
 
   return (
     <div className="space-y-6 pb-20 md:pb-6 animate-in fade-in duration-500">
@@ -591,25 +548,25 @@ export default function Reports() {
             <p className="text-xs text-muted-foreground">Per repair in period</p>
           </div>
 
-          {/* Customer Base — FIX #2: never shows totalRepairs as fallback */}
+                    {/* Supplier Spend */}
           <div className="rounded-xl border border-border bg-background p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
-              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Customer Base</span>
-              <div className="p-2 rounded-lg bg-emerald-500/10"><Users className="h-4 w-4 text-emerald-400" /></div>
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground">Supplier Spend</span>
+              <div className="p-2 rounded-lg bg-emerald-500/10"><Package className="h-4 w-4 text-emerald-400" /></div>
             </div>
             <div className="text-xl sm:text-2xl font-bold text-foreground font-heading">
-              {reportsData.totalCustomers.toLocaleString()}
+              ₹{supplierTotal.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">Unique in period</p>
+            <p className="text-xs text-muted-foreground">{supplierData.length} active suppliers</p>
           </div>
         </div>
       )}
 
-      {/* ── Charts Row ─────────────────────────────────────────────────────── */}
+            {/* ── Charts Row ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Revenue & Profit Trend — FIX #15: proper empty state; FIX #16: wider YAxis */}
-        <div className="rounded-xl border border-border bg-background p-5">
+        <div className="rounded-xl border border-border bg-background p-5 lg:col-span-2">
           <h3 className="text-base font-semibold text-foreground mb-4">Revenue &amp; Profit Trend</h3>
           {loadingMain ? (
             <div className="h-52 rounded-lg bg-white/5 animate-pulse" />
@@ -762,51 +719,7 @@ export default function Reports() {
           )}
         </div>
 
-        {/* Customer Segments */}
-        <div className="rounded-xl border border-border bg-background p-5">
-          <h3 className="text-base font-semibold text-foreground mb-4">Customer Segments</h3>
-          {loadingMain ? (
-            <SectionSkeleton rows={3} />
-          ) : totalSegments === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground gap-2">
-              <Users className="h-8 w-8 opacity-30" />
-              <p className="text-sm">No customer data yet</p>
-            </div>
-          ) : (
-            <div className="space-y-5 pt-2">
-              {[
-                { label: 'Frequent Customers', subtitle: '4+ transactions', count: customerSegments.frequent, color: SEG_COLORS.frequent, pct: segPct(customerSegments.frequent) },
-                { label: 'Regular Customers',  subtitle: '2–3 transactions', count: customerSegments.regular,  color: SEG_COLORS.regular,  pct: segPct(customerSegments.regular) },
-                { label: 'One-time Customers', subtitle: '1 transaction',    count: customerSegments.oneTime,  color: SEG_COLORS.oneTime,  pct: segPct(customerSegments.oneTime) },
-              ].map(seg => (
-                <div key={seg.label} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
-                      <div>
-                        <span className="font-medium text-foreground">{seg.label}</span>
-                        <span className="text-xs text-muted-foreground ml-2">({seg.subtitle})</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold text-foreground">{seg.count}</span>
-                      <span className="text-xs text-muted-foreground ml-1">· {seg.pct}%</span>
-                    </div>
-                  </div>
-                  <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${seg.pct}%`, backgroundColor: seg.color }}
-                    />
-                  </div>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground pt-1">
-                Total: <span className="font-medium text-foreground">{totalSegments}</span> unique customers in period
-              </p>
-            </div>
-          )}
-        </div>
+        
       </div>
 
       {/* ── Data Tables ────────────────────────────────────────────────────── */}
@@ -1000,135 +913,7 @@ export default function Reports() {
       </div>
 
 
-      {/* ── Report Summary ─────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-background p-5">
-        <h3 className="text-base font-semibold text-foreground mb-4">Report Summary</h3>
-        {loadingMain ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg border border-brand-orange/20 bg-brand-orange/10">
-              <div className="text-sm font-medium text-brand-orange-light">Revenue Growth</div>
-              <div className="text-lg font-bold text-foreground mt-1">
-                {reportsData.hasPrevRevenue
-                  ? `${reportsData.revenueGrowth >= 0 ? '+' : ''}${reportsData.revenueGrowth}%`
-                  : 'N/A'}
-              </div>
-              <div className="text-xs text-brand-orange/70 mt-1">
-                Total: ₹{reportsData.totalRevenue.toLocaleString()}
-              </div>
-            </div>
-            <div className="p-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10">
-              <div className="text-sm font-medium text-emerald-400">Top Repair Type</div>
-              <div className="text-lg font-bold text-foreground mt-1 truncate">
-                {repairTypesData.length > 0 ? repairTypesData[0]?.name : 'No data'}
-              </div>
-              <div className="text-xs text-emerald-500/70 mt-1">
-                {repairTypesData.length > 0
-                  ? `${repairTypesData[0]?.value ?? 0}% of repairs · ${repairTypesData[0]?.count ?? 0} jobs`
-                  : 'No repair type data'}
-              </div>
-            </div>
-            <div className="p-4 rounded-lg border border-orange-500/20 bg-orange-500/10">
-              <div className="text-sm font-medium text-orange-400">Top Device Brand</div>
-              <div className="text-lg font-bold text-foreground mt-1">
-                {deviceBrandsData.length > 0 ? deviceBrandsData[0]?.brand : 'No data'}
-              </div>
-              <div className="text-xs text-orange-500/70 mt-1">
-                {deviceBrandsData.length > 0
-                  ? `${deviceBrandsData[0]?.repairs ?? 0} repairs · ₹${(deviceBrandsData[0]?.revenue ?? 0).toLocaleString()}`
-                  : 'No device data'}
-              </div>
-            </div>
-            <div className="p-4 rounded-lg border border-violet-500/20 bg-violet-500/10">
-              <div className="text-sm font-medium text-violet-400">Customer Retention</div>
-              <div className="text-lg font-bold text-foreground mt-1">
-                {totalSegments > 0
-                  ? `${segPct(customerSegments.frequent + customerSegments.regular)}% returning`
-                  : 'No data'}
-              </div>
-              <div className="text-xs text-violet-500/70 mt-1">
-                {customerSegments.frequent + customerSegments.regular} repeat out of {totalSegments}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Free Items Audit Log ────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-background p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-          <div>
-            <h3 className="text-base font-semibold text-foreground">Free Items Audit Log</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Complimentary tempered glass and back cover installations in selected period.
-            </p>
-          </div>
-          {!loadingMain && freeItemsData.length > 0 && (
-            <div className="flex gap-3 text-xs">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-                Glass: {freeGlassTotal} units
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
-                Cover: {freeCoverTotal} units
-              </span>
-            </div>
-          )}
-        </div>
-
-        {loadingMain ? (
-          <div className="space-y-1">{Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}</div>
-        ) : (
-          <div className="overflow-x-auto rounded-md border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border bg-muted/30">
-                  <TableHead className="text-muted-foreground font-semibold">Date</TableHead>
-                  <TableHead className="text-muted-foreground font-semibold">Transaction ID</TableHead>
-                  <TableHead className="text-muted-foreground font-semibold">Customer Name</TableHead>
-                  <TableHead className="text-muted-foreground font-semibold text-center">Free Glass</TableHead>
-                  <TableHead className="text-muted-foreground font-semibold text-center">Free Cover</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {freeItemsData.length > 0 ? freeItemsData.map((item) => (
-                  <TableRow key={item.id} className="border-border hover:bg-muted/30 transition-colors">
-                    <TableCell className="text-foreground font-medium text-sm">
-                      {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground font-mono text-xs">
-                      {item.id.substring(0, 8).toUpperCase()}
-                    </TableCell>
-                    <TableCell className="text-foreground">{item.customer}</TableCell>
-                    <TableCell className="text-center">
-                      {item.freeGlass > 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                          +{item.freeGlass}
-                        </span>
-                      ) : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {item.freeCover > 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/20">
-                          +{item.freeCover}
-                        </span>
-                      ) : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                  </TableRow>
-                )) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No free items recorded in this period.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
+      
     </div>
   );
 }
