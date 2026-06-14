@@ -885,106 +885,95 @@ export default function Reports() {
           )}
         </div>
 
-        {/* Top Customers — Leaderboard */}
+        {/* Supplier Analysis */}
         <div className="rounded-xl border border-border bg-background p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold text-foreground">Top Customers</h3>
+            <h3 className="text-base font-semibold text-foreground">Supplier Analysis</h3>
             <span className="text-xs text-muted-foreground bg-muted/40 px-2 py-1 rounded-full border border-border">
-              {topCustomersData.length} customers
+              {supplierData.length} suppliers
             </span>
           </div>
-          {loadingMain ? (
-            <div className="space-y-1">{Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)}</div>
-          ) : (
-            <>
-              {/* Desktop table */}
-              <div className="hidden sm:block overflow-x-auto rounded-md border border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border bg-muted/30">
-                      <TableHead className="text-muted-foreground w-10">#</TableHead>
-                      <TableHead className="text-muted-foreground">Customer</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Repairs</TableHead>
-                      <TableHead className="text-muted-foreground">Revenue</TableHead>
-                      <TableHead className="text-muted-foreground">Last Visit</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {topCustomersData.length > 0 ? topCustomersData.map((c, i) => {
-                      const tier = customerTier(c.repairs);
-                      const ago = c.lastVisit ? (() => {
-                        const d = new Date(c.lastVisit);
-                        if (isNaN(d.getTime())) return '—';
-                        const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
-                        if (diff === 0) return 'Today';
-                        if (diff === 1) return 'Yesterday';
-                        return `${diff}d ago`;
-                      })() : '—';
-                      return (
-                        <TableRow key={i} className={cn("border-border hover:bg-muted/30 transition-colors", tier.border)}>
-                          <TableCell className="font-bold text-sm">
-                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
-                          </TableCell>
-                          <TableCell className="font-medium text-foreground">{c.name}</TableCell>
-                          <TableCell className="text-center">
-                            <span className={cn("font-semibold px-2 py-0.5 rounded-full text-xs border", tier.color, tier.border)}>
-                              {c.repairs}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-foreground font-mono text-sm font-semibold">
-                            ₹{c.revenue.toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <span className={cn(
-                              "inline-flex items-center px-2 py-0.5 rounded-full text-xs border",
-                              ago === 'Today'
-                                ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                : ago === 'Yesterday'
-                                ? "bg-primary/10 text-primary border-primary/20"
-                                : "bg-muted text-muted-foreground border-border"
-                            )}>
-                              {ago}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    }) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          No customer data in this period.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+          {loadingSupplier ? (
+            <div className="space-y-3">
+              {/* Summary skeletons */}
+              <div className="grid grid-cols-3 gap-3">
+                {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
-              {/* Mobile card list */}
-              <div className="sm:hidden space-y-2">
-                {topCustomersData.length > 0 ? topCustomersData.map((c, i) => {
-                  const tier = customerTier(c.repairs);
-                  const ago = c.lastVisit ? (() => {
-                    const d = new Date(c.lastVisit);
-                    if (isNaN(d.getTime())) return '—';
-                    const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
-                    if (diff === 0) return 'Today';
-                    if (diff === 1) return 'Yesterday';
-                    return `${diff}d ago`;
-                  })() : '—';
+              <div className="space-y-1">{Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)}</div>
+            </div>
+          ) : supplierData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+              <div className="p-3 rounded-full bg-muted">
+                <Package className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground text-sm">No supplier payments yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Record expenditures with a supplier to see spending analysis here.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Summary stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg border border-border bg-muted/20 p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Suppliers</p>
+                  <p className="text-xl font-bold text-foreground">{supplierData.length}</p>
+                </div>
+                <div className="rounded-lg border border-brand-orange/20 bg-brand-orange/5 p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Total Spent</p>
+                  <p className="text-lg font-bold text-brand-orange font-mono">₹{supplierTotal.toLocaleString()}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/20 p-3 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Avg / Order</p>
+                  <p className="text-lg font-bold text-foreground font-mono">
+                    ₹{supplierData.length > 0
+                      ? Math.round(supplierTotal / supplierData.reduce((s, r) => s + r.orders, 0)).toLocaleString()
+                      : 0}
+                  </p>
+                </div>
+              </div>
+
+              {/* Per-supplier breakdown with visual bars */}
+              <div className="space-y-3">
+                {supplierData.map((s, i) => {
+                  const pct = maxSupplierTotal > 0 ? Math.round((s.total / maxSupplierTotal) * 100) : 0;
+                  const barColors = [
+                    'bg-brand-orange', 'bg-brand-green', 'bg-primary',
+                    'bg-blue-500', 'bg-purple-500', 'bg-pink-500',
+                  ];
+                  const barColor = barColors[i % barColors.length];
                   return (
-                    <div key={i} className={cn("rounded-lg border border-border p-3 flex items-center justify-between gap-3", tier.border)}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm shrink-0">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground text-sm truncate">{c.name}</p>
-                          <p className="text-xs text-muted-foreground">{c.repairs} repairs · {ago}</p>
+                    <div key={i} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={cn("w-2 h-2 rounded-full shrink-0", barColor)} />
+                          <span className="font-medium text-foreground truncate">{s.supplier}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">{s.orders} orders</span>
+                        </div>
+                        <div className="text-right shrink-0 ml-2">
+                          <span className="font-mono font-semibold text-foreground text-sm">₹{s.total.toLocaleString()}</span>
+                          <span className="text-xs text-muted-foreground ml-1">({pct}%)</span>
                         </div>
                       </div>
-                      <p className="font-semibold text-foreground text-sm shrink-0">₹{c.revenue.toLocaleString()}</p>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-all duration-700", barColor)}
+                          style={{ width: `${pct}%`, opacity: 0.8 }}
+                        />
+                      </div>
                     </div>
                   );
-                }) : <p className="text-sm text-center text-muted-foreground py-6">No data in period.</p>}
+                })}
               </div>
-            </>
+
+              {/* Total footer */}
+              <div className="flex items-center justify-between pt-2 border-t border-border text-sm">
+                <span className="text-muted-foreground">Total ({supplierData.reduce((s, r) => s + r.orders, 0)} orders)</span>
+                <span className="font-mono font-bold text-foreground">₹{supplierTotal.toLocaleString()}</span>
+              </div>
+            </div>
           )}
         </div>
       </div>
