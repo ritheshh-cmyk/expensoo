@@ -287,11 +287,8 @@ export default function Login() {
                     className={`h-12 pr-12 bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/30 ${fieldErrors.password ? "border-destructive focus:ring-destructive/30" : ""}`}
                     aria-describedby={fieldErrors.password ? "password-error" : undefined}
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0.5 top-1/2 -translate-y-1/2 h-11 w-11 text-muted-foreground hover:text-foreground hover:bg-accent/40 z-10 rounded-lg flex items-center justify-center"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -299,13 +296,29 @@ export default function Login() {
                     }}
                     tabIndex={-1}
                     aria-label={showPassword ? "Hide password" : "Show password"}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      padding: '4px',
+                      cursor: 'pointer',
+                      color: 'var(--muted-foreground)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 10,
+                      lineHeight: 0,
+                    }}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff style={{ width: 18, height: 18 }} />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye style={{ width: 18, height: 18 }} />
                     )}
-                  </Button>
+                  </button>
                 </div>
                 {fieldErrors.password && (
                   <p id="password-error" className="text-xs text-destructive mt-1">

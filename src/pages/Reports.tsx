@@ -885,30 +885,16 @@ export default function Reports() {
           )}
         </div>
 
-        {/* Supplier Spending Analysis */}
+        {/* Top Customers — Leaderboard */}
         <div className="rounded-xl border border-border bg-background p-5">
-          <h3 className="text-base font-semibold text-foreground mb-4">Supplier Spending Analysis</h3>
-          {loadingSupplier ? (
-            <div className="space-y-1">{Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)}</div>
-          ) : supplierData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
-              <div className="p-3 rounded-full bg-muted">
-                <Package className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground text-sm">No supplier payments yet</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Record expenditures with a supplier category to see spending here.
-                </p>
-              </div>
-              {/* FIX #18: use <Link> instead of <a href> to avoid full page reload */}
-              <Link
-                to="/expenditures"
-                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
-              >
-                <Plus className="h-3 w-3" /> Add your first supplier payment
-              </Link>
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-foreground">Top Customers</h3>
+            <span className="text-xs text-muted-foreground bg-muted/40 px-2 py-1 rounded-full border border-border">
+              {topCustomersData.length} customers
+            </span>
+          </div>
+          {loadingMain ? (
+            <div className="space-y-1">{Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)}</div>
           ) : (
             <>
               {/* Desktop table */}
@@ -916,57 +902,93 @@ export default function Reports() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border bg-muted/30">
-                      <TableHead className="text-muted-foreground">Supplier</TableHead>
-                      <TableHead className="text-muted-foreground">Orders</TableHead>
-                      <TableHead className="text-muted-foreground">Total Spent</TableHead>
-                      <TableHead className="text-muted-foreground">Avg Order</TableHead>
+                      <TableHead className="text-muted-foreground w-10">#</TableHead>
+                      <TableHead className="text-muted-foreground">Customer</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Repairs</TableHead>
+                      <TableHead className="text-muted-foreground">Revenue</TableHead>
+                      <TableHead className="text-muted-foreground">Last Visit</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {supplierData.map((s, i) => {
-                      const barW = maxSupplierTotal > 0 ? Math.round((s.total / maxSupplierTotal) * 100) : 0;
+                    {topCustomersData.length > 0 ? topCustomersData.map((c, i) => {
+                      const tier = customerTier(c.repairs);
+                      const ago = c.lastVisit ? (() => {
+                        const d = new Date(c.lastVisit);
+                        if (isNaN(d.getTime())) return '—';
+                        const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+                        if (diff === 0) return 'Today';
+                        if (diff === 1) return 'Yesterday';
+                        return `${diff}d ago`;
+                      })() : '—';
                       return (
-                        <TableRow key={i} className="border-border hover:bg-muted/30 transition-colors">
-                          <TableCell className="font-medium text-foreground">{s.supplier}</TableCell>
-                          <TableCell className="text-foreground">{s.orders}</TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <span className="font-mono text-sm text-foreground">₹{s.total.toLocaleString()}</span>
-                              <div className="h-1 rounded-full bg-white/5 w-24 overflow-hidden">
-                                <div className="h-full rounded-full bg-brand-orange" style={{ width: `${barW}%` }} />
-                              </div>
-                            </div>
+                        <TableRow key={i} className={cn("border-border hover:bg-muted/30 transition-colors", tier.border)}>
+                          <TableCell className="font-bold text-sm">
+                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
                           </TableCell>
-                          <TableCell className="text-muted-foreground font-mono text-sm">₹{s.avg.toLocaleString()}</TableCell>
+                          <TableCell className="font-medium text-foreground">{c.name}</TableCell>
+                          <TableCell className="text-center">
+                            <span className={cn("font-semibold px-2 py-0.5 rounded-full text-xs border", tier.color, tier.border)}>
+                              {c.repairs}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-foreground font-mono text-sm font-semibold">
+                            ₹{c.revenue.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <span className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded-full text-xs border",
+                              ago === 'Today'
+                                ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                : ago === 'Yesterday'
+                                ? "bg-primary/10 text-primary border-primary/20"
+                                : "bg-muted text-muted-foreground border-border"
+                            )}>
+                              {ago}
+                            </span>
+                          </TableCell>
                         </TableRow>
                       );
-                    })}
-                    {/* Total row */}
-                    <TableRow className="border-t-2 border-border bg-muted/20 font-semibold">
-                      <TableCell className="text-foreground">Total</TableCell>
-                      <TableCell className="text-foreground">{supplierData.reduce((s, r) => s + r.orders, 0)}</TableCell>
-                      <TableCell className="text-foreground font-mono">₹{supplierTotal.toLocaleString()}</TableCell>
-                      <TableCell className="text-muted-foreground">—</TableCell>
-                    </TableRow>
+                    }) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          No customer data in this period.
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
               {/* Mobile card list */}
               <div className="sm:hidden space-y-2">
-                {supplierData.map((s, i) => (
-                  <div key={i} className="rounded-lg border border-border p-3 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground text-sm">{s.supplier}</p>
-                      <p className="text-xs text-muted-foreground">{s.orders} orders</p>
+                {topCustomersData.length > 0 ? topCustomersData.map((c, i) => {
+                  const tier = customerTier(c.repairs);
+                  const ago = c.lastVisit ? (() => {
+                    const d = new Date(c.lastVisit);
+                    if (isNaN(d.getTime())) return '—';
+                    const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+                    if (diff === 0) return 'Today';
+                    if (diff === 1) return 'Yesterday';
+                    return `${diff}d ago`;
+                  })() : '—';
+                  return (
+                    <div key={i} className={cn("rounded-lg border border-border p-3 flex items-center justify-between gap-3", tier.border)}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm shrink-0">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground text-sm truncate">{c.name}</p>
+                          <p className="text-xs text-muted-foreground">{c.repairs} repairs · {ago}</p>
+                        </div>
+                      </div>
+                      <p className="font-semibold text-foreground text-sm shrink-0">₹{c.revenue.toLocaleString()}</p>
                     </div>
-                    <p className="font-semibold text-foreground text-sm">₹{s.total.toLocaleString()}</p>
-                  </div>
-                ))}
+                  );
+                }) : <p className="text-sm text-center text-muted-foreground py-6">No data in period.</p>}
               </div>
             </>
           )}
         </div>
       </div>
+
 
       {/* ── Report Summary ─────────────────────────────────────────────────── */}
       <div className="rounded-xl border border-border bg-background p-5">
